@@ -11,22 +11,22 @@ export default function BarcodeScanner({
 
   useEffect(() => {
     const reader = new BrowserMultiFormatReader();
+    const videoEl = videoRef.current;
     let stopped = false;
 
     async function start() {
       try {
         const devices = await BrowserMultiFormatReader.listVideoInputDevices();
         const deviceId = devices?.[0]?.deviceId;
-        if (!deviceId || !videoRef.current) return;
+        if (!deviceId || !videoEl) return;
 
-        await reader.decodeFromVideoDevice(deviceId, videoRef.current, (result) => {
+        await reader.decodeFromVideoDevice(deviceId, videoEl, (result) => {
           if (stopped) return;
           const text = result?.getText?.();
           if (text) onResult(text);
         });
-      } catch (e) {
+      } catch {
         // camera not granted / no device — safe to ignore for now
-        // console.warn(e);
       }
     }
 
@@ -35,14 +35,19 @@ export default function BarcodeScanner({
     // Cleanup: stop the camera stream directly (cross-version safe)
     return () => {
       stopped = true;
-      const el = videoRef.current;
-      const stream = (el?.srcObject as MediaStream | null) ?? null;
+      if (!videoEl) return;
+
+      const stream = videoEl.srcObject as MediaStream | null;
       if (stream) {
-        for (const track of stream.getTracks()) {
-          try { track.stop(); } catch {}
-        }
-        if (el) el.srcObject = null;
+        stream.getTracks().forEach(track => {
+          try {
+            track.stop();
+          } catch {
+            // ignore stop errors
+          }
+        });
       }
+      videoEl.srcObject = null;
     };
   }, [onResult]);
 
