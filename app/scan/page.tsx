@@ -6,8 +6,9 @@ const BarcodeScanner = dynamic(
   () => import("./BarcodeScanner").then((m) => m.default),
   { ssr: false, loading: () => <div>Starting camera…</div> }
 );
-const okBeep = typeof Audio !== "undefined" ? new Audio("/ok-beep.mp3") : null;
-const errBeep = typeof Audio !== "undefined" ? new Audio("/err-beep.mp3") : null;
+// Use success.mp3 for success and fail.mp3 for failure
+const okBeep = typeof Audio !== "undefined" ? new Audio("/success.mp3") : null;
+const errBeep = typeof Audio !== "undefined" ? new Audio("/fail.mp3") : null;
 
 const playSafe = (a: HTMLAudioElement | null) => {
   try { a?.currentTime && (a.currentTime = 0); a?.play()?.catch(() => {}); } catch {}

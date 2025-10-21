@@ -5,12 +5,7 @@ import { useRouter } from 'next/navigation';
 
 import { clientSchema, type ClientFormData } from '@/lib/schemas';
 import type { Database } from '@/types/database';
-import { createClient } from '@supabase/supabase-js';
-
-const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+import { supabase } from '@/lib/supabaseClient';
 
 export default function NewClientPage() {
   const router = useRouter();
@@ -29,9 +24,15 @@ export default function NewClientPage() {
 
     try {
       const validatedData = clientSchema.parse(formData);
+      const clientInsert: Database['public']['Tables']['clients']['Insert'] = {
+        name: validatedData.name,
+        email: validatedData.email || '',
+        phone: validatedData.phone || '',
+        // id and created_at are optional and omitted
+      };
       const { error: dbError } = await supabase
         .from('clients')
-        .insert(validatedData);
+        .insert([clientInsert]);
 
       if (dbError) throw dbError;
       router.push('/clients');
@@ -49,7 +50,7 @@ export default function NewClientPage() {
     const { name, value } = e.target;
     setFormData((prev: ClientFormData) => ({
       ...prev,
-      [name]: value || null,
+      [name]: value,
     }));
   }
 

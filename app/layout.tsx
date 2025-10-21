@@ -1,9 +1,10 @@
+import Sidebar from "./Sidebar";
 // app/layout.tsx
-import "./globals.css";
+import "../app/globals.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Bright Audio",
+  title: "Bright Ops",
   description: "Bright Audio App Console",
 };
 
@@ -14,67 +15,21 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body
-        style={{
-          margin: 0,
-          fontFamily: "Arial, sans-serif",
-          backgroundColor: "#f9fafb",
-        }}
-      >
-        <nav
-          style={{
-            width: "100%",
-            background: "#111",
-            color: "#FFD700",
-            padding: "0.75rem 1.5rem",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            boxShadow: "0 2px 8px 0 rgba(0,0,0,0.04)",
-            position: "sticky",
-            top: 0,
-            zIndex: 10,
-          }}
-        >
-          <span style={{ fontWeight: 700, fontSize: 20, letterSpacing: 1 }}>
-            Bright Audio Ops
-          </span>
-          <div style={{ display: "flex", gap: "1.5rem" }}>
-            <a
-              href="/scan"
-              style={{
-                color: "#FFD700",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Scan
-            </a>
-            <a
-              href="/jobs"
-              style={{
-                color: "#FFD700",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Jobs
-            </a>
-            <a
-              href="/api/pullsheet?jobCode=JOB-1001"
-              target="_blank"
-              rel="noopener noreferrer"
-              style={{
-                color: "#FFD700",
-                textDecoration: "none",
-                fontWeight: 500,
-              }}
-            >
-              Pull Sheet
-            </a>
+      <body className="bg-[#0a0b0d] text-white min-h-screen">
+        <div className="flex min-h-screen">
+          <Sidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            {/* Top Bar */}
+            <header className="sticky top-0 z-20 bg-[#0a0b0d]/80 backdrop-blur border-b border-white/10 flex items-center justify-between px-8 h-16">
+              <span className="font-bold text-white/80 text-lg tracking-tight">My Personal Dashboard</span>
+              <div className="flex gap-2">
+                <button className="px-4 py-1 rounded-lg border border-white/10 text-white/70 bg-transparent hover:border-amber-400 hover:text-amber-300 transition-colors font-medium">Adjust layout</button>
+                <button className="px-4 py-1 rounded-lg border border-white/10 text-white/70 bg-transparent hover:border-amber-400 hover:text-amber-300 transition-colors font-medium">Add widget</button>
+              </div>
+            </header>
+            <main className="p-6 flex-1 min-w-0">{children}</main>
           </div>
-        </nav>
-        {children}
+        </div>
       </body>
     </html>
   );

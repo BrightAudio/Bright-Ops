@@ -1,15 +1,1 @@
-import { createClient } from '@supabase/supabase-js';
-import type { Database } from '../types/database';
-
-// Server-side Supabase client with service role for admin operations
-// Use this in Node runtime components/routes only
-export const supabase = createClient<Database>(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  {
-    auth: {
-      persistSession: false, // Don't persist auth state
-      autoRefreshToken: false,
-    }
-  }
-);
+import { supabase } from '@/lib/supabaseClient';

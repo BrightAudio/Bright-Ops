@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from 'next/server';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabaseServer';
 
 type Direction = "IN" | "OUT";
 
@@ -44,10 +44,6 @@ type ErrorResponse = {
 
 type RpcResult = ScanRow | { message?: string } | null;
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL as string,
-  process.env.SUPABASE_SERVICE_ROLE_KEY as string
-);
 
 export async function POST(req: Request): Promise<NextResponse<SuccessResponse | ErrorResponse>> {
   try {

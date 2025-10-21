@@ -1,13 +1,10 @@
-"use client";
 
-import { createClient } from "@supabase/supabase-js";
-import type { Database } from "@/types/database";
+// lib/supabaseClient.ts
+import { createClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-if (!url || !anon) {
-	console.warn("Supabase env vars missing: NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY");
-}
-
-export const supabase = createClient<Database>(url || "", anon || "");
+// Always type the client with your Database
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey);
