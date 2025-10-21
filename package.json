@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build --turbopack",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint"
   },
@@ -35,5 +35,8 @@
     "tailwindcss": "^4",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4"
+  },
+  "engines": {
+    "node": "20.x"
   }
 }
