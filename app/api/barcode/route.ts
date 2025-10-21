@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-const bwipjs = require('bwip-js');
+import bwipjs from 'bwip-js';
 import QRCode from 'qrcode';
 import { z } from 'zod';
 
