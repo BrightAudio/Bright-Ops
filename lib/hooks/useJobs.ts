@@ -4,7 +4,7 @@ import { guard, useAsync } from "./useSupabase";
 import type { Database } from "@/types/database";
 
 export type JobRow = Database["public"]["Tables"]["jobs"]["Row"] & {
-  client_name: string | null;
+  client_name: string | null | undefined;
 };
 export type PrepSheetRow = Database["public"]["Tables"]["prep_sheets"]["Row"];
 export type ReturnManifestRow = Database["public"]["Tables"]["return_manifest"]["Row"];
@@ -17,7 +17,7 @@ export function useJobs(params?: {
   return useAsync<JobRow[]>(async () => {
     let query = supabase
       .from("jobs")
-      .select("*, clients(name)")
+      .select("*")
       .order("created_at", { ascending: false });
     if (params?.status && params.status !== "all") {
       query = query.eq("status", params.status);
@@ -28,11 +28,12 @@ export function useJobs(params?: {
       );
     }
     const { data, error } = await query;
-    const jobs = guard(data ? { data, error } : { data: null, error });
-    // Map client name to each job
+    if (error || !data) throw error || new Error("Failed to fetch jobs");
+    const jobs = data as Database["public"]["Tables"]["jobs"]["Row"][];
+    // Map client name from the client field
     return jobs.map((j) => ({
       ...j,
-      client_name: j.clients?.name ?? null,
+      client_name: j.client ?? null,
     }));
   }, [params?.search, params?.status]);
 }
@@ -42,13 +43,15 @@ export async function createJob(
 ): Promise<JobRow> {
   const { data, error } = await supabase
     .from("jobs")
-    .insert([input as Database["public"]["Tables"]["jobs"]["Insert"]])
-    .select("*, clients(name)")
+    .insert([input])
+    .select("*")
     .single();
-  const job = guard(data ? { data, error } : { data: null, error });
-  return job
-    ? { ...job, client_name: job.clients?.name ?? null }
-    : { id: '', code: '', title: '', status: 'draft', client: '', created_at: null, client_name: null };
+  if (error || !data) throw error || new Error("Failed to create job");
+  const jobData = data as Database["public"]["Tables"]["jobs"]["Row"];
+  return {
+    ...jobData,
+    client_name: jobData.client ?? null,
+  };
 }
 
 export function useJobWithLinks(jobId: string) {
@@ -62,13 +65,15 @@ export function useJobWithLinks(jobId: string) {
       // 1. Fetch job with client name
       const { data: job, error: jobError } = await supabase
         .from("jobs")
-        .select("*, clients(name)")
+        .select("*")
         .eq("id", jobId)
         .single();
-      guard({ data: job, error: jobError });
-      const jobWithClient: JobRow = job
-        ? { ...job, client_name: job.clients?.name ?? null }
-        : { id: '', code: '', title: '', status: 'draft', client: '', created_at: null, client_name: null };
+      if (jobError || !job) throw jobError || new Error("Failed to fetch job");
+      const jobData = job as Database["public"]["Tables"]["jobs"]["Row"];
+      const jobWithClient: JobRow = {
+        ...jobData,
+        client_name: jobData.client ?? null,
+      };
 
       // 2. Ensure prep_sheet exists
       const { data: prepSheet, error: prepSheetError } = await supabase

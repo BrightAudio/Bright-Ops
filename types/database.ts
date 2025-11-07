@@ -45,6 +45,7 @@ export interface Database {
           quantity_on_hand?: number | null;
           created_at?: string | null;
         };
+        Relationships: [];
       };
       /**
        * Inventory movements record increments and decrements of
@@ -363,10 +364,17 @@ export interface Database {
       };
       // Add additional table definitions as your schema grows
     };
-    Views: Record<string, never>;
-    Functions: Record<string, never>;
+    Views: {
+      [_ in never]: never;
+    };
+    Functions: {
+      [_ in never]: never;
+    };
     Enums: {
       job_status: "draft" | "active" | "complete";
+    };
+    CompositeTypes: {
+      [_ in never]: never;
     };
   };
 }
