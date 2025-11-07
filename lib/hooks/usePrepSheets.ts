@@ -82,7 +82,7 @@ export async function scanToPick(
     .from("inventory_movements")
     .insert([
       {
-        inventory_item_id: item.id,
+        item_id: item.id,
         qty: qty,
         created_at: new Date().toISOString(),
       } as TablesInsert<"inventory_movements">,

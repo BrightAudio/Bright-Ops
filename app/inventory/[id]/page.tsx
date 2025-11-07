@@ -20,7 +20,7 @@ export default function EditInventoryItemPage() {
 	const router = useRouter();
 	const params = useParams();
 	const idParam = params?.id;
-	const id = typeof idParam === "string" ? parseInt(idParam) : Array.isArray(idParam) ? parseInt(idParam[0]) : NaN;
+	const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : undefined;
 	const { item, loading, error } = useInventoryItem(id);
 	const [form, setForm] = useState({
 		name: "",

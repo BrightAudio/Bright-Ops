@@ -123,7 +123,7 @@ export async function freeScanIn(
   }
   // Insert movement record
   const movement: TablesInsert<"inventory_movements"> = {
-    inventory_item_id: item.id,
+    item_id: item.id,
     qty,
     created_at: new Date().toISOString(),
   };
@@ -170,9 +170,10 @@ export async function freeScanOut(
   }
   // Insert movement with direction out
   const movement: TablesInsert<"inventory_movements"> = {
-    inventory_item_id: item.id,
+    item_id: item.id,
+    direction: "out",
     qty,
-    created_at: new Date().toISOString(),
+    note: null,
   };
   guard(await supabase.from("inventory_movements").insert([movement]));
   // Compute new quantity, floor at 0
@@ -237,7 +238,7 @@ export async function createInventoryItem(item: {
  * success.
  */
 export async function updateInventoryItem(
-  id: number,
+  id: string,
   updates: {
     name?: string;
     barcode?: string;
@@ -263,7 +264,7 @@ export async function updateInventoryItem(
  * Remove an inventory record entirely. Callers should prompt
  * confirmation before invoking this function.
  */
-export async function deleteInventoryItem(id: number): Promise<void> {
+export async function deleteInventoryItem(id: string): Promise<void> {
   const { error } = await supabase
     .from("inventory_items")
     .delete()
@@ -277,10 +278,10 @@ export async function deleteInventoryItem(id: number): Promise<void> {
  * useInventoryItem
  *
  * Retrieve a single inventory row for editing. This hook accepts a
- * numeric id and exposes the item along with loading and error
+ * string UUID id and exposes the item along with loading and error
  * states.
  */
-export function useInventoryItem(id?: number) {
+export function useInventoryItem(id?: string) {
   const [item, setItem] = useState<InventoryItem | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
