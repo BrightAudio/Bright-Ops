@@ -41,7 +41,7 @@ export default function PrepSheetScanWidget({ prepSheetId }: { prepSheetId: stri
       </button>
       {error && <div className="text-red-600 mt-2">{error}</div>}
       <div className="mt-4">
-  {data.prep_sheet_items.map((item: any) => (
+        {data.prep_sheet_items.map((item) => (
           <div key={item.id} className="mb-2">
             <div className="flex justify-between">
               <span>{item.inventory_items?.name || item.inventory_item_id}</span>

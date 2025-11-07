@@ -29,8 +29,8 @@ export function useJobs(params?: {
     }
     const { data, error } = await query;
     const jobs = guard(data ? { data, error } : { data: null, error });
-    // Map client name
-    return jobs.map((j: any) => ({
+    // Map client name to each job
+    return jobs.map((j) => ({
       ...j,
       client_name: j.clients?.name ?? null,
     }));
@@ -71,7 +71,7 @@ export function useJobWithLinks(jobId: string) {
         : { id: '', code: '', title: '', status: 'draft', client: '', created_at: null, client_name: null };
 
       // 2. Ensure prep_sheet exists
-      let { data: prepSheet, error: prepSheetError } = await supabase
+      const { data: prepSheet, error: prepSheetError } = await supabase
         .from("prep_sheets")
         .select("*")
         .eq("job_id", jobId)
@@ -83,11 +83,16 @@ export function useJobWithLinks(jobId: string) {
           .select()
           .single();
         guard({ data: created, error: createErr });
-        prepSheet = created;
+        return {
+          job: jobWithClient,
+          prepSheet: created,
+          returnManifest: null,
+          transports: [],
+        };
       }
 
       // 3. Ensure return_manifest exists
-      let { data: returnManifest, error: returnManifestError } = await supabase
+      const { data: returnManifest, error: returnManifestError } = await supabase
         .from("return_manifest")
         .select("*")
         .eq("job_id", jobId)
@@ -99,7 +104,12 @@ export function useJobWithLinks(jobId: string) {
             .select()
             .single();
         guard({ data: created, error: createErr });
-        returnManifest = created;
+        return {
+          job: jobWithClient,
+          prepSheet,
+          returnManifest: created,
+          transports: [],
+        };
       }
 
       // 4. Fetch transports

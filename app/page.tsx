@@ -14,7 +14,7 @@ export default function Home() {
         </div>
         {/* Today's Moves */}
         <div className="bg-[#181a20] border border-white/10 rounded-xl p-6 shadow flex flex-col">
-          <span className="text-sm text-white/60 mb-2 font-semibold">Today's Moves</span>
+          <span className="text-sm text-white/60 mb-2 font-semibold">Today&apos;s Moves</span>
           <span className="text-3xl font-bold text-amber-300">7</span>
         </div>
         {/* Warehouse Alerts */}

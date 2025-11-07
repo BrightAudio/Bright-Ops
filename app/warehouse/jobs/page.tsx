@@ -1,5 +1,5 @@
 "use client";
-import { useState, useMemo } from "react";
+import { useState } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
 import Link from "next/link";
 import { Plus, Search, FileText, Undo2, Truck } from "lucide-react";
@@ -18,13 +18,6 @@ export default function WarehouseJobsPage() {
   const [form, setForm] = useState({ code: "", title: "", client: "" });
   const [creating, setCreating] = useState(false);
   const { data: jobs, loading, reload } = useJobs({ search, status });
-
-  // Debounce search
-  const [debouncedSearch, setDebouncedSearch] = useState("");
-  useMemo(() => {
-    const t = setTimeout(() => setDebouncedSearch(search), 300);
-    return () => clearTimeout(t);
-  }, [search]);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
@@ -124,7 +117,7 @@ export default function WarehouseJobsPage() {
                 <td colSpan={7} className="text-center py-8 text-gray-500">Loading...</td>
               </tr>
             ) : jobs && jobs.length > 0 ? (
-              jobs.map((job: any) => (
+              jobs.map((job) => (
                 <tr key={job.id} className="border-b border-zinc-700 hover:bg-zinc-900">
                   <td className="px-4 py-2 font-mono font-bold">{job.code}</td>
                   <td className="px-4 py-2">{job.title}</td>

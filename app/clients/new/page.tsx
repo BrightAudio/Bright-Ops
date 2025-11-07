@@ -37,8 +37,8 @@ export default function NewClientPage() {
       if (dbError) throw dbError;
       router.push('/clients');
       router.refresh();
-    } catch (e: any) {
-      setError(e.message);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }

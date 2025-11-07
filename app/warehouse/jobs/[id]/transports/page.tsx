@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { supabase, Tables, TablesInsert, TablesUpdate } from "@/lib/supabaseClient";
 import { useParams } from "next/navigation";
-import clsx from "clsx";
 
 function formatTime(ts: string) {
   return ts ? new Date(ts).toLocaleString() : "";

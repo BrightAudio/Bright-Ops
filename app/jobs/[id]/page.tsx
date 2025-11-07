@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import { type Database } from '@/types/database';
@@ -16,7 +16,6 @@ type Job = Database['public']['Tables']['jobs']['Row'] & {
 
 export default function JobDetailPage() {
   const params = useParams();
-  const router = useRouter();
   const [job, setJob] = useState<Job | null>(null);
   const [loading, setLoading] = useState(true);
 

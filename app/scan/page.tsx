@@ -11,7 +11,14 @@ const okBeep = typeof Audio !== "undefined" ? new Audio("/success.mp3") : null;
 const errBeep = typeof Audio !== "undefined" ? new Audio("/fail.mp3") : null;
 
 const playSafe = (a: HTMLAudioElement | null) => {
-  try { a?.currentTime && (a.currentTime = 0); a?.play()?.catch(() => {}); } catch {}
+  try {
+    if (a && a.currentTime) {
+      a.currentTime = 0;
+    }
+    a?.play()?.catch(() => {});
+  } catch {
+    // Ignore audio errors
+  }
 };
 
 type Direction = "OUT" | "IN";
