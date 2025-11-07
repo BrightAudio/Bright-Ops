@@ -24,7 +24,7 @@ export default function InventoryPage() {
 	// Handler for removing an item. Because Supabase row level
 	// permissions should protect critical data, deleting an item
 	// completely removes it from the `inventory_items` table.
-	async function handleDelete(id: number) {
+	async function handleDelete(id: string) {
 		if (!confirm("Delete this item? This action cannot be undone.")) {
 			return;
 		}
@@ -88,7 +88,7 @@ export default function InventoryPage() {
 											Edit
 										</Link>
 										<button
-											onClick={() => handleDelete(item.id as number)}
+											onClick={() => handleDelete(item.id)}
 											className="text-red-400 hover:underline"
 										>
 											Delete
