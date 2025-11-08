@@ -27,6 +27,7 @@ export interface Database {
           name: string;
           qty_in_warehouse: number | null;
           quantity_on_hand: number | null;
+          unit_value: number | null;
           created_at: string | null;
         };
         Insert: {
@@ -35,6 +36,7 @@ export interface Database {
           name: string;
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
+          unit_value?: number | null;
           created_at?: string | null;
         };
         Update: {
@@ -43,6 +45,7 @@ export interface Database {
           name?: string;
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
+          unit_value?: number | null;
           created_at?: string | null;
         };
         Relationships: [];

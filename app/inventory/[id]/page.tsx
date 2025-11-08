@@ -27,6 +27,7 @@ export default function EditInventoryItemPage() {
 		barcode: "",
 		qty_in_warehouse: 0,
 		quantity_on_hand: 0,
+		unit_value: 0,
 	});
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
@@ -40,6 +41,7 @@ export default function EditInventoryItemPage() {
 				barcode: item.barcode ?? "",
 				qty_in_warehouse: item.qty_in_warehouse ?? 0,
 				quantity_on_hand: item.quantity_on_hand ?? 0,
+				unit_value: item.unit_value ?? 0,
 			});
 		}
 	}, [item]);
@@ -59,6 +61,7 @@ export default function EditInventoryItemPage() {
 				barcode: form.barcode.trim(),
 				qty_in_warehouse: form.qty_in_warehouse,
 				quantity_on_hand: form.quantity_on_hand,
+				unit_value: form.unit_value,
 			});
 			router.push("/inventory");
 		} catch (err) {
@@ -143,6 +146,22 @@ export default function EditInventoryItemPage() {
 							className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
 						/>
 					</div>
+				</div>
+				<div>
+					<label className="block text-sm font-medium text-zinc-200">
+						Unit Value ($)
+					</label>
+					<input
+						type="number"
+						min={0}
+						step="0.01"
+						value={form.unit_value}
+						onChange={(e) =>
+							handleChange("unit_value", Number(e.target.value))
+						}
+						className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+						placeholder="0.00"
+					/>
 				</div>
 				{localError && <p className="text-red-500">{localError}</p>}
 				<div className="flex justify-between space-x-2">

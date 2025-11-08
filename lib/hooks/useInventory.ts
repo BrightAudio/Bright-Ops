@@ -216,12 +216,14 @@ export async function createInventoryItem(item: {
   barcode: string;
   qty_in_warehouse?: number;
   quantity_on_hand?: number;
+  unit_value?: number;
 }): Promise<InventoryItem> {
   const payload: TablesInsert<"inventory_items"> = {
     barcode: item.barcode,
     name: item.name,
     qty_in_warehouse: item.qty_in_warehouse ?? 0,
     quantity_on_hand: item.quantity_on_hand ?? 0,
+    unit_value: item.unit_value ?? null,
   };
   const { data, error } = await supabase
     .from("inventory_items")
@@ -248,6 +250,7 @@ export async function updateInventoryItem(
     barcode?: string;
     qty_in_warehouse?: number;
     quantity_on_hand?: number;
+    unit_value?: number;
   }
 ): Promise<InventoryItem> {
   const { data, error } = await supabase

@@ -18,6 +18,7 @@ export default function NewInventoryItemPage() {
 		barcode: "",
 		qty_in_warehouse: 0,
 		quantity_on_hand: 0,
+		unit_value: 0,
 	});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -36,6 +37,7 @@ export default function NewInventoryItemPage() {
 				barcode: form.barcode.trim(),
 				qty_in_warehouse: form.qty_in_warehouse,
 				quantity_on_hand: form.quantity_on_hand,
+				unit_value: form.unit_value,
 			});
 			router.push("/inventory");
 		} catch (err) {
@@ -100,6 +102,22 @@ export default function NewInventoryItemPage() {
 							className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
 						/>
 					</div>
+				</div>
+				<div>
+					<label className="block text-sm font-medium text-zinc-200">
+						Unit Value ($)
+					</label>
+					<input
+						type="number"
+						min={0}
+						step="0.01"
+						value={form.unit_value}
+						onChange={(e) =>
+							handleChange("unit_value", Number(e.target.value))
+						}
+						className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+						placeholder="0.00"
+					/>
 				</div>
 				{error && <p className="text-red-500">{error}</p>}
 				<div className="flex justify-end space-x-2">

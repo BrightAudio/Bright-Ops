@@ -37,6 +37,13 @@ export default function InventoryPage() {
 		}
 	}
 
+	// Calculate total value of all inventory
+	const totalValue = items?.reduce((sum, item) => {
+		const qty = item.quantity_on_hand ?? 0;
+		const value = item.unit_value ?? 0;
+		return sum + (qty * value);
+	}, 0) ?? 0;
+
 	return (
 		<main className="p-6">
 			<div className="flex justify-between items-center mb-4">
@@ -62,49 +69,69 @@ export default function InventoryPage() {
 			) : error ? (
 				<p className="text-red-500">{error}</p>
 			) : (
-				<table className="w-full text-left text-sm">
-					<thead>
-						<tr className="border-b border-zinc-700">
-							<th className="py-2 px-1">Barcode</th>
-							<th className="py-2 px-1">Name</th>
-							<th className="py-2 px-1">Qty in Warehouse</th>
-							<th className="py-2 px-1">Qty on Hand</th>
-							<th className="py-2 px-1">Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						{items && items.length > 0 ? (
-							items.map((item: InventoryItem) => (
-								<tr key={item.id} className="border-b border-zinc-800">
-									<td className="py-2 px-1">{item.barcode}</td>
-									<td className="py-2 px-1">{item.name}</td>
-									<td className="py-2 px-1">{item.qty_in_warehouse ?? 0}</td>
-									<td className="py-2 px-1">{item.quantity_on_hand ?? 0}</td>
-									<td className="py-2 px-1">
-										<Link
-											href={`/inventory/${item.id}`}
-											className="text-blue-400 hover:underline mr-2"
-										>
-											Edit
-										</Link>
-										<button
-											onClick={() => handleDelete(item.id)}
-											className="text-red-400 hover:underline"
-										>
-											Delete
-										</button>
+				<>
+					<table className="w-full text-left text-sm">
+						<thead>
+							<tr className="border-b border-zinc-700">
+								<th className="py-2 px-1">Barcode</th>
+								<th className="py-2 px-1">Name</th>
+								<th className="py-2 px-1">Qty in Warehouse</th>
+								<th className="py-2 px-1">Qty on Hand</th>
+								<th className="py-2 px-1 text-right">Unit Value</th>
+								<th className="py-2 px-1 text-right">Total Value</th>
+								<th className="py-2 px-1">Actions</th>
+							</tr>
+						</thead>
+						<tbody>
+							{items && items.length > 0 ? (
+								items.map((item: InventoryItem) => {
+									const qty = item.quantity_on_hand ?? 0;
+									const unitValue = item.unit_value ?? 0;
+									const itemTotal = qty * unitValue;
+									return (
+										<tr key={item.id} className="border-b border-zinc-800">
+											<td className="py-2 px-1">{item.barcode}</td>
+											<td className="py-2 px-1">{item.name}</td>
+											<td className="py-2 px-1">{item.qty_in_warehouse ?? 0}</td>
+											<td className="py-2 px-1">{qty}</td>
+											<td className="py-2 px-1 text-right">
+												{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+											</td>
+											<td className="py-2 px-1 text-right">
+												{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+											</td>
+											<td className="py-2 px-1">
+												<Link
+													href={`/inventory/${item.id}`}
+													className="text-blue-400 hover:underline mr-2"
+												>
+													Edit
+												</Link>
+												<button
+													onClick={() => handleDelete(item.id)}
+													className="text-red-400 hover:underline"
+												>
+													Delete
+												</button>
+											</td>
+										</tr>
+									);
+								})
+							) : (
+								<tr>
+									<td colSpan={7} className="py-4 text-center text-zinc-500">
+										No items found.
 									</td>
 								</tr>
-							))
-						) : (
-							<tr>
-								<td colSpan={5} className="py-4 text-center text-zinc-500">
-									No items found.
-								</td>
-							</tr>
-						)}
-					</tbody>
-				</table>
+							)}
+						</tbody>
+					</table>
+					<div className="mt-4 pt-4 border-t border-zinc-700 flex justify-end">
+						<div className="text-lg font-bold">
+							Total Inventory Value: <span className="text-green-400">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+						</div>
+					</div>
+				</>
 			)}
 		</main>
 	);
