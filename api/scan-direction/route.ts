@@ -1,8 +1,9 @@
 // app/api/scan-direction/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseServer';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export async function POST(req: Request) {
+  const supabase = await supabaseServer();
   try {
     const { jobCode, code, direction, scannedBy, location } = await req.json();
 

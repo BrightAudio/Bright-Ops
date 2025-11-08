@@ -1,7 +1,7 @@
 export const runtime = "nodejs";
 
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabaseServer';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 type Direction = "IN" | "OUT";
 
@@ -46,6 +46,7 @@ type RpcResult = ScanRow | { message?: string } | null;
 
 
 export async function POST(req: Request): Promise<NextResponse<SuccessResponse | ErrorResponse>> {
+  const supabase = await supabaseServer();
   try {
     const body = await req.json() as RequestBody;
     const { jobCode, code, direction, scannedBy, location } = body;

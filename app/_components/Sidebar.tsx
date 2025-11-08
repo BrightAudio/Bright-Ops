@@ -13,11 +13,11 @@ import {
 } from "lucide-react";
 
 const warehouseLinks = [
-  { label: "Jobs", href: "/jobs", icon: <Package className="w-4 h-4 mr-2" /> },
-  { label: "Free Scan (In)", href: "/warehouse/scan-in", icon: <ScanLine className="w-4 h-4 mr-2" /> },
-  { label: "Return Manifest", href: "/warehouse/return-manifest", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
-  { label: "Transports", href: "/warehouse/transports", icon: <Truck className="w-4 h-4 mr-2" /> },
-  { label: "Scheduled Crew", href: "/warehouse/scheduled-crew", icon: <Users className="w-4 h-4 mr-2" /> },
+  { label: "Jobs", href: "/app/jobs", icon: <Package className="w-4 h-4 mr-2" /> },
+  { label: "Free Scan (In)", href: "/app/warehouse/scan-in", icon: <ScanLine className="w-4 h-4 mr-2" /> },
+  { label: "Return Manifest", href: "/app/warehouse/return-manifest", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
+  { label: "Transports", href: "/app/warehouse/transports", icon: <Truck className="w-4 h-4 mr-2" /> },
+  { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew", icon: <Users className="w-4 h-4 mr-2" /> },
 ];
 
 function classNames(...classes: (string | boolean | undefined)[]) {
@@ -44,9 +44,9 @@ export default function Sidebar() {
     }
   }, [warehouseOpen]);
 
-  // Expand warehouse if on /warehouse route
+  // Expand warehouse if on /app/warehouse route
   useEffect(() => {
-    if (pathname.startsWith("/warehouse")) {
+    if (pathname.startsWith("/app/warehouse")) {
       setWarehouseOpen(true);
     }
     // On first load, if localStorage is set, don't override
@@ -77,10 +77,10 @@ export default function Sidebar() {
           <ul className="space-y-1">
             <li>
               <Link
-                href="/"
+                href="/app"
                 className={classNames(
                   "block px-4 py-2 rounded-lg font-medium transition-all border-l-4 border-transparent transition-all",
-                  pathname === "/" &&
+                  pathname === "/app" &&
                     "bg-amber-400/20 text-amber-200 border-amber-400"
                 )}
               >
@@ -149,10 +149,10 @@ export default function Sidebar() {
           <ul className="space-y-1">
             <li>
               <Link
-                href="/inventory"
+                href="/app/inventory"
                 className={classNames(
                   "block px-4 py-2 rounded-lg font-medium transition-all border border-transparent",
-                  (pathname === "/inventory" || pathname.startsWith("/inventory/")) &&
+                  (pathname === "/app/inventory" || pathname.startsWith("/app/inventory/")) &&
                     "bg-amber-400/20 text-amber-200 border-amber-400/30"
                 )}
               >
@@ -167,10 +167,10 @@ export default function Sidebar() {
           <ul className="space-y-1">
             <li>
               <Link
-                href="/contacts"
+                href="/app/contacts"
                 className={classNames(
                   "block px-4 py-2 rounded-lg font-medium transition-all border border-transparent",
-                  (pathname === "/contacts" || pathname.startsWith("/contacts/")) &&
+                  (pathname === "/app/contacts" || pathname.startsWith("/app/contacts/")) &&
                     "bg-amber-400/20 text-amber-200 border-amber-400/30"
                 )}
               >

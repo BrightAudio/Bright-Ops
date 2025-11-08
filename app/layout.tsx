@@ -1,40 +1,21 @@
-import Sidebar from "@/components/Sidebar";
-import Topbar from "@/components/Topbar";
-// app/layout.tsx
 import "./globals.css";
 import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 
 export const metadata: Metadata = {
-  title: "Bright Ops",
-  description: "Bright Audio Operations Dashboard",
+  title: "Bright Ops | Home Base",
+  description: "Home base and workspace for Bright Ops operations",
 };
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
       <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap"
-          rel="stylesheet"
-        />
+        <link href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap" rel="stylesheet" />
       </head>
-      <body className="bg-gray-50 text-gray-900 min-h-screen">
-        <div className="app-container">
-          <header className="top-bar">
-            <Topbar />
-          </header>
-          <div className="main-area">
-            <nav className="sidebar">
-              <Sidebar />
-            </nav>
-            <section className="dashboard-content">{children}</section>
-          </div>
-        </div>
+      <body style={{ fontFamily: "'Source Sans Pro', sans-serif", background: 'var(--color-bg-page)', color: 'var(--color-text-main)', margin: 0 }}>
+        {children}
       </body>
     </html>
   );

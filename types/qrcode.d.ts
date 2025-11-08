@@ -8,5 +8,9 @@ declare module 'qrcode' {
   function toBuffer(text: string, options?: QRCodeOptions): Promise<Buffer>;
   
   export { toBuffer };
-  export default { toBuffer };
+  const qrcode: {
+    toBuffer: typeof toBuffer;
+  };
+
+  export default qrcode;
 }

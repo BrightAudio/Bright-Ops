@@ -1,5 +1,5 @@
 /** @type {import('tailwindcss').Config} */
-export default {
+const config = {
   content: [
     './app/**/*.{ts,tsx,js,jsx,mdx}',
     './pages/**/*.{ts,tsx,js,jsx}',
@@ -9,6 +9,9 @@ export default {
   darkMode: 'class',
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['"Inter var"', 'Inter', 'system-ui', 'sans-serif'],
+      },
       colors: {
         primary: {
           DEFAULT: '#3b82f6', // blue-500
@@ -20,6 +23,10 @@ export default {
         border: {
           DEFAULT: '#1f2937', // gray-800
         },
+        'rentman-blue': '#0070F0',
+        'rentman-light': '#F5F8FC',
+        'rentman-dark': '#1C2A39',
+        'rentman-accent': '#00B3A4',
       },
       boxShadow: {
         xl: '0 4px 24px 0 rgba(0,0,0,0.18)',
@@ -28,3 +35,5 @@ export default {
   },
   plugins: [],
 };
+
+export default config;

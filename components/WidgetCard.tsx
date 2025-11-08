@@ -1,23 +1,32 @@
 "use client";
 
-export default function WidgetCard({ 
-  title, 
-  children,
-  icon 
-}: { 
-  title: string; 
+type WidgetCardProps = {
+  title: string;
   children: React.ReactNode;
   icon?: string;
-}) {
+  actions?: React.ReactNode;
+  className?: string;
+  contentClassName?: string;
+};
+
+export default function WidgetCard({
+  title,
+  children,
+  icon,
+  actions,
+  className,
+  contentClassName,
+}: WidgetCardProps) {
   return (
-    <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-      <div className="flex items-center gap-3 mb-4">
-        {icon && <i className={`${icon} text-blue-600 text-xl`}></i>}
-        <h2 className="text-lg font-semibold text-gray-800">{title}</h2>
-      </div>
-      <div className="text-gray-700">
-        {children}
-      </div>
-    </div>
+    <section className={`widget-card${className ? ` ${className}` : ""}`}>
+      <header className="widget-header">
+        <div className="widget-title">
+          {icon && <i className={`${icon}`} aria-hidden="true"></i>}
+          <span>{title}</span>
+        </div>
+        {actions && <div className="widget-actions">{actions}</div>}
+      </header>
+      <div className={`widget-content${contentClassName ? ` ${contentClassName}` : ""}`}>{children}</div>
+    </section>
   );
 }

@@ -1,17 +1,20 @@
 
 // lib/supabaseClient.ts
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import type { Database } from '../types/database';
+import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import type { SupabaseClient } from '@supabase/supabase-js';
+import type { Database } from '@/types/database';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+let browserClient: SupabaseClient<Database> | null = null;
 
-if (!supabaseUrl || !supabaseAnonKey) {
-  throw new Error('Supabase environment variables are not defined');
-}
+export const supabaseBrowser = (): SupabaseClient<Database> => {
+  if (!browserClient) {
+    browserClient = createClientComponentClient<Database>();
+  }
+  return browserClient;
+};
 
-// Always type the client with your Database
-export const supabase: SupabaseClient<Database> = createClient<Database>(supabaseUrl, supabaseAnonKey);
+// Maintain the singleton export expected across the app
+export const supabase = supabaseBrowser();
 
 // Export type helpers for easier access throughout the app
 export type Tables<T extends keyof Database['public']['Tables']> = Database['public']['Tables'][T]['Row'];

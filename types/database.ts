@@ -155,6 +155,78 @@ export interface Database {
           name?: string | null;
         };
       };
+      home_bases: {
+        Row: {
+          id: string;
+          name: string | null;
+          slug: string | null;
+          owner_id: string | null;
+          created_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          name?: string | null;
+          slug?: string | null;
+          owner_id?: string | null;
+          created_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          name?: string | null;
+          slug?: string | null;
+          owner_id?: string | null;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      home_base_members: {
+        Row: {
+          home_base_id: string;
+          user_id: string;
+          role: "owner" | "admin" | "crew" | null;
+          can_create_pullsheets: boolean;
+          can_delete_pullsheets: boolean;
+          can_finalize_pullsheets: boolean;
+          created_at: string | null;
+        };
+        Insert: {
+          home_base_id: string;
+          user_id: string;
+          role?: "owner" | "admin" | "crew" | null;
+          can_create_pullsheets?: boolean;
+          can_delete_pullsheets?: boolean;
+          can_finalize_pullsheets?: boolean;
+          created_at?: string | null;
+        };
+        Update: {
+          home_base_id?: string;
+          user_id?: string;
+          role?: "owner" | "admin" | "crew" | null;
+          can_create_pullsheets?: boolean;
+          can_delete_pullsheets?: boolean;
+          can_finalize_pullsheets?: boolean;
+          created_at?: string | null;
+        };
+        Relationships: [];
+      };
+      profiles: {
+        Row: {
+          id: string;
+          full_name: string | null;
+          email: string | null;
+        };
+        Insert: {
+          id?: string;
+          full_name?: string | null;
+          email?: string | null;
+        };
+        Update: {
+          id?: string;
+          full_name?: string | null;
+          email?: string | null;
+        };
+        Relationships: [];
+      };
       /**
        * Prep sheets group items that need to be prepared for a job. They are associated with a job and have a status.
        */
@@ -379,6 +451,146 @@ export interface Database {
           quantity?: number | null;
           created_at?: string | null;
         };
+      };
+      /**
+       * Pull sheets are warehouse documents listing items to pick for a job.
+       */
+      pull_sheets: {
+        Row: {
+          id: string;
+          code: string;
+          name: string;
+          job_id: string | null;
+          status: string;
+          scheduled_out_at: string | null;
+          expected_return_at: string | null;
+          notes: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          code?: string;
+          name: string;
+          job_id?: string | null;
+          status?: string;
+          scheduled_out_at?: string | null;
+          expected_return_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          code?: string;
+          name?: string;
+          job_id?: string | null;
+          status?: string;
+          scheduled_out_at?: string | null;
+          expected_return_at?: string | null;
+          notes?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pull_sheets_job_id_fkey";
+            columns: ["job_id"];
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      /**
+       * Pull sheet items reference products or inventory items required for picking.
+       */
+      pull_sheet_items: {
+        Row: {
+          id: string;
+          pull_sheet_id: string;
+          product_id: string | null;
+          inventory_item_id: string | null;
+          item_name: string;
+          qty_requested: number;
+          qty_pulled: number;
+          notes: string | null;
+          sort_index: number;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id?: string;
+          pull_sheet_id: string;
+          product_id?: string | null;
+          inventory_item_id?: string | null;
+          item_name: string;
+          qty_requested?: number;
+          qty_pulled?: number;
+          notes?: string | null;
+          sort_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          pull_sheet_id?: string;
+          product_id?: string | null;
+          inventory_item_id?: string | null;
+          item_name?: string;
+          qty_requested?: number;
+          qty_pulled?: number;
+          notes?: string | null;
+          sort_index?: number;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "pull_sheet_items_inventory_item_id_fkey";
+            columns: ["inventory_item_id"];
+            referencedRelation: "inventory_items";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pull_sheet_items_product_id_fkey";
+            columns: ["product_id"];
+            referencedRelation: "products";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "pull_sheet_items_pull_sheet_id_fkey";
+            columns: ["pull_sheet_id"];
+            referencedRelation: "pull_sheets";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      /**
+       * User profiles store additional information about authenticated users
+       */
+      user_profiles: {
+        Row: {
+          id: string;
+          full_name: string;
+          industry: string | null;
+          created_at: string;
+          updated_at: string;
+        };
+        Insert: {
+          id: string;
+          full_name: string;
+          industry?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Update: {
+          id?: string;
+          full_name?: string;
+          industry?: string | null;
+          created_at?: string;
+          updated_at?: string;
+        };
+        Relationships: [];
       };
       // Add additional table definitions as your schema grows
     };

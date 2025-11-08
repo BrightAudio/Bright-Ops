@@ -1,0 +1,514 @@
+"use client";
+
+import { useState } from "react";
+import Link from "next/link";
+
+export default function AccountSettingsPage() {
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [isChangingPassword, setIsChangingPassword] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  
+  // Profile form state
+  const [profileForm, setProfileForm] = useState({
+    name: "Bright Audio",
+    email: "admin@brightaudio.com",
+  });
+
+  // Password form state
+  const [passwordForm, setPasswordForm] = useState({
+    currentPassword: "",
+    newPassword: "",
+    confirmPassword: "",
+  });
+
+  const [passwordError, setPasswordError] = useState("");
+  const [successMessage, setSuccessMessage] = useState("");
+
+  const handleProfileSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setSuccessMessage("");
+
+    try {
+      // TODO: Implement actual profile update with Supabase
+      // await supabase.auth.updateUser({
+      //   email: profileForm.email,
+      //   data: { name: profileForm.name }
+      // });
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      setSuccessMessage("Profile updated successfully");
+      setIsEditingProfile(false);
+    } catch (error) {
+      console.error("Error updating profile:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPasswordError("");
+    setSuccessMessage("");
+
+    // Validation
+    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
+      setPasswordError("New passwords do not match");
+      return;
+    }
+
+    if (passwordForm.newPassword.length < 8) {
+      setPasswordError("Password must be at least 8 characters");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      // TODO: Implement actual password change with Supabase
+      // await supabase.auth.updateUser({
+      //   password: passwordForm.newPassword
+      // });
+      
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
+      setSuccessMessage("Password changed successfully");
+      setPasswordForm({
+        currentPassword: "",
+        newPassword: "",
+        confirmPassword: "",
+      });
+      setIsChangingPassword(false);
+    } catch (error) {
+      console.error("Error changing password:", error);
+      setPasswordError("Failed to change password");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ padding: "2rem" }}>
+      {/* Header */}
+      <div style={{ marginBottom: "2rem" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
+          <button
+            onClick={() => window.history.back()}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.5rem 1rem",
+              backgroundColor: "#fff",
+              color: "#374151",
+              border: "1px solid #d1d5db",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: 500
+            }}
+          >
+            <i className="fas fa-arrow-left"></i>
+            Back
+          </button>
+          <div>
+            <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
+              <Link 
+                href="/app/dashboard" 
+                style={{ 
+                  color: "#666", 
+                  textDecoration: "none",
+                  fontSize: "0.875rem"
+                }}
+              >
+                Dashboard
+              </Link>
+              <span style={{ color: "#999" }}>/</span>
+              <span style={{ color: "#333", fontSize: "0.875rem" }}>Account Settings</span>
+            </div>
+            <h1 style={{ margin: 0, fontSize: "1.875rem", fontWeight: 600 }}>Account Settings</h1>
+          </div>
+        </div>
+      </div>
+
+      {/* Success Message */}
+      {successMessage && (
+        <div style={{
+          padding: "1rem",
+          marginBottom: "1.5rem",
+          backgroundColor: "#d4edda",
+          border: "1px solid #c3e6cb",
+          borderRadius: "6px",
+          color: "#155724",
+          display: "flex",
+          alignItems: "center",
+          gap: "0.5rem"
+        }}>
+          <i className="fas fa-check-circle"></i>
+          {successMessage}
+        </div>
+      )}
+
+      <div style={{ display: "grid", gap: "1.5rem", maxWidth: "800px" }}>
+        {/* Profile Information Card */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "1.5rem"
+        }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center",
+            marginBottom: "1.5rem"
+          }}>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600 }}>
+              Profile Information
+            </h2>
+            {!isEditingProfile && (
+              <button
+                onClick={() => setIsEditingProfile(true)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#137CFB",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: 500
+                }}
+              >
+                <i className="fas fa-edit" style={{ marginRight: "0.5rem" }}></i>
+                Edit Profile
+              </button>
+            )}
+          </div>
+
+          {isEditingProfile ? (
+            <form onSubmit={handleProfileSubmit}>
+              <div style={{ display: "grid", gap: "1rem" }}>
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    Name
+                  </label>
+                  <input
+                    type="text"
+                    value={profileForm.name}
+                    onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem"
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem"
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    style={{
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "#137CFB",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: isSaving ? "not-allowed" : "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      opacity: isSaving ? 0.6 : 1
+                    }}
+                  >
+                    {isSaving ? "Saving..." : "Save Changes"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsEditingProfile(false);
+                      setProfileForm({
+                        name: "Bright Audio",
+                        email: "admin@brightaudio.com",
+                      });
+                    }}
+                    style={{
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "#fff",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight: 500
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div style={{ display: "grid", gap: "1rem" }}>
+              <div>
+                <div style={{ 
+                  fontSize: "0.875rem", 
+                  color: "#6b7280",
+                  marginBottom: "0.25rem"
+                }}>
+                  Name
+                </div>
+                <div style={{ fontSize: "0.9375rem", fontWeight: 500 }}>
+                  {profileForm.name}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ 
+                  fontSize: "0.875rem", 
+                  color: "#6b7280",
+                  marginBottom: "0.25rem"
+                }}>
+                  Email
+                </div>
+                <div style={{ fontSize: "0.9375rem", fontWeight: 500 }}>
+                  {profileForm.email}
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Password Card */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "1.5rem"
+        }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center",
+            marginBottom: "1.5rem"
+          }}>
+            <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600 }}>
+              Password
+            </h2>
+            {!isChangingPassword && (
+              <button
+                onClick={() => setIsChangingPassword(true)}
+                style={{
+                  padding: "0.5rem 1rem",
+                  backgroundColor: "#137CFB",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: 500
+                }}
+              >
+                <i className="fas fa-key" style={{ marginRight: "0.5rem" }}></i>
+                Change Password
+              </button>
+            )}
+          </div>
+
+          {isChangingPassword ? (
+            <form onSubmit={handlePasswordSubmit}>
+              {passwordError && (
+                <div style={{
+                  padding: "0.75rem",
+                  marginBottom: "1rem",
+                  backgroundColor: "#fee2e2",
+                  border: "1px solid #fecaca",
+                  borderRadius: "6px",
+                  color: "#991b1b",
+                  fontSize: "0.875rem"
+                }}>
+                  {passwordError}
+                </div>
+              )}
+
+              <div style={{ display: "grid", gap: "1rem" }}>
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    Current Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.currentPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, currentPassword: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem"
+                    }}
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.newPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, newPassword: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem"
+                    }}
+                    required
+                    minLength={8}
+                  />
+                  <div style={{ 
+                    fontSize: "0.75rem", 
+                    color: "#6b7280",
+                    marginTop: "0.25rem"
+                  }}>
+                    Must be at least 8 characters
+                  </div>
+                </div>
+
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={passwordForm.confirmPassword}
+                    onChange={(e) => setPasswordForm({ ...passwordForm, confirmPassword: e.target.value })}
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem"
+                    }}
+                    required
+                  />
+                </div>
+
+                <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
+                  <button
+                    type="submit"
+                    disabled={isSaving}
+                    style={{
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "#137CFB",
+                      color: "#fff",
+                      border: "none",
+                      borderRadius: "6px",
+                      cursor: isSaving ? "not-allowed" : "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      opacity: isSaving ? 0.6 : 1
+                    }}
+                  >
+                    {isSaving ? "Changing..." : "Change Password"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsChangingPassword(false);
+                      setPasswordForm({
+                        currentPassword: "",
+                        newPassword: "",
+                        confirmPassword: "",
+                      });
+                      setPasswordError("");
+                    }}
+                    style={{
+                      padding: "0.625rem 1.5rem",
+                      backgroundColor: "#fff",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                      fontWeight: 500
+                    }}
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </form>
+          ) : (
+            <div>
+              <div style={{ 
+                fontSize: "0.875rem", 
+                color: "#6b7280",
+                marginBottom: "0.25rem"
+              }}>
+                Password
+              </div>
+              <div style={{ fontSize: "0.9375rem", fontWeight: 500 }}>
+                ••••••••••••
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

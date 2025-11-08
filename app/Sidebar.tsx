@@ -7,32 +7,32 @@ const sections = [
   {
     label: "Dashboard",
     links: [
-      { label: "Overview", href: "/" },
+      { label: "Overview", href: "/app" },
     ],
   },
   {
     label: "Work",
     links: [
-      { label: "Projects", href: "/jobs" },
-      { label: "Crew planner", href: "/crew" },
-      { label: "Shortages", href: "/shortages" },
-      { label: "Financial", href: "/financial" },
+      { label: "Projects", href: "/app/jobs" },
+      { label: "Crew planner", href: "/app/crew" },
+      { label: "Shortages", href: "/app/shortages" },
+      { label: "Financial", href: "/app/financial" },
     ],
   },
   {
     label: "Equipment",
     links: [
-      { label: "Equipment", href: "/inventory" },
-      { label: "Serial numbers", href: "/inventory/serial" },
-      { label: "Stock locations", href: "/inventory/locations" },
-      { label: "Archived equipment", href: "/inventory/archived" },
+      { label: "Equipment", href: "/app/inventory" },
+      { label: "Serial numbers", href: "/app/inventory/serial" },
+      { label: "Stock locations", href: "/app/inventory/locations" },
+      { label: "Archived equipment", href: "/app/inventory/archived" },
     ],
   },
   {
     label: "People",
     links: [
-      { label: "Contacts", href: "/contacts" },
-      { label: "Crew members", href: "/crew-members" },
+      { label: "Contacts", href: "/app/contacts" },
+      { label: "Crew members", href: "/app/crew-members" },
     ],
   },
 ];
