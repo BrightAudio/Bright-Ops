@@ -45,12 +45,12 @@ export default function Sidebar() {
   const pathname = usePathname();
 
   return (
-    <aside className="h-screen w-[260px] bg-white border-r border-gray-200 flex flex-col shadow-sm sticky top-0 left-0 z-30">
+    <>
       <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-200">
         <span className="inline-block w-3 h-3 rounded-full bg-blue-500 shadow-sm mr-2" />
         <span className="text-xl font-extrabold tracking-tight text-blue-600">Bright Ops</span>
       </div>
-      <nav className="flex-1 overflow-y-auto px-2 py-4">
+      <div className="flex-1 overflow-y-auto px-2 py-4">
         {sections.map((section) => (
           <div key={section.label} className="mb-6">
             <div className="text-xs font-bold uppercase text-gray-500 px-3 mb-2 tracking-wider">
@@ -79,7 +79,7 @@ export default function Sidebar() {
             </ul>
           </div>
         ))}
-      </nav>
-    </aside>
+      </div>
+    </>
   );
 }

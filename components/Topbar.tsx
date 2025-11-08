@@ -2,7 +2,7 @@
 
 export default function Topbar() {
   return (
-    <header className="w-full flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 shadow-sm">
+    <>
       <div className="flex items-center">
         <span className="inline-block" aria-label="Bright Ops logo">
           {/* Bright Ops logo */}
@@ -25,6 +25,6 @@ export default function Topbar() {
           Profile
         </button>
       </div>
-    </header>
+    </>
   );
 }

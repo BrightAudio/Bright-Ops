@@ -25,10 +25,14 @@ export default function RootLayout({
       </head>
       <body className="bg-gray-50 text-gray-900 min-h-screen">
         <div className="app-container">
-          <Topbar />
+          <header className="top-bar">
+            <Topbar />
+          </header>
           <div className="main-area">
-            <Sidebar />
-            <main className="flex-1 p-6 overflow-y-auto">{children}</main>
+            <nav className="sidebar">
+              <Sidebar />
+            </nav>
+            <section className="dashboard-content">{children}</section>
           </div>
         </div>
       </body>
