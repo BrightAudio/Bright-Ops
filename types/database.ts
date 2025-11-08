@@ -237,18 +237,33 @@ export interface Database {
         Row: {
           id: string;
           job_id: string | null;
+          vehicle: string | null;
+          driver: string | null;
+          depart_at: string | null;
+          arrive_at: string | null;
+          notes: string | null;
           status: string | null;
           created_at: string | null;
         };
         Insert: {
           id?: string;
           job_id?: string | null;
+          vehicle?: string | null;
+          driver?: string | null;
+          depart_at?: string | null;
+          arrive_at?: string | null;
+          notes?: string | null;
           status?: string | null;
           created_at?: string | null;
         };
         Update: {
           id?: string;
           job_id?: string | null;
+          vehicle?: string | null;
+          driver?: string | null;
+          depart_at?: string | null;
+          arrive_at?: string | null;
+          notes?: string | null;
           status?: string | null;
           created_at?: string | null;
         };
