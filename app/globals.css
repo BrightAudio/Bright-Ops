@@ -5,13 +5,19 @@
 
 :root {
   --color-primary: #137CFB;
+  --color-primary-hover: #1171E4;
+  --color-primary-active: #0D58B2;
   --color-bg-page: #F3F6FB;
   --color-bg-surface: #FFFFFF;
   --color-text-main: #3B3E3F;
+  --color-text-secondary: #7C7E7E;
+  --color-text-tertiary: #A5A6A7;
   --color-border: #D9DFE5;
-  --color-error: #FC3668;
   --color-success: #2ECC71;
+  --color-error: #FC3668;
+  --color-warning: #FCBD01;
   --color-accent: #7A73FB;
+  font-family: 'Source Sans Pro', sans-serif;
 }
 
 body {
