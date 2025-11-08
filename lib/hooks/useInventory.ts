@@ -70,6 +70,10 @@ export function useInventory(query?: { search?: string }) {
   const [data, setData] = useState<InventoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [refreshCount, setRefreshCount] = useState(0);
+  
+  const refetch = () => setRefreshCount(c => c + 1);
+  
   useEffect(() => {
     let active = true;
     (async () => {
@@ -94,8 +98,8 @@ export function useInventory(query?: { search?: string }) {
     return () => {
       active = false;
     };
-  }, [query?.search]);
-  return { data, loading, error };
+  }, [query?.search, refreshCount]);
+  return { data, loading, error, refetch };
 }
 
 /**

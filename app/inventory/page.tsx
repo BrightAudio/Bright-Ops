@@ -19,7 +19,7 @@ import {
 
 export default function InventoryPage() {
 	const [search, setSearch] = useState("");
-	const { data: items, loading, error } = useInventory({ search });
+	const { data: items, loading, error, refetch } = useInventory({ search });
 
 	// Handler for removing an item. Because Supabase row level
 	// permissions should protect critical data, deleting an item
@@ -30,8 +30,8 @@ export default function InventoryPage() {
 		}
 		try {
 			await deleteInventoryItem(id);
-			// Optimistically update the UI by filtering out the deleted row
-			// even before the next fetch cycle completes.
+			// Refresh the inventory list to reflect the deletion
+			refetch();
 		} catch (err) {
 			alert(err instanceof Error ? err.message : String(err));
 		}
