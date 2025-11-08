@@ -1,6 +1,7 @@
 import Sidebar from "./Sidebar";
 // app/layout.tsx
 import "../app/globals.css";
+import "@fortawesome/fontawesome-free/css/all.min.css";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
@@ -15,6 +16,12 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
+      <head>
+        <link
+          href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&display=swap"
+          rel="stylesheet"
+        />
+      </head>
       <body className="bg-[#0a0b0d] text-white min-h-screen">
         <div className="flex min-h-screen">
           <Sidebar />

@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@builder.io/react": "^8.2.8",
+    "@fortawesome/fontawesome-free": "^7.1.0",
     "@plasmicapp/loader-nextjs": "^1.0.442",
     "@supabase/supabase-js": "^2.76.1",
     "@tanstack/react-query": "^5.90.5",
