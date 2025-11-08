@@ -46,14 +46,14 @@ export default function Sidebar() {
 
   return (
     <>
-      <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-200">
+      <div className="flex items-center gap-2 px-6 py-5 border-b border-gray-700">
         <span className="inline-block w-3 h-3 rounded-full bg-blue-500 shadow-sm mr-2" />
-        <span className="text-xl font-extrabold tracking-tight text-blue-600">Bright Ops</span>
+        <span className="text-xl font-extrabold tracking-tight text-white">Bright Ops</span>
       </div>
       <div className="flex-1 overflow-y-auto px-2 py-4">
         {sections.map((section) => (
           <div key={section.label} className="mb-6">
-            <div className="text-xs font-bold uppercase text-gray-500 px-3 mb-2 tracking-wider">
+            <div className="text-xs font-bold uppercase text-gray-400 px-3 mb-2 tracking-wider">
               {section.label}
             </div>
             <ul className="space-y-1">
@@ -64,10 +64,10 @@ export default function Sidebar() {
                     <Link
                       href={link.href}
                       className={classNames(
-                        "block px-4 py-2 rounded-lg font-medium transition-all border border-transparent",
+                        "block px-4 py-2 rounded-lg font-medium transition-all",
                         active
-                          ? "bg-blue-50 border-blue-200 text-blue-700 shadow-sm"
-                          : "text-gray-700 hover:bg-gray-50"
+                          ? "bg-blue-600 text-white shadow-sm"
+                          : "text-gray-300 hover:bg-gray-700 hover:text-white"
                       )}
                     >
                       <i className={`${link.icon} w-5 mr-3`}></i>
