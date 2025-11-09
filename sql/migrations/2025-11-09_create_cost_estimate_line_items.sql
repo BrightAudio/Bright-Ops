@@ -27,10 +27,19 @@ CREATE INDEX IF NOT EXISTS idx_cost_estimate_sort ON public.cost_estimate_line_i
 ALTER TABLE public.cost_estimate_line_items ENABLE ROW LEVEL SECURITY;
 
 -- Create policy for full access (adjust later for proper permissions)
-CREATE POLICY "Allow all access to cost_estimate_line_items" ON public.cost_estimate_line_items 
-  FOR ALL TO public 
-  USING (true) 
-  WITH CHECK (true);
+DO $$ 
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_policies 
+    WHERE tablename = 'cost_estimate_line_items' 
+    AND policyname = 'Allow all access to cost_estimate_line_items'
+  ) THEN
+    CREATE POLICY "Allow all access to cost_estimate_line_items" ON public.cost_estimate_line_items 
+      FOR ALL TO public 
+      USING (true) 
+      WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Add trigger to update updated_at timestamp
 CREATE OR REPLACE FUNCTION update_cost_estimate_line_items_updated_at()
@@ -40,6 +49,8 @@ BEGIN
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS trigger_update_cost_estimate_line_items_updated_at ON public.cost_estimate_line_items;
 
 CREATE TRIGGER trigger_update_cost_estimate_line_items_updated_at
   BEFORE UPDATE ON public.cost_estimate_line_items
