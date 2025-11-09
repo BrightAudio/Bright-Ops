@@ -95,7 +95,7 @@ export function useCostEstimate(jobId: string | null) {
 
     const prepSheetId = prepSheets[0].id;
 
-    // Get prep sheet items with inventory details
+    // Get prep sheet items with inventory details including amortization
     const { data: prepItems } = await supabase
       .from("prep_sheet_items")
       .select(`
@@ -105,7 +105,8 @@ export function useCostEstimate(jobId: string | null) {
         inventory_items:inventory_item_id (
           name,
           rental_cost_daily,
-          rental_cost_weekly
+          rental_cost_weekly,
+          amortization_per_job
         )
       `)
       .eq("prep_sheet_id", prepSheetId);
