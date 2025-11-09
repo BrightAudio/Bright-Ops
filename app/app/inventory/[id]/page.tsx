@@ -22,6 +22,11 @@ export default function EditInventoryItemPage() {
 	const params = useParams();
 	const idParam = params?.id;
 	const id = typeof idParam === "string" ? idParam : Array.isArray(idParam) ? idParam[0] : undefined;
+	
+	console.log('[DEBUG] EditInventoryItemPage - params:', params);
+	console.log('[DEBUG] EditInventoryItemPage - idParam:', idParam);
+	console.log('[DEBUG] EditInventoryItemPage - resolved id:', id);
+	
 	const { item, loading, error } = useInventoryItem(id);
 	const [form, setForm] = useState({
 		name: "",
@@ -36,6 +41,11 @@ export default function EditInventoryItemPage() {
 
 	// Populate form when item loads
 	useEffect(() => {
+		console.log('[DEBUG] EditInventoryItemPage - useEffect triggered');
+		console.log('[DEBUG] EditInventoryItemPage - item:', item);
+		console.log('[DEBUG] EditInventoryItemPage - loading:', loading);
+		console.log('[DEBUG] EditInventoryItemPage - error:', error);
+		
 		if (item) {
 			setForm({
 				name: item.name ?? "",
@@ -45,7 +55,7 @@ export default function EditInventoryItemPage() {
 				unit_value: item.unit_value ?? 0,
 			});
 		}
-	}, [item]);
+	}, [item, loading, error]);
 
 	const handleChange = (field: keyof typeof form, value: string | number) => {
 		setForm((prev) => ({ ...prev, [field]: value }));

@@ -293,7 +293,10 @@ export function useInventoryItem(id?: string) {
   const [loading, setLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
+    console.log('[DEBUG] useInventoryItem - id:', id);
+    
     if (id === undefined || id === null) {
+      console.log('[DEBUG] useInventoryItem - id is undefined/null, skipping fetch');
       setItem(null);
       setLoading(false);
       return;
@@ -302,16 +305,24 @@ export function useInventoryItem(id?: string) {
     (async () => {
       setLoading(true);
       setError(null);
+      console.log('[DEBUG] useInventoryItem - fetching from Supabase for id:', id);
+      
       const { data, error } = await supabase
         .from("inventory_items")
         .select("*")
         .eq("id", id)
         .single();
+      
+      console.log('[DEBUG] useInventoryItem - Supabase response data:', data);
+      console.log('[DEBUG] useInventoryItem - Supabase response error:', error);
+      
       if (!active) return;
       if (error) {
+        console.error('[DEBUG] useInventoryItem - Error fetching item:', error);
         setError(error.message);
         setItem(null);
       } else {
+        console.log('[DEBUG] useInventoryItem - Successfully fetched item:', data);
         setItem(data as InventoryItem);
       }
       setLoading(false);
