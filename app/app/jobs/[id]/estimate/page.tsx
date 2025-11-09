@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { useCostEstimate } from "@/lib/hooks/useCostEstimate";
+import { generateInvoicePDF } from "@/lib/utils/generateInvoicePDF";
+import { supabase } from "@/lib/supabaseClient";
 
 interface CostEstimatePageProps {
   params: {
@@ -19,6 +21,8 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
   const [newLaborRole, setNewLaborRole] = useState("");
   const [selectedMarkup, setSelectedMarkup] = useState<'20' | '40' | 'custom' | 'none'>('40');
   const [customMarkup, setCustomMarkup] = useState<string>('');
+  const [jobData, setJobData] = useState<any>(null);
+  const [clientData, setClientData] = useState<any>(null);
 
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -40,8 +44,28 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
 
   const markupAmount = calculatedSuggestedAmount - estimate.subtotal;
 
+  // Fetch job and client data
+  useEffect(() => {
+    async function fetchJobData() {
+      const { data: job } = await supabase
+        .from('jobs')
+        .select('*, clients(*)')
+        .eq('id', params.id)
+        .single();
+      
+      if (job) {
+        const jobData = job as any;
+        setJobData(jobData);
+        if (jobData?.clients) {
+          setClientData(jobData.clients);
+        }
+      }
+    }
+    fetchJobData();
+  }, [params.id]);
+
   // Update final invoice amount when estimate changes
-  useState(() => {
+  useEffect(() => {
     if (calculatedSuggestedAmount > 0 && finalInvoiceAmount === 0) {
       setFinalInvoiceAmount(calculatedSuggestedAmount);
     }
@@ -49,7 +73,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
     if (calculatedSuggestedAmount > 0) {
       setFinalInvoiceAmount(calculatedSuggestedAmount);
     }
-  });
+  }, [calculatedSuggestedAmount]);
 
   async function handleUpdateLineItem(itemId: string, field: string, value: number) {
     await updateLineItem(itemId, { [field]: value });
@@ -64,8 +88,46 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
   }
 
   async function handleGenerateInvoice() {
-    // TODO: Implement PDF generation
-    alert("PDF invoice generation coming soon!");
+    if (!jobData) {
+      alert('Job data not loaded yet. Please wait a moment and try again.');
+      return;
+    }
+
+    // Prepare invoice data
+    const invoiceData = {
+      jobName: jobData.job_name || 'Untitled Job',
+      jobId: params.id,
+      clientName: clientData?.client_name || undefined,
+      invoiceNumber: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
+      invoiceDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      dueDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
+      equipmentItems: estimate.lineItems.filter(item => item.item_type === 'equipment'),
+      laborItems: estimate.lineItems.filter(item => item.item_type === 'labor'),
+      equipmentTotal: estimate.equipmentTotal,
+      laborTotal: estimate.laborTotal,
+      subtotal: estimate.subtotal,
+      finalAmount: finalInvoiceAmount
+    };
+
+    // Generate PDF
+    generateInvoicePDF(invoiceData);
+
+    // Optional: Save invoice record to database
+    try {
+      await supabase.from('invoices').insert({
+        job_id: params.id,
+        invoice_number: invoiceData.invoiceNumber,
+        amount: finalInvoiceAmount,
+        status: 'sent',
+        issue_date: new Date().toISOString(),
+        due_date: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      } as any);
+
+      alert('Invoice PDF generated successfully!');
+    } catch (err) {
+      console.error('Error saving invoice:', err);
+      alert('Invoice PDF generated (database save failed)');
+    }
   }
 
   if (loading) {
