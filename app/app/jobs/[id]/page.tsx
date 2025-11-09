@@ -287,6 +287,14 @@ export default function JobDetailPage() {
             {parseFloat((job as any).income || 0) > 0 ? 'Edit Income' : 'Add Income'}
           </button>
 
+          <Link
+            href={`/app/jobs/${job.id}/estimate`}
+            className="block w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-semibold transition-colors text-center"
+          >
+            <i className="fas fa-file-invoice-dollar mr-2"></i>
+            Cost Estimate & Invoice
+          </Link>
+
           <button
             onClick={handleOpenPullSheet}
             className="w-full px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
