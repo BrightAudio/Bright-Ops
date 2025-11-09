@@ -26,6 +26,7 @@ type InventoryResult = {
   id: string;
   name: string;
   barcode: string | null;
+  gear_type: string | null;
 };
 
 type AddItemPayload = {
@@ -232,56 +233,66 @@ export default function PullSheetDetailClient({
   }
 
   return (
-    <main className="min-h-screen bg-[#0c0d10] px-6 py-10 text-white">
-      <div className="mb-6 flex items-center gap-3 text-sm text-white/60">
-        <Link href="/app/warehouse" className="hover:text-amber-300">Warehouse</Link>
-        <span>/</span>
-        <Link href="/app/warehouse/pull-sheets" className="hover:text-amber-300">Pull Sheets</Link>
-        {sheet && <span>/ {sheet.code}</span>}
+    <main className="min-h-screen bg-white px-6 py-10 text-gray-900">
+      <div className="mb-6 flex items-center justify-between">
+        <div className="flex items-center gap-3 text-sm text-gray-600">
+          <Link href="/app/warehouse" className="hover:text-amber-600">Warehouse</Link>
+          <span>/</span>
+          <Link href="/app/warehouse/pull-sheets" className="hover:text-amber-600">Pull Sheets</Link>
+          {sheet && <span>/ {sheet.code}</span>}
+        </div>
+        
+        <Link
+          href="/app/warehouse/pull-sheets"
+          className="flex items-center gap-2 px-4 py-2 bg-gray-100 text-gray-900 rounded hover:bg-gray-200 border border-gray-300 transition-colors"
+        >
+          <span>←</span>
+          Back to Pull Sheets
+        </Link>
       </div>
 
       {loading && (
-        <div className="rounded-xl border border-white/10 bg-[#181a20] p-6 text-white/60">
+        <div className="rounded-xl border border-gray-200 bg-white p-6 text-gray-600">
           Loading pull sheet...
         </div>
       )}
 
       {!loading && error && (
-        <div className="rounded-xl border border-red-500/40 bg-red-500/10 p-6 text-red-200">
+        <div className="rounded-xl border border-red-300 bg-red-50 p-6 text-red-800">
           {error}
         </div>
       )}
 
       {permissionAlert && (
-        <div className="rounded-xl border border-white/10 bg-white/5 p-4 text-xs text-white/70">
+        <div className="rounded-xl border border-gray-200 bg-gray-50 p-4 text-xs text-gray-700">
           {permissionAlert}
         </div>
       )}
 
       {!loading && sheet && (
         <div className="space-y-8">
-          <section className="rounded-xl border border-white/10 bg-[#181a20] p-6 shadow">
-            <header className="flex flex-col gap-4 border-b border-white/10 pb-4 md:flex-row md:items-start md:justify-between">
+          <section className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow">
+            <header className="flex flex-col gap-4 border-b border-gray-200 pb-4 md:flex-row md:items-start md:justify-between">
               <div>
-                <h1 className="text-2xl font-semibold text-white">{sheet.name}</h1>
-                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-white/70">
-                  <span className="font-mono text-white/60">{sheet.code}</span>
+                <h1 className="text-2xl font-semibold text-gray-900">{sheet.name}</h1>
+                <div className="mt-2 flex flex-wrap items-center gap-3 text-sm text-gray-700">
+                  <span className="font-mono text-gray-600">{sheet.code}</span>
                   <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass(sheet.status)}`}>
                     {sheet.status.charAt(0).toUpperCase() + sheet.status.slice(1)}
                   </span>
                   {sheet.jobs && (
-                    <Link href={`/app/jobs/${sheet.job_id}`} className="text-amber-300 hover:text-amber-200">
+                    <Link href={`/app/jobs/${sheet.job_id}`} className="text-amber-600 hover:text-amber-700">
                       Linked job: {sheet.jobs.code ?? sheet.jobs.title ?? sheet.jobs.id}
                     </Link>
                   )}
                 </div>
-                <div className="mt-3 grid gap-2 text-sm text-white/60 sm:grid-cols-2">
+                <div className="mt-3 grid gap-2 text-sm text-gray-600 sm:grid-cols-2">
                   <div>
-                    <div className="text-white/40">Scheduled Out</div>
+                    <div className="text-gray-500">Scheduled Out</div>
                     <div>{formatDateTime(sheet.scheduled_out_at)}</div>
                   </div>
                   <div>
-                    <div className="text-white/40">Expected Return</div>
+                    <div className="text-gray-500">Expected Return</div>
                     <div>{formatDateTime(sheet.expected_return_at)}</div>
                   </div>
                 </div>
@@ -289,21 +300,21 @@ export default function PullSheetDetailClient({
               <div className="flex flex-wrap items-center gap-3">
                 {canCreateSheet && (
                   <button
-                    className="rounded border border-white/20 px-4 py-2 text-white/80 hover:border-amber-400 hover:text-amber-200"
+                    className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:border-amber-500 hover:text-amber-600"
                     onClick={() => setEditHeader((state) => !state)}
                   >
                     {editHeader ? "Cancel" : "Edit Details"}
                   </button>
                 )}
                 <button
-                  className="rounded border border-white/20 px-4 py-2 text-white/80 hover:border-amber-400 hover:text-amber-200"
+                  className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:border-amber-500 hover:text-amber-600"
                   onClick={() => window.open(`/api/pullsheet?pullSheetId=${sheet.id}`, "_blank")}
                 >
                   Generate PDF
                 </button>
                 {canDeleteSheet && (
                   <button
-                    className="rounded border border-red-500/60 bg-red-500/10 px-4 py-2 text-red-200 hover:bg-red-500/20"
+                    className="rounded border border-red-400 bg-red-50 px-4 py-2 text-red-700 hover:bg-red-100"
                     onClick={() => setDeleteModal(true)}
                   >
                     Delete
@@ -385,23 +396,23 @@ export default function PullSheetDetailClient({
               </form>
             )}
 
-            {!editHeader && sheet.notes && (
-              <div className="mt-6 rounded-lg border border-white/10 bg-[#0c0d10] p-4 text-sm text-white/70">
-                <div className="mb-1 text-xs uppercase tracking-wide text-white/40">Notes</div>
+            {sheet.notes && (
+              <div className="mt-6 rounded-lg border border-gray-200 bg-white p-4 text-sm text-gray-700">
+                <div className="mb-1 text-xs uppercase tracking-wide text-gray-500">Notes</div>
                 <div className="whitespace-pre-wrap">{sheet.notes}</div>
               </div>
             )}
           </section>
 
-          <section className="rounded-xl border border-white/10 bg-[#181a20] p-6 shadow">
+          <section className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow">
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div>
-                <h2 className="text-lg font-semibold text-white">Pull Sheet Items</h2>
-                <p className="text-sm text-white/60">Adjust quantities inline, reorder for workflow, or add new equipment from inventory.</p>
+                <h2 className="text-lg font-semibold text-gray-900">Pull Sheet Items</h2>
+                <p className="text-sm text-gray-600">Adjust quantities inline, reorder for workflow, or add new equipment from inventory.</p>
               </div>
               {canCreateSheet && (
                 <button
-                  className="self-start rounded-lg bg-amber-400 px-4 py-2 font-semibold text-[#0c0d10] hover:bg-amber-300"
+                  className="self-start rounded-lg bg-amber-400 px-4 py-2 font-semibold text-gray-900 hover:bg-amber-300"
                   onClick={() => setAddModalOpen(true)}
                 >
                   + Add Item
@@ -409,9 +420,9 @@ export default function PullSheetDetailClient({
               )}
             </div>
 
-            <div className="overflow-x-auto rounded-xl border border-white/10">
+            <div className="overflow-x-auto rounded-xl border border-gray-200">
               <table className="min-w-full text-sm">
-                <thead className="bg-black/20 text-xs uppercase tracking-wide text-white/60">
+                <thead className="bg-gray-100 text-xs uppercase tracking-wide text-gray-600">
                   <tr>
                     <th className="px-4 py-3 text-left">Item</th>
                     <th className="px-4 py-3 text-left">SKU / Barcode</th>
@@ -424,7 +435,7 @@ export default function PullSheetDetailClient({
                 <tbody>
                   {items.length === 0 ? (
                     <tr>
-                      <td colSpan={6} className="px-4 py-6 text-center text-white/40">
+                      <td colSpan={6} className="px-4 py-6 text-center text-gray-500">
                         No items on this pull sheet yet.
                       </td>
                     </tr>
@@ -435,14 +446,14 @@ export default function PullSheetDetailClient({
                       const sku = item.products?.sku ?? item.inventory_items?.barcode ?? "—";
                       const itemDisabled = blocked || !canCreateSheet;
                       return (
-                        <tr key={item.id} className="border-t border-white/10 hover:bg-white/5">
-                          <td className="px-4 py-3 font-medium text-white">{resolvedName}</td>
-                          <td className="px-4 py-3 text-white/60">{sku}</td>
+                        <tr key={item.id} className="border-t border-gray-200 hover:bg-gray-50">
+                          <td className="px-4 py-3 font-medium text-gray-900">{resolvedName}</td>
+                          <td className="px-4 py-3 text-gray-600">{sku}</td>
                           <td className="px-4 py-3 text-right">
                             <input
                               type="number"
                               min={0}
-                              className="w-24 rounded border border-white/10 bg-[#0c0d10] px-2 py-1 text-right text-white focus:border-amber-400 focus:outline-none"
+                              className="w-24 rounded border border-gray-300 bg-white px-2 py-1 text-right text-gray-900 focus:border-amber-400 focus:outline-none"
                               defaultValue={item.qty_requested ?? 0}
                               disabled={itemDisabled}
                               onBlur={(e) => {
@@ -459,7 +470,7 @@ export default function PullSheetDetailClient({
                             <input
                               type="number"
                               min={0}
-                              className="w-24 rounded border border-white/10 bg-[#0c0d10] px-2 py-1 text-right text-white focus:border-amber-400 focus:outline-none"
+                              className="w-24 rounded border border-gray-300 bg-white px-2 py-1 text-right text-gray-900 focus:border-amber-400 focus:outline-none"
                               defaultValue={item.qty_pulled ?? 0}
                               disabled={itemDisabled}
                               onBlur={(e) => {
@@ -475,7 +486,7 @@ export default function PullSheetDetailClient({
                           <td className="px-4 py-3">
                             <textarea
                               rows={2}
-                              className="w-full rounded border border-white/10 bg-[#0c0d10] px-2 py-1 text-sm text-white focus:border-amber-400 focus:outline-none"
+                              className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-amber-400 focus:outline-none"
                               defaultValue={item.notes ?? ""}
                               disabled={itemDisabled}
                               onBlur={(e) => {
@@ -491,21 +502,21 @@ export default function PullSheetDetailClient({
                             {canCreateSheet && (
                               <div className="flex justify-end gap-2">
                                 <button
-                                  className="rounded border border-white/20 px-2 py-1 text-xs text-white/70 hover:border-white/40 disabled:opacity-40"
+                                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
                                   onClick={() => moveItem(item.id, -1)}
                                   disabled={index === 0 || itemDisabled}
                                 >
                                   ↑
                                 </button>
                                 <button
-                                  className="rounded border border-white/20 px-2 py-1 text-xs text-white/70 hover:border-white/40 disabled:opacity-40"
+                                  className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
                                   onClick={() => moveItem(item.id, 1)}
                                   disabled={index === items.length - 1 || itemDisabled}
                                 >
                                   ↓
                                 </button>
                                 <button
-                                  className="rounded border border-red-500/60 bg-red-500/10 px-2 py-1 text-xs text-red-200 hover:bg-red-500/20 disabled:opacity-40"
+                                  className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100 disabled:opacity-40"
                                   onClick={() => handleRemoveItem(item.id)}
                                   disabled={itemDisabled}
                                 >
@@ -527,19 +538,19 @@ export default function PullSheetDetailClient({
 
       {deleteModal && sheet && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-xl border border-white/10 bg-[#181a20] p-6 shadow-2xl">
-            <h3 className="text-lg font-semibold text-white">Delete pull sheet?</h3>
-            <p className="mt-2 text-sm text-white/60">
+          <div className="w-full max-w-md rounded-xl border-2 border-gray-200 bg-white p-6 shadow-2xl">
+            <h3 className="text-lg font-semibold text-gray-900">Delete pull sheet?</h3>
+            <p className="mt-2 text-sm text-gray-600">
               This will remove {sheet.name} and all of its items. This action cannot be undone.
             </p>
             {deleteError && (
-              <div className="mt-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {deleteError}
               </div>
             )}
             <div className="mt-6 flex justify-end gap-3">
               <button
-                className="rounded border border-white/20 px-4 py-2 text-white/80 hover:border-white/40"
+                className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:border-gray-400"
                 onClick={() => {
                   setDeleteModal(false);
                   setDeleteError(null);
@@ -548,7 +559,7 @@ export default function PullSheetDetailClient({
                 Cancel
               </button>
               <button
-                className="rounded bg-red-500/80 px-4 py-2 font-semibold text-white hover:bg-red-500"
+                className="rounded bg-red-600 px-4 py-2 font-semibold text-white hover:bg-red-700"
                 onClick={handleDeleteSheet}
               >
                 Delete
@@ -593,7 +604,7 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
       }
       const { data, error } = await supabase
         .from("inventory_items")
-        .select("id, name, barcode")
+        .select("id, name, barcode, gear_type")
         .or(
           `name.ilike.%${search.trim()}%,barcode.ilike.%${search.trim()}%`
         )
@@ -605,12 +616,13 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
         setResults([]);
       } else {
         setError(null);
-        const typed = (data ?? []) as Array<{ id: string; name: string | null; barcode: string | null }>;
+        const typed = (data ?? []) as Array<{ id: string; name: string | null; barcode: string | null; gear_type: string | null }>;
         setResults(
           typed.map((item) => ({
             id: item.id,
             name: item.name ?? "Unnamed",
             barcode: item.barcode,
+            gear_type: item.gear_type,
           }))
         );
       }
@@ -658,12 +670,12 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-      <form onSubmit={handleSubmit} className="w-full max-w-xl rounded-xl border border-white/10 bg-[#181a20] p-6 shadow-2xl">
+      <form onSubmit={handleSubmit} className="w-full max-w-xl rounded-xl border-2 border-gray-200 bg-white p-6 shadow-2xl">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-lg font-semibold text-white">Add pull sheet item</h3>
+          <h3 className="text-lg font-semibold text-gray-900">Add pull sheet item</h3>
           <button
             type="button"
-            className="text-white/60 hover:text-white"
+            className="text-gray-600 hover:text-gray-900"
             onClick={onClose}
           >
             ×
@@ -672,9 +684,9 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
 
         <div className="space-y-4">
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">Search Inventory</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Search Inventory</label>
             <input
-              className="w-full rounded border border-white/10 bg-[#0c0d10] px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+              className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
               placeholder="Scan or search by name / barcode"
               value={search}
               onChange={(e) => {
@@ -682,24 +694,24 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
               }}
               onFocus={() => setSearch("")}
             />
-            <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-white/5 bg-black/20">
+            <div className="mt-2 max-h-40 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
               {loading ? (
-                <div className="px-3 py-2 text-sm text-white/50">Searching…</div>
+                <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
               ) : results.length === 0 ? (
-                <div className="px-3 py-2 text-sm text-white/40">No inventory matches.</div>
+                <div className="px-3 py-2 text-sm text-gray-500">No inventory matches.</div>
               ) : (
                 results.map((result) => (
                   <button
                     key={result.id}
                     type="button"
-                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${selected?.id === result.id ? "bg-amber-400/20 text-amber-100" : "hover:bg-white/5"}`}
+                    className={`flex w-full items-center justify-between px-3 py-2 text-left text-sm transition-colors ${selected?.id === result.id ? "bg-amber-100 text-amber-900" : "hover:bg-gray-100 text-gray-900"}`}
                     onClick={() => {
                       setSelected(result);
                       setCustomName(result.name);
                     }}
                   >
                     <span>{result.name}</span>
-                    <span className="text-xs text-white/50">{result.barcode ?? ""}</span>
+                    <span className="text-xs text-gray-500">{result.barcode ?? ""}</span>
                   </button>
                 ))
               )}
@@ -707,9 +719,9 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
           </div>
 
           <div>
-            <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">Or enter custom name</label>
+            <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Or enter custom name</label>
             <input
-              className="w-full rounded border border-white/10 bg-[#0c0d10] px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+              className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
               placeholder="Custom item name"
               value={customName}
               onChange={(e) => {
@@ -723,19 +735,19 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">Quantity</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Quantity</label>
               <input
                 type="number"
                 min={1}
-                className="w-full rounded border border-white/10 bg-[#0c0d10] px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                 value={quantity}
                 onChange={(e) => setQuantity(Number(e.target.value))}
               />
             </div>
             <div>
-              <label className="mb-1 block text-xs uppercase tracking-wide text-white/40">Notes</label>
+              <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Notes</label>
               <input
-                className="w-full rounded border border-white/10 bg-[#0c0d10] px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                 placeholder="Optional notes"
                 value={notes}
                 onChange={(e) => setNotes(e.target.value)}
@@ -745,7 +757,7 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
         </div>
 
         {error && (
-          <div className="mt-3 rounded border border-red-500/40 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+          <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
             {error}
           </div>
         )}
@@ -753,7 +765,7 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
         <div className="mt-6 flex justify-end gap-3">
           <button
             type="button"
-            className="rounded border border-white/20 px-4 py-2 text-white/80 hover:border-white/40"
+            className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:border-gray-400"
             onClick={() => {
               resetSelection();
               setNotes("");
@@ -765,7 +777,7 @@ function AddItemModal({ onClose, onAdd }: { onClose: () => void; onAdd: (payload
           </button>
           <button
             type="submit"
-            className="rounded bg-amber-400 px-4 py-2 font-semibold text-[#0c0d10] hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+            className="rounded bg-amber-400 px-4 py-2 font-semibold text-gray-900 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
             disabled={submitting}
           >
             {submitting ? "Adding…" : "Add Item"}

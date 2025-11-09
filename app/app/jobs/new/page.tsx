@@ -14,6 +14,7 @@ export default function NewJobPage() {
     start_at: '',
     end_at: '',
     notes: '',
+    income: '',
   });
 
   function handleInputChange(
@@ -49,6 +50,18 @@ export default function NewJobPage() {
             name="title"
             value={formData.title}
             onChange={handleInputChange}
+            className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-amber-300 mb-1">Job Income ($)</label>
+          <input
+            name="income"
+            type="number"
+            step="0.01"
+            value={formData.income}
+            onChange={handleInputChange}
+            placeholder="Total revenue for this job"
             className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700"
           />
         </div>

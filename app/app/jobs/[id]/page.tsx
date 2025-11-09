@@ -24,6 +24,9 @@ export default function JobDetailPage() {
   const [pullSheet, setPullSheet] = useState<Database['public']['Tables']['pull_sheets']['Row'] | null>(null);
   const [pullSheetLoading, setPullSheetLoading] = useState(false);
   const [pullSheetError, setPullSheetError] = useState<string | null>(null);
+  const [editingIncome, setEditingIncome] = useState(false);
+  const [incomeValue, setIncomeValue] = useState('');
+  const [savingIncome, setSavingIncome] = useState(false);
 
   useEffect(() => {
     async function loadJob() {
@@ -46,6 +49,7 @@ export default function JobDetailPage() {
         .single();
       if (!error && data) {
         setJob(data);
+        setIncomeValue((data as any).income?.toString() || '0');
       }
       setLoading(false);
     }
@@ -99,6 +103,36 @@ export default function JobDetailPage() {
     if (!date) return '';
     return new Date(date).toLocaleString();
   };
+
+  async function handleSaveIncome() {
+    if (!job) return;
+    setSavingIncome(true);
+    try {
+      const { error } = await supabase
+        .from('jobs')
+        .update({ income: parseFloat(incomeValue) || 0 })
+        .eq('id', job.id);
+
+      if (error) throw error;
+
+      // Reload job to get updated labor_cost and profit
+      const { data } = await supabase
+        .from('jobs')
+        .select('*')
+        .eq('id', job.id)
+        .single();
+
+      if (data) {
+        setJob({ ...job, ...(data as any) });
+      }
+      setEditingIncome(false);
+    } catch (err) {
+      console.error('Error saving income:', err);
+      alert('Failed to save income');
+    } finally {
+      setSavingIncome(false);
+    }
+  }
 
   async function handleOpenPullSheet() {
     if (!job) return;
@@ -175,9 +209,84 @@ export default function JobDetailPage() {
               </div>
             </div>
           )}
+
+          {/* Financial Summary */}
+          <div className="p-4 rounded bg-zinc-900">
+            <div className="text-sm font-medium text-amber-300 mb-3">Financial Summary</div>
+            <div className="space-y-2">
+              {/* Income */}
+              <div className="flex justify-between items-center">
+                <span className="text-zinc-400">Income:</span>
+                {editingIncome ? (
+                  <div className="flex gap-2">
+                    <input
+                      type="number"
+                      step="0.01"
+                      value={incomeValue}
+                      onChange={(e) => setIncomeValue(e.target.value)}
+                      className="w-32 px-2 py-1 bg-zinc-800 border border-zinc-700 rounded text-white text-right"
+                      autoFocus
+                    />
+                    <button
+                      onClick={handleSaveIncome}
+                      disabled={savingIncome}
+                      className="px-2 py-1 bg-green-600 hover:bg-green-700 text-white rounded text-sm"
+                    >
+                      {savingIncome ? '...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => {
+                        setEditingIncome(false);
+                        setIncomeValue((job as any).income?.toString() || '0');
+                      }}
+                      className="px-2 py-1 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <span className="text-green-400 font-semibold">
+                      ${parseFloat((job as any).income || 0).toFixed(2)}
+                    </span>
+                    <button
+                      onClick={() => setEditingIncome(true)}
+                      className="text-amber-400 hover:text-amber-300 text-sm"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                  </div>
+                )}
+              </div>
+
+              {/* Labor Cost */}
+              <div className="flex justify-between">
+                <span className="text-zinc-400">Labor Cost:</span>
+                <span className="text-red-400">
+                  ${parseFloat((job as any).labor_cost || 0).toFixed(2)}
+                </span>
+              </div>
+
+              {/* Profit */}
+              <div className="flex justify-between border-t border-zinc-700 pt-2 mt-2">
+                <span className="text-zinc-300 font-semibold">Profit:</span>
+                <span className={`font-bold ${parseFloat((job as any).profit || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                  ${parseFloat((job as any).profit || 0).toFixed(2)}
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">
+          <button
+            onClick={() => setEditingIncome(true)}
+            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <i className="fas fa-dollar-sign"></i>
+            {parseFloat((job as any).income || 0) > 0 ? 'Edit Income' : 'Add Income'}
+          </button>
+
           <button
             onClick={handleOpenPullSheet}
             className="w-full px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"

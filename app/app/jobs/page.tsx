@@ -1,6 +1,9 @@
 "use client";
 import { useState } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
+import { createPullSheet } from "@/lib/hooks/usePullSheets";
+import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, FileText, Undo2, Truck } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -13,11 +16,13 @@ const STATUS_OPTIONS = [
 ];
 
 export default function JobsPage() {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ code: "", title: "", client: "" });
   const [creating, setCreating] = useState(false);
+  const [creatingPullSheet, setCreatingPullSheet] = useState<string | null>(null);
   const { data: jobs, loading, reload } = useJobs({ search, status });
 
   async function handleCreate(e: React.FormEvent) {
@@ -30,6 +35,45 @@ export default function JobsPage() {
       reload();
     } finally {
       setCreating(false);
+    }
+  }
+
+  async function handlePullSheetClick(e: React.MouseEvent, job: any) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setCreatingPullSheet(job.id);
+    
+    try {
+      // Check if pull sheet already exists
+      const { data: existingPullSheet } = await supabase
+        .from('pull_sheets')
+        .select('id')
+        .eq('job_id', job.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      
+      if (existingPullSheet) {
+        // Open existing pull sheet
+        router.push(`/app/warehouse/pull-sheets/${existingPullSheet.id}`);
+      } else {
+        // Create new pull sheet
+        const created = await createPullSheet({
+          name: `${job.code ?? job.title ?? 'Job'} Pull Sheet`,
+          job_id: job.id,
+          status: 'draft',
+          scheduled_out_at: job.start_at ?? null,
+          expected_return_at: job.end_at ?? null,
+          notes: job.notes ?? null,
+        });
+        router.push(`/app/warehouse/pull-sheets/${created.id}`);
+      }
+    } catch (err) {
+      console.error('Error creating pull sheet:', err);
+      alert('Failed to create pull sheet');
+    } finally {
+      setCreatingPullSheet(null);
     }
   }
 
@@ -136,15 +180,42 @@ export default function JobsPage() {
                 {job.client_name && (
                   <div className="text-sm text-zinc-400 mb-3">Client: {job.client_name}</div>
                 )}
+                
+                {/* Financial Summary */}
+                {(job.income || job.labor_cost || job.profit !== undefined) && (
+                  <div className="bg-zinc-900 rounded p-3 mb-3 space-y-1 text-sm">
+                    {job.income !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-400">Income:</span>
+                        <span className="text-green-400 font-semibold">${parseFloat(job.income || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {job.labor_cost !== undefined && (
+                      <div className="flex justify-between">
+                        <span className="text-zinc-400">Labor Cost:</span>
+                        <span className="text-red-400">${parseFloat(job.labor_cost || 0).toFixed(2)}</span>
+                      </div>
+                    )}
+                    {job.profit !== undefined && (
+                      <div className="flex justify-between border-t border-zinc-700 pt-1 mt-1">
+                        <span className="text-zinc-300 font-semibold">Profit:</span>
+                        <span className={`font-bold ${parseFloat(job.profit || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          ${parseFloat(job.profit || 0).toFixed(2)}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
               </Link>
               <div className="flex gap-2 text-xs text-zinc-500 mt-3">
-                <Link 
-                  href={`/app/jobs/${job.id}`}
-                  className="flex items-center gap-1 hover:text-amber-400 transition-colors"
+                <button
+                  onClick={(e) => handlePullSheetClick(e, job)}
+                  disabled={creatingPullSheet === job.id}
+                  className="flex items-center gap-1 hover:text-amber-400 transition-colors disabled:opacity-50"
                 >
                   <FileText size={14} />
-                  <span>Prep Sheet</span>
-                </Link>
+                  <span>{creatingPullSheet === job.id ? 'Creating...' : 'Pull Sheet'}</span>
+                </button>
                 <Link 
                   href={`/app/warehouse/return-manifest?job=${job.id}`}
                   className="flex items-center gap-1 hover:text-amber-400 transition-colors"

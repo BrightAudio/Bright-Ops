@@ -8,6 +8,7 @@ import {
   deletePullSheet,
   usePullSheets,
   PullSheetWithJob,
+  updatePullSheet,
 } from "@/lib/hooks/usePullSheets";
 import type { PullsheetPermissions } from "@/lib/permissions";
 import { supabase } from "@/lib/supabaseClient";
@@ -64,6 +65,7 @@ export default function PullSheetsClient({
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [editingIds, setEditingIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -173,6 +175,36 @@ export default function PullSheetsClient({
     return date.toLocaleString();
   }
 
+  function formatDateTimeLocal(value: string | null | undefined) {
+    if (!value) return "";
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "";
+    // Format for datetime-local input: YYYY-MM-DDTHH:mm
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${year}-${month}-${day}T${hours}:${minutes}`;
+  }
+
+  async function updatePullSheetField(id: string, field: string, value: any) {
+    if (!canCreate) return;
+    setEditingIds(prev => new Set(prev).add(id));
+    try {
+      await updatePullSheet(id, { [field]: value });
+      refetch();
+    } catch (err) {
+      console.error("Failed to update pull sheet:", err);
+    } finally {
+      setEditingIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(id);
+        return newSet;
+      });
+    }
+  }
+
   function jobLabel(job: PullSheetWithJob["jobs"]) {
     if (!job) return "—";
     if (job.code && job.title) return `${job.code} · ${job.title}`;
@@ -184,94 +216,138 @@ export default function PullSheetsClient({
     : "Ask an owner to grant you pull sheet permissions.";
 
   return (
-    <main className="min-h-screen bg-[#0c0d10] px-6 py-10 text-white">
+    <main className="min-h-screen bg-gray-50 px-6 py-10 text-gray-900">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold">Pull Sheets</h1>
-          <p className="text-white/60 text-sm mt-1 max-w-2xl">
+          <p className="text-gray-600 text-sm mt-1 max-w-2xl">
             Create and manage Flex-style pull sheets for jobs. Generate lists from confirmed work or build ad-hoc sheets for warehouse picks.
           </p>
         </div>
         {canCreate ? (
           <button
-            className="bg-amber-400 text-[#0c0d10] px-6 py-3 rounded-lg font-semibold shadow hover:bg-amber-300 transition-colors"
+            className="bg-amber-400 text-gray-900 px-6 py-3 rounded-lg font-semibold shadow hover:bg-amber-300 transition-colors"
             onClick={openModal}
           >
             + New Pull Sheet
           </button>
         ) : (
-          <div className="rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs text-white/60">
+          <div className="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-xs text-gray-600">
             No permission to create pull sheets
           </div>
         )}
       </header>
 
       {error && (
-        <div className="mb-6 rounded-lg border border-red-500/40 bg-red-500/10 px-4 py-3 text-red-200">
+        <div className="mb-6 rounded-lg border border-red-300 bg-red-50 px-4 py-3 text-red-700">
           {error}
         </div>
       )}
 
       {permissionNotice && (
-        <div className="mb-6 rounded-lg border border-white/10 bg-white/5 px-4 py-3 text-xs text-white/70">
+        <div className="mb-6 rounded-lg border border-gray-300 bg-gray-100 px-4 py-3 text-xs text-gray-700">
           {permissionNotice}
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-xl border border-white/10 bg-[#181a20]">
+      <div className="overflow-x-auto rounded-xl border border-gray-300 bg-gray-400 shadow-lg">
         <table className="min-w-full">
           <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-white/60">
-              <th className="px-4 py-3">Code</th>
-              <th className="px-4 py-3">Name</th>
-              <th className="px-4 py-3">Job</th>
-              <th className="px-4 py-3">Scheduled Out</th>
-              <th className="px-4 py-3">Expected Return</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3 text-right">Actions</th>
+            <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
+              <th className="px-6 py-4">Code</th>
+              <th className="px-6 py-4">Name</th>
+              <th className="px-6 py-4">Job</th>
+              <th className="px-6 py-4">Scheduled Out</th>
+              <th className="px-6 py-4">Expected Return</th>
+              <th className="px-6 py-4">Status</th>
+              <th className="px-6 py-4 text-right">Actions</th>
             </tr>
           </thead>
-          <tbody className="text-sm">
+          <tbody className="text-sm bg-white">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-white/40">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-600">
                   Loading pull sheets...
                 </td>
               </tr>
             ) : pullSheets.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-white/40">
+                <td colSpan={7} className="px-6 py-8 text-center text-gray-600">
                   No pull sheets yet. Create one to start organizing your picks.
                 </td>
               </tr>
             ) : (
-              pullSheets.map((sheet) => (
-                <tr key={sheet.id} className="border-t border-white/10 hover:bg-white/5 transition-colors">
-                  <td className="px-4 py-3 font-semibold text-white/80">{sheet.code}</td>
-                  <td className="px-4 py-3 text-white">
-                    <Link href={`/app/warehouse/pull-sheets/${sheet.id}`} className="hover:text-amber-300">
+              pullSheets.map((sheet) => {
+                const isEditing = editingIds.has(sheet.id);
+                return (
+                <tr key={sheet.id} className="border-t border-gray-300 hover:bg-amber-50 transition-colors">
+                  <td className="px-6 py-4 font-semibold text-gray-900">{sheet.code}</td>
+                  <td className="px-6 py-4 text-gray-900 font-medium">
+                    <Link href={`/app/warehouse/pull-sheets/${sheet.id}`} className="hover:text-amber-600 hover:underline">
                       {sheet.name}
                     </Link>
                   </td>
-                  <td className="px-4 py-3 text-white/70">{jobLabel(sheet.jobs)}</td>
-                  <td className="px-4 py-3 text-white/60">{formatDate(sheet.scheduled_out_at)}</td>
-                  <td className="px-4 py-3 text-white/60">{formatDate(sheet.expected_return_at)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-6 py-4">
+                    {canCreate ? (
+                      <select
+                        className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-900 text-sm focus:border-amber-400 focus:outline-none disabled:opacity-50"
+                        value={sheet.job_id ?? ""}
+                        disabled={isEditing}
+                        onChange={(e) => updatePullSheetField(sheet.id, "job_id", e.target.value || null)}
+                      >
+                        <option value="">No linked job</option>
+                        {jobs.map((job) => (
+                          <option key={job.id} value={job.id}>
+                            {job.code ?? job.title ?? "Unnamed Job"}
+                          </option>
+                        ))}
+                      </select>
+                    ) : (
+                      <span className="text-gray-700">{jobLabel(sheet.jobs)}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {canCreate ? (
+                      <input
+                        type="datetime-local"
+                        className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-900 text-sm focus:border-amber-400 focus:outline-none disabled:opacity-50"
+                        value={formatDateTimeLocal(sheet.scheduled_out_at)}
+                        disabled={isEditing}
+                        onChange={(e) => updatePullSheetField(sheet.id, "scheduled_out_at", e.target.value || null)}
+                      />
+                    ) : (
+                      <span className="text-gray-600">{formatDate(sheet.scheduled_out_at)}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
+                    {canCreate ? (
+                      <input
+                        type="datetime-local"
+                        className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-900 text-sm focus:border-amber-400 focus:outline-none disabled:opacity-50"
+                        value={formatDateTimeLocal(sheet.expected_return_at)}
+                        disabled={isEditing}
+                        onChange={(e) => updatePullSheetField(sheet.id, "expected_return_at", e.target.value || null)}
+                      />
+                    ) : (
+                      <span className="text-gray-600">{formatDate(sheet.expected_return_at)}</span>
+                    )}
+                  </td>
+                  <td className="px-6 py-4">
                     <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${statusClass(sheet.status)}`}>
                       {sheet.status.charAt(0).toUpperCase() + sheet.status.slice(1)}
                     </span>
                   </td>
-                  <td className="px-4 py-3 text-right">
+                  <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <Link
                         href={`/app/warehouse/pull-sheets/${sheet.id}`}
-                        className="px-3 py-1.5 rounded border border-white/20 text-white/80 hover:border-amber-400 hover:text-amber-200"
+                        className="px-4 py-2 rounded-lg border-2 border-gray-700 text-gray-900 font-semibold hover:bg-amber-400 hover:border-amber-500 transition-all"
                       >
                         View
                       </Link>
                       {canDelete && (
                         <button
-                          className="px-3 py-1.5 rounded border border-red-500/50 text-red-200 hover:bg-red-500/10"
+                          className="px-4 py-2 rounded-lg border-2 border-red-600 text-red-700 font-semibold bg-red-50 hover:bg-red-600 hover:text-white transition-all"
                           onClick={() => confirmDelete(sheet.id)}
                         >
                           Delete
@@ -280,7 +356,8 @@ export default function PullSheetsClient({
                     </div>
                   </td>
                 </tr>
-              ))
+                );
+              })
             )}
           </tbody>
         </table>
@@ -290,18 +367,18 @@ export default function PullSheetsClient({
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
           <form
             onSubmit={handleCreate}
-            className="w-full max-w-lg rounded-xl bg-[#181a20] p-6 shadow-2xl border border-white/10"
+            className="w-full max-w-lg rounded-xl bg-white p-6 shadow-2xl border-2 border-gray-200"
           >
             <div className="flex items-start justify-between gap-4 mb-4">
               <div>
-                <h2 className="text-xl font-semibold text-white">New Pull Sheet</h2>
-                <p className="text-sm text-white/60">
+                <h2 className="text-xl font-semibold text-gray-900">New Pull Sheet</h2>
+                <p className="text-sm text-gray-600">
                   Create a sheet from a confirmed quote/job or build one from scratch.
                 </p>
               </div>
               <button
                 type="button"
-                className="text-white/50 hover:text-white"
+                className="text-gray-500 hover:text-gray-900"
                 onClick={closeModal}
               >
                 <span aria-hidden>×</span>
@@ -310,9 +387,9 @@ export default function PullSheetsClient({
 
             <div className="space-y-4">
               <div>
-                <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Pull Sheet Name</label>
+                <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Pull Sheet Name</label>
                 <input
-                  className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                   placeholder="Main Stage – Load Out"
                   value={form.name}
                   onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
@@ -320,9 +397,9 @@ export default function PullSheetsClient({
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Linked Job</label>
+                <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Linked Job</label>
                 <select
-                  className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                   value={form.job_id}
                   onChange={(e) => setForm((prev) => ({ ...prev, job_id: e.target.value }))}
                 >
@@ -337,19 +414,19 @@ export default function PullSheetsClient({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Scheduled Out</label>
+                  <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Scheduled Out</label>
                   <input
                     type="datetime-local"
-                    className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                    className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                     value={form.scheduled_out_at}
                     onChange={(e) => setForm((prev) => ({ ...prev, scheduled_out_at: e.target.value }))}
                   />
                 </div>
                 <div>
-                  <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Expected Return</label>
+                  <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Expected Return</label>
                   <input
                     type="datetime-local"
-                    className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                    className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                     value={form.expected_return_at}
                     onChange={(e) => setForm((prev) => ({ ...prev, expected_return_at: e.target.value }))}
                   />
@@ -357,9 +434,9 @@ export default function PullSheetsClient({
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Status</label>
+                <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Status</label>
                 <select
-                  className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                   value={form.status}
                   onChange={(e) => setForm((prev) => ({ ...prev, status: e.target.value }))}
                 >
@@ -372,9 +449,9 @@ export default function PullSheetsClient({
               </div>
 
               <div>
-                <label className="text-xs uppercase tracking-wide text-white/50 block mb-1">Notes</label>
+                <label className="text-xs uppercase tracking-wide text-gray-500 block mb-1">Notes</label>
                 <textarea
-                  className="w-full rounded-lg bg-[#0c0d10] border border-white/10 px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
+                  className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                   rows={3}
                   placeholder="Special pickup instructions, staffing notes, etc."
                   value={form.notes}
@@ -384,7 +461,7 @@ export default function PullSheetsClient({
             </div>
 
             {createError && (
-              <div className="mt-4 rounded border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <div className="mt-4 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {createError}
               </div>
             )}
@@ -392,14 +469,14 @@ export default function PullSheetsClient({
             <div className="mt-6 flex justify-end gap-3">
               <button
                 type="button"
-                className="px-4 py-2 rounded border border-white/20 text-white/80 hover:border-white/40"
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:border-gray-400"
                 onClick={closeModal}
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                className="px-4 py-2 rounded bg-amber-400 text-[#0c0d10] font-semibold hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+                className="px-4 py-2 rounded bg-amber-400 text-gray-900 font-semibold hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
                 disabled={submitting}
               >
                 {submitting ? "Creating…" : "Create Pull Sheet"}
@@ -411,19 +488,19 @@ export default function PullSheetsClient({
 
       {confirmingDelete && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 px-4">
-          <div className="w-full max-w-md rounded-xl bg-[#181a20] p-6 shadow-2xl border border-white/10">
-            <h3 className="text-lg font-semibold text-white">Delete pull sheet?</h3>
-            <p className="mt-2 text-sm text-white/60">
+          <div className="w-full max-w-md rounded-xl bg-white p-6 shadow-2xl border-2 border-gray-200">
+            <h3 className="text-lg font-semibold text-gray-900">Delete pull sheet?</h3>
+            <p className="mt-2 text-sm text-gray-600">
               This action cannot be undone. The pull sheet and its items will be removed permanently.
             </p>
             {deleteError && (
-              <div className="mt-3 rounded border border-red-500/50 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+              <div className="mt-3 rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-700">
                 {deleteError}
               </div>
             )}
             <div className="mt-6 flex justify-end gap-3">
               <button
-                className="px-4 py-2 rounded border border-white/20 text-white/80 hover:border-white/40"
+                className="px-4 py-2 rounded border border-gray-300 text-gray-700 hover:border-gray-400"
                 onClick={() => {
                   setConfirmingDelete(false);
                   setDeleteId(null);
@@ -432,7 +509,7 @@ export default function PullSheetsClient({
                 Cancel
               </button>
               <button
-                className="px-4 py-2 rounded bg-red-500/80 text-white font-semibold hover:bg-red-500"
+                className="px-4 py-2 rounded bg-red-600 text-white font-semibold hover:bg-red-700"
                 onClick={handleDelete}
               >
                 Delete

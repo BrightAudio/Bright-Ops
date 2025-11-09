@@ -3,88 +3,226 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { supabase } from "@/lib/supabaseClient";
 
-const roles = ["Audio", "Lighting", "Rigging", "Stagehand"];
-const statuses = ["Confirmed", "Pending", "Declined"];
+const ROLES = ["Audio Engineer", "Lighting Tech", "Rigger", "Stagehand", "Video Tech", "General Labor"];
 
-const mockCrew = [
-  {
-    id: "1",
-    name: "J. Carter",
-    role: "Audio",
-    start: "2025-10-21 08:00",
-    end: "2025-10-21 18:00",
-    job: "Show 2025-10-21",
-    location: "Main Hall",
-    status: "Confirmed",
-  },
-  {
-    id: "2",
-    name: "L. Kim",
-    role: "Lighting",
-    start: "2025-10-21 09:00",
-    end: "2025-10-21 17:00",
-    job: "Show 2025-10-21",
-    location: "Main Hall",
-    status: "Pending",
-  },
-  {
-    id: "3",
-    name: "M. Singh",
-    role: "Stagehand",
-    start: "2025-10-22 10:00",
-    end: "2025-10-22 16:00",
-    job: "Expo 2025-10-22",
-    location: "Annex",
-    status: "Confirmed",
-  },
-];
+type Employee = {
+  id: string;
+  name: string;
+  role: string | null;
+  hourly_rate: number | null;
+};
 
-function statusColor(status: string) {
-  switch (status) {
-    case "Confirmed":
-      return "bg-amber-400/20 text-amber-200 border-amber-400/30";
-    case "Pending":
-      return "bg-blue-400/20 text-blue-200 border-blue-400/30";
-    default:
-      return "bg-white/10 text-white/70 border-white/20";
-  }
-}
+type JobPosition = {
+  id?: string;
+  job_id: string;
+  role: string;
+  employee_id: string | null;
+  employee_name?: string;
+  rate_type: 'day' | 'hourly' | null;
+  rate_amount: number | null;
+};
 
-function groupByDay(items: typeof mockCrew) {
-  const days: Record<string, typeof mockCrew> = {};
-  for (const item of items) {
-    const day = item.start.split(" ")[0];
-    if (!days[day]) days[day] = [];
-    days[day].push(item);
-  }
-  return days;
-}
+type Job = {
+  id: string;
+  code: string | null;
+  title: string | null;
+  start_at: string | null;
+  end_at: string | null;
+  venue: string | null;
+  status: string | null;
+};
 
 export default function ScheduledCrew() {
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [role, setRole] = useState("");
-  const [job, setJob] = useState("");
-  const [crewData, setCrewData] = useState(mockCrew);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
+  const [positions, setPositions] = useState<Record<string, JobPosition[]>>({});
+  const [loading, setLoading] = useState(true);
+  const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
 
-  // Filter logic (simple, for demo)
-  const filtered = crewData.filter(c =>
-    (!role || c.role === role) &&
-    (!job || c.job.includes(job))
-  );
-  const grouped = groupByDay(filtered);
+  useEffect(() => {
+    loadData();
+  }, []);
 
-  function handleStatusChange(day: string, idx: number, newStatus: string) {
-    setCrewData(prev => {
-      const updated = [...prev];
-      // Find the correct item by day and index
-      const flatIdx = prev.findIndex(
-        c => c.start.split(" ")[0] === day && grouped[day][idx] && c.name === grouped[day][idx].name
+  async function loadData() {
+    setLoading(true);
+    console.log("Starting loadData...");
+    
+    try {
+      // Load open/active jobs - try all jobs first to see what exists
+      console.log("Fetching jobs from Supabase...");
+      const { data: jobsData, error: jobsError } = await supabase
+        .from("jobs")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      console.log("Jobs query result:", { data: jobsData, error: jobsError });
+
+      if (jobsError) {
+        console.error("Error loading jobs:", jobsError.message, jobsError);
+        throw new Error(`Jobs error: ${jobsError.message}`);
+      }
+      console.log("Loaded all jobs:", jobsData);
+      
+      // Filter to open jobs (not completed) - using 'as any' to bypass type issues
+      const openJobs = ((jobsData || []) as any[]).filter((job: any) => 
+        job.status !== 'completed' && job.status !== 'cancelled'
       );
-      if (flatIdx !== -1) updated[flatIdx] = { ...updated[flatIdx], status: newStatus };
-      return updated;
+      console.log("Open jobs:", openJobs);
+      setJobs(openJobs);
+
+      // Load employees
+      console.log("Fetching employees from Supabase...");
+      const { data: employeesData, error: employeesError } = await supabase
+        .from("employees")
+        .select("id, name, role, hourly_rate")
+        .order("name");
+
+      console.log("Employees query result:", { data: employeesData, error: employeesError });
+
+      if (employeesError) {
+        console.error("Error loading employees:", employeesError.message, employeesError);
+        throw new Error(`Employees error: ${employeesError.message}`);
+      }
+      console.log("Loaded employees:", employeesData);
+      setEmployees(employeesData || []);
+
+      // Load job assignments
+      console.log("Fetching job assignments from Supabase...");
+      const { data: assignmentsData, error: assignmentsError } = await supabase
+        .from("job_assignments")
+        .select(`
+          id,
+          job_id,
+          role,
+          employee_id,
+          rate_type,
+          rate_amount,
+          employees (name)
+        `);
+
+      console.log("Assignments query result:", { data: assignmentsData, error: assignmentsError });
+
+      if (assignmentsError) {
+        console.error("Error loading assignments:", assignmentsError.message, assignmentsError);
+        // Don't throw - assignments might not exist yet
+        console.log("No assignments found, continuing...");
+      }
+
+      // Group assignments by job
+      const positionsByJob: Record<string, JobPosition[]> = {};
+      assignmentsData?.forEach((assignment: any) => {
+        if (!positionsByJob[assignment.job_id]) {
+          positionsByJob[assignment.job_id] = [];
+        }
+        positionsByJob[assignment.job_id].push({
+          id: assignment.id,
+          job_id: assignment.job_id,
+          role: assignment.role,
+          employee_id: assignment.employee_id,
+          employee_name: assignment.employees?.name,
+          rate_type: assignment.rate_type,
+          rate_amount: assignment.rate_amount,
+        });
+      });
+
+      setPositions(positionsByJob);
+    } catch (err) {
+      console.error("Error loading data:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function toggleJob(jobId: string) {
+    setExpandedJobs(prev => {
+      const next = new Set(prev);
+      if (next.has(jobId)) {
+        next.delete(jobId);
+      } else {
+        next.add(jobId);
+      }
+      return next;
     });
+  }
+
+  async function addPosition(jobId: string) {
+    const newPosition: JobPosition = {
+      job_id: jobId,
+      role: ROLES[0],
+      employee_id: null,
+      rate_type: null,
+      rate_amount: null,
+    };
+
+    try {
+      const { data, error } = await supabase
+        .from("job_assignments")
+        .insert([newPosition as any])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      setPositions(prev => ({
+        ...prev,
+        [jobId]: [...(prev[jobId] || []), { ...newPosition, id: (data as any).id }],
+      }));
+    } catch (err) {
+      console.error("Error adding position:", err);
+    }
+  }
+
+  async function updatePosition(jobId: string, positionId: string, field: "role" | "employee_id" | "rate_type" | "rate_amount", value: string | number | null) {
+    try {
+      const { error } = await supabase
+        .from("job_assignments")
+        .update({ [field]: value } as any)
+        .eq("id", positionId);
+
+      if (error) throw error;
+
+      setPositions(prev => ({
+        ...prev,
+        [jobId]: prev[jobId].map(p =>
+          p.id === positionId
+            ? {
+                ...p,
+                [field]: value,
+                ...(field === "employee_id" && value
+                  ? { employee_name: employees.find(e => e.id === value)?.name }
+                  : {}),
+              }
+            : p
+        ),
+      }));
+    } catch (err) {
+      console.error("Error updating position:", err);
+    }
+  }
+
+  async function deletePosition(jobId: string, positionId: string) {
+    try {
+      const { error } = await supabase
+        .from("job_assignments")
+        .delete()
+        .eq("id", positionId);
+
+      if (error) throw error;
+
+      setPositions(prev => ({
+        ...prev,
+        [jobId]: prev[jobId].filter(p => p.id !== positionId),
+      }));
+    } catch (err) {
+      console.error("Error deleting position:", err);
+    }
+  }
+
+  function getEmployeesForRole(role: string) {
+    // Show all employees in dropdown (not filtered by role)
+    return employees;
   }
 
   return (
@@ -100,79 +238,137 @@ export default function ScheduledCrew() {
             <i className="fas fa-users"></i>
             Manage Employees
           </Link>
-          <button
-            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-lg transition-colors flex items-center gap-2"
-          >
-            <i className="fas fa-plus"></i>
-            Assign to Job
-          </button>
         </div>
       </div>
-      <form className="flex flex-wrap gap-4 mb-8 items-end">
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Date From</label>
-          <input type="date" className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+
+      {loading ? (
+        <div className="text-center py-12 text-gray-400">Loading jobs...</div>
+      ) : jobs.length === 0 ? (
+        <div className="text-center py-12 text-gray-400">
+          No open jobs found. Create a job to start planning crew.
         </div>
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Date To</label>
-          <input type="date" className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Role</label>
-          <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={role} onChange={e => setRole(e.target.value)}>
-            <option value="">All</option>
-            {roles.map(r => <option key={r} value={r}>{r}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Job</label>
-          <input type="text" className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={job} onChange={e => setJob(e.target.value)} placeholder="Job name/code..." />
-        </div>
-      </form>
-      {Object.keys(grouped).length === 0 ? (
-        <div className="text-gray-400 text-center py-12">No crew scheduled for selected filters.</div>
       ) : (
-        Object.entries(grouped).map(([day, crew]) => (
-          <div key={day} className="mb-10">
-            <div className="text-lg font-bold text-amber-400 mb-2">{new Date(day).toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' })}</div>
-            <div className="overflow-x-auto rounded-xl border border-zinc-700 bg-zinc-800">
-              <table className="min-w-full">
-                <thead>
-                  <tr className="text-left text-gray-400 text-sm">
-                    <th className="px-4 py-3">Name</th>
-                    <th className="px-4 py-3">Role</th>
-                    <th className="px-4 py-3">Start</th>
-                    <th className="px-4 py-3">End</th>
-                    <th className="px-4 py-3">Job</th>
-                    <th className="px-4 py-3">Location</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {crew.map((c, idx) => (
-                    <tr key={idx} className="border-t border-zinc-700">
-                      <td className="px-4 py-3">{c.name}</td>
-                      <td className="px-4 py-3">{c.role}</td>
-                      <td className="px-4 py-3">{c.start.split(' ')[1]}</td>
-                      <td className="px-4 py-3">{c.end.split(' ')[1]}</td>
-                      <td className="px-4 py-3">{c.job}</td>
-                      <td className="px-4 py-3">{c.location}</td>
-                      <td className="px-4 py-3">
+        <div className="space-y-4">
+          {jobs.map(job => {
+            const isExpanded = expandedJobs.has(job.id);
+            const jobPositions = positions[job.id] || [];
+
+            return (
+              <div
+                key={job.id}
+                className="rounded-xl border border-zinc-700 bg-zinc-800"
+              >
+                {/* Job Header */}
+                <div
+                  className="flex items-center justify-between p-4 cursor-pointer hover:bg-zinc-700/50"
+                  onClick={() => toggleJob(job.id)}
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3">
+                      <i className={`fas fa-chevron-${isExpanded ? "down" : "right"} text-gray-400`}></i>
+                      <div>
+                        <div className="font-semibold text-lg">
+                          {job.code} - {job.title}
+                        </div>
+                        <div className="text-sm text-gray-400">
+                          {job.start_at && new Date(job.start_at).toLocaleDateString()}
+                          {job.venue && ` • ${job.venue}`}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-sm text-gray-400">
+                    {jobPositions.length} position{jobPositions.length !== 1 ? "s" : ""}
+                  </div>
+                </div>
+
+                {/* Positions List */}
+                {isExpanded && (
+                  <div className="border-t border-zinc-700 p-4 space-y-3">
+                    {jobPositions.map(position => (
+                      <div
+                        key={position.id}
+                        className="flex items-center gap-3 p-3 bg-zinc-900 rounded-lg"
+                      >
+                        {/* Role Select */}
                         <select
-                          className={`inline-block px-3 py-1 rounded-full border text-xs font-semibold ${statusColor(c.status)} bg-transparent`}
-                          value={c.status}
-                          onChange={e => handleStatusChange(day, idx, e.target.value)}
+                          value={position.role}
+                          onChange={(e) => updatePosition(job.id, position.id!, "role", e.target.value)}
+                          className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white focus:outline-none focus:border-amber-400 min-w-[180px]"
                         >
-                          {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+                          {ROLES.map(role => (
+                            <option key={role} value={role}>{role}</option>
+                          ))}
                         </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        ))
+
+                        {/* Employee Select */}
+                        <select
+                          value={position.employee_id || ""}
+                          onChange={(e) => updatePosition(job.id, position.id!, "employee_id", e.target.value || null)}
+                          className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white focus:outline-none focus:border-amber-400"
+                        >
+                          <option value="">Unassigned</option>
+                          {getEmployeesForRole(position.role).map(emp => (
+                            <option key={emp.id} value={emp.id}>
+                              {emp.name}
+                            </option>
+                          ))}
+                        </select>
+
+                        {/* Rate Type Select */}
+                        <select
+                          value={position.rate_type || ""}
+                          onChange={(e) => {
+                            const rateType = e.target.value || null;
+                            updatePosition(job.id, position.id!, "rate_type", rateType);
+                            // Clear rate amount when changing type
+                            if (rateType !== position.rate_type) {
+                              updatePosition(job.id, position.id!, "rate_amount", null);
+                            }
+                          }}
+                          className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white focus:outline-none focus:border-amber-400 min-w-[120px]"
+                        >
+                          <option value="">No Rate</option>
+                          <option value="day">Day Rate</option>
+                          <option value="hourly">Hourly</option>
+                        </select>
+
+                        {/* Rate Amount Input */}
+                        {position.rate_type && (
+                          <input
+                            type="number"
+                            value={position.rate_amount || ""}
+                            onChange={(e) => updatePosition(job.id, position.id!, "rate_amount", e.target.value ? parseFloat(e.target.value) : null)}
+                            placeholder={position.rate_type === 'day' ? 'Day rate' : 'Hourly rate'}
+                            className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white focus:outline-none focus:border-amber-400 w-[120px]"
+                          />
+                        )}
+
+                        {/* Delete Button */}
+                        <button
+                          onClick={() => deletePosition(job.id, position.id!)}
+                          className="px-3 py-2 bg-red-600 hover:bg-red-700 text-white rounded transition-colors"
+                          title="Remove position"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
+                    ))}
+
+                    {/* Add Position Button */}
+                    <button
+                      onClick={() => addPosition(job.id)}
+                      className="w-full px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+                    >
+                      <i className="fas fa-plus"></i>
+                      Add Position
+                    </button>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
       )}
     </main>
     </DashboardLayout>

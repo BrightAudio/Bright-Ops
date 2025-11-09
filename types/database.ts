@@ -25,6 +25,9 @@ export interface Database {
           id: string;
           barcode: string;
           name: string;
+          gear_type: string | null;
+          product_type_code: string | null;
+          individual_item_code: string | null;
           qty_in_warehouse: number | null;
           quantity_on_hand: number | null;
           unit_value: number | null;
@@ -34,6 +37,9 @@ export interface Database {
           id?: string;
           barcode: string;
           name: string;
+          gear_type?: string | null;
+          product_type_code?: string | null;
+          individual_item_code?: string | null;
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
           unit_value?: number | null;
@@ -43,6 +49,9 @@ export interface Database {
           id?: string;
           barcode?: string;
           name?: string;
+          gear_type?: string | null;
+          product_type_code?: string | null;
+          individual_item_code?: string | null;
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
           unit_value?: number | null;
@@ -515,6 +524,7 @@ export interface Database {
           qty_pulled: number;
           notes: string | null;
           sort_index: number;
+          scanned_barcode: string | null;
           created_at: string;
           updated_at: string;
         };
@@ -528,6 +538,7 @@ export interface Database {
           qty_pulled?: number;
           notes?: string | null;
           sort_index?: number;
+          scanned_barcode?: string | null;
           created_at?: string;
           updated_at?: string;
         };
@@ -541,6 +552,7 @@ export interface Database {
           qty_pulled?: number;
           notes?: string | null;
           sort_index?: number;
+          scanned_barcode?: string | null;
           created_at?: string;
           updated_at?: string;
         };

@@ -22,8 +22,10 @@ const navSections: NavSection[] = [
     title: "WORK",
     items: [
       { href: "/app/jobs", icon: "fa-calendar-alt", label: "Projects" },
+      { href: "/app/warehouse/pull-sheets", icon: "fa-clipboard-list", label: "Pull Sheets" },
       { href: "/app/warehouse/scheduled-crew", icon: "fa-user-clock", label: "Crew Planner" },
       { href: "/app/warehouse/transports", icon: "fa-truck", label: "Transports" },
+      { href: "/app/warehouse", icon: "fa-warehouse", label: "Warehouse" },
       { href: "/app/warehouse/shortages", icon: "fa-exclamation-triangle", label: "Shortages" },
       { href: "/app/financial", icon: "fa-dollar-sign", label: "Financial" },
     ],
