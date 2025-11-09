@@ -18,8 +18,6 @@ CREATE TABLE IF NOT EXISTS job_gear (
   quantity INTEGER NOT NULL DEFAULT 1,
   amortization_each DECIMAL(10, 4) NOT NULL,  -- Snapshot of amortization_per_job at time of job
   amortization_total DECIMAL(10, 2) NOT NULL, -- quantity × amortization_each
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
   
   CONSTRAINT job_gear_quantity_positive CHECK (quantity > 0),
   CONSTRAINT job_gear_unique_item_per_job UNIQUE (job_id, gear_id)
@@ -28,7 +26,6 @@ CREATE TABLE IF NOT EXISTS job_gear (
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_job_gear_job_id ON job_gear(job_id);
 CREATE INDEX IF NOT EXISTS idx_job_gear_gear_id ON job_gear(gear_id);
-CREATE INDEX IF NOT EXISTS idx_job_gear_created_at ON job_gear(created_at DESC);
 
 -- Add comments
 COMMENT ON TABLE job_gear IS 'Tracks equipment used on each job with amortization snapshots';
@@ -44,7 +41,6 @@ RETURNS TRIGGER AS $$
 BEGIN
   -- Auto-calculate amortization_total from quantity and amortization_each
   NEW.amortization_total := ROUND(NEW.quantity * NEW.amortization_each, 2);
-  NEW.updated_at := NOW();
   RETURN NEW;
 END;
 $$ LANGUAGE plpgsql;
