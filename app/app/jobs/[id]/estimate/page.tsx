@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { useCostEstimate } from "@/lib/hooks/useCostEstimate";
 
@@ -17,6 +17,8 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
   const [finalInvoiceAmount, setFinalInvoiceAmount] = useState<number>(0);
   const [showAddLabor, setShowAddLabor] = useState(false);
   const [newLaborRole, setNewLaborRole] = useState("");
+  const [selectedMarkup, setSelectedMarkup] = useState<'20' | '40' | 'custom' | 'none'>('40');
+  const [customMarkup, setCustomMarkup] = useState<string>('');
 
   const formatter = new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -25,10 +27,27 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
     maximumFractionDigits: 2,
   });
 
+  // Calculate suggested amount based on selected markup
+  const calculatedSuggestedAmount = useMemo(() => {
+    if (selectedMarkup === 'none') return estimate.subtotal;
+    if (selectedMarkup === 'custom') {
+      const customPercent = parseFloat(customMarkup) || 0;
+      return estimate.subtotal * (1 + customPercent / 100);
+    }
+    const percent = selectedMarkup === '20' ? 0.20 : 0.40;
+    return estimate.subtotal * (1 + percent);
+  }, [selectedMarkup, customMarkup, estimate.subtotal]);
+
+  const markupAmount = calculatedSuggestedAmount - estimate.subtotal;
+
   // Update final invoice amount when estimate changes
   useState(() => {
-    if (estimate.suggestedInvoiceAmount > 0 && finalInvoiceAmount === 0) {
-      setFinalInvoiceAmount(estimate.suggestedInvoiceAmount);
+    if (calculatedSuggestedAmount > 0 && finalInvoiceAmount === 0) {
+      setFinalInvoiceAmount(calculatedSuggestedAmount);
+    }
+    // Update when markup selection changes
+    if (calculatedSuggestedAmount > 0) {
+      setFinalInvoiceAmount(calculatedSuggestedAmount);
     }
   });
 
@@ -313,31 +332,132 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
               <span className="text-lg font-bold text-blue-600">{formatter.format(estimate.subtotal)}</span>
             </div>
 
-            {/* 40% Markup Suggestion */}
-            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 my-4">
-              <div className="flex items-start">
-                <i className="fas fa-lightbulb text-amber-500 mr-3 mt-1"></i>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-900 mb-2">Suggested Pricing (40% Markup)</h3>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">Base Cost:</span>
-                      <span className="font-medium">{formatter.format(estimate.subtotal)}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-gray-700">Markup (40%):</span>
-                      <span className="font-medium text-amber-600">{formatter.format(estimate.suggestedMarkup)}</span>
-                    </div>
-                    <div className="flex justify-between pt-2 border-t border-amber-200">
-                      <span className="font-semibold text-gray-900">Suggested Invoice:</span>
-                      <span className="font-bold text-amber-600">{formatter.format(estimate.suggestedInvoiceAmount)}</span>
+            {/* Markup Selection */}
+            <div className="bg-blue-50 border-2 border-blue-300 rounded-lg p-4 my-4">
+              <h3 className="font-semibold text-gray-900 mb-3 flex items-center">
+                <i className="fas fa-percentage text-blue-600 mr-2"></i>
+                Select Markup Percentage
+              </h3>
+              
+              <div className="space-y-2">
+                {/* 20% Option */}
+                <label className="flex items-center gap-3 p-3 bg-white rounded border-2 hover:border-blue-400 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="markup"
+                    value="20"
+                    checked={selectedMarkup === '20'}
+                    onChange={(e) => setSelectedMarkup(e.target.value as '20')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">20% Markup</div>
+                    <div className="text-sm text-gray-600 mt-0.5">
+                      {formatter.format(estimate.subtotal)} → {formatter.format(estimate.subtotal * 1.20)}
+                      <span className="text-green-600 ml-2 font-medium">
+                        (+{formatter.format(estimate.subtotal * 0.20)})
+                      </span>
                     </div>
                   </div>
-                  <p className="text-xs text-gray-600 mt-3">
-                    <i className="fas fa-info-circle mr-1"></i>
-                    This markup ensures profitable pricing. You can adjust the final amount below.
-                  </p>
+                </label>
+
+                {/* 40% Option */}
+                <label className="flex items-center gap-3 p-3 bg-white rounded border-2 hover:border-blue-400 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="markup"
+                    value="40"
+                    checked={selectedMarkup === '40'}
+                    onChange={(e) => setSelectedMarkup(e.target.value as '40')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">40% Markup (Recommended)</div>
+                    <div className="text-sm text-gray-600 mt-0.5">
+                      {formatter.format(estimate.subtotal)} → {formatter.format(estimate.subtotal * 1.40)}
+                      <span className="text-green-600 ml-2 font-medium">
+                        (+{formatter.format(estimate.subtotal * 0.40)})
+                      </span>
+                    </div>
+                  </div>
+                </label>
+
+                {/* Custom Option */}
+                <label className="flex items-center gap-3 p-3 bg-white rounded border-2 hover:border-blue-400 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="markup"
+                    value="custom"
+                    checked={selectedMarkup === 'custom'}
+                    onChange={(e) => setSelectedMarkup(e.target.value as 'custom')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">Custom Markup</div>
+                    <div className="flex items-center gap-2 mt-1">
+                      <input
+                        type="number"
+                        value={customMarkup}
+                        onChange={(e) => {
+                          setCustomMarkup(e.target.value);
+                          setSelectedMarkup('custom');
+                        }}
+                        placeholder="Enter %"
+                        className="w-24 px-3 py-1.5 border rounded text-sm focus:border-blue-500 focus:outline-none"
+                        min="0"
+                        step="1"
+                      />
+                      <span className="text-sm text-gray-600">%</span>
+                      {customMarkup && parseFloat(customMarkup) > 0 && (
+                        <span className="text-sm text-gray-600">
+                          → {formatter.format(estimate.subtotal * (1 + parseFloat(customMarkup) / 100))}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </label>
+
+                {/* No Markup Option */}
+                <label className="flex items-center gap-3 p-3 bg-white rounded border-2 hover:border-blue-400 cursor-pointer transition-colors">
+                  <input
+                    type="radio"
+                    name="markup"
+                    value="none"
+                    checked={selectedMarkup === 'none'}
+                    onChange={(e) => setSelectedMarkup(e.target.value as 'none')}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <div className="flex-1">
+                    <div className="font-medium text-gray-900">No Markup</div>
+                    <div className="text-sm text-gray-600 mt-0.5">
+                      Invoice at cost: {formatter.format(estimate.subtotal)}
+                    </div>
+                  </div>
+                </label>
+              </div>
+
+              {/* Calculation Summary */}
+              <div className="mt-4 p-4 bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-300 rounded-lg">
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">Base Cost:</span>
+                    <span className="font-mono font-medium">{formatter.format(estimate.subtotal)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-gray-700">
+                      Markup ({selectedMarkup === 'custom' ? (customMarkup || '0') : selectedMarkup === 'none' ? '0' : selectedMarkup}%):
+                    </span>
+                    <span className="font-mono font-medium text-green-700">+{formatter.format(markupAmount)}</span>
+                  </div>
+                  <div className="flex justify-between font-semibold border-t border-amber-400 pt-2 mt-2">
+                    <span className="text-gray-900">Suggested Invoice Total:</span>
+                    <span className="font-mono text-lg text-amber-700">{formatter.format(calculatedSuggestedAmount)}</span>
+                  </div>
                 </div>
+                <p className="text-xs text-gray-600 mt-3 flex items-start">
+                  <i className="fas fa-info-circle mr-1.5 mt-0.5"></i>
+                  <span>This markup helps cover overhead costs and ensures profitable pricing.</span>
+                </p>
               </div>
             </div>
 
