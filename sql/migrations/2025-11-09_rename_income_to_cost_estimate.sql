@@ -4,8 +4,18 @@
 -- First, drop the computed profit column since it depends on income
 ALTER TABLE jobs DROP COLUMN IF EXISTS profit;
 
--- Rename income to cost_estimate_amount
-ALTER TABLE jobs RENAME COLUMN income TO cost_estimate_amount;
+-- Check if income column exists, if so rename it, otherwise create cost_estimate_amount
+DO $$ 
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns 
+    WHERE table_name = 'jobs' AND column_name = 'income'
+  ) THEN
+    ALTER TABLE jobs RENAME COLUMN income TO cost_estimate_amount;
+  ELSE
+    ALTER TABLE jobs ADD COLUMN IF NOT EXISTS cost_estimate_amount DECIMAL(10, 2) DEFAULT 0;
+  END IF;
+END $$;
 
 -- Add new columns for invoice tracking
 ALTER TABLE jobs 
