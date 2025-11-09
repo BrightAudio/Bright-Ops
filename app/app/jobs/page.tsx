@@ -208,6 +208,13 @@ export default function JobsPage() {
                 )}
               </Link>
               <div className="flex gap-2 text-xs text-zinc-500 mt-3">
+                <Link
+                  href={`/app/jobs/${job.id}/estimate`}
+                  className="flex items-center gap-1 hover:text-purple-400 transition-colors"
+                >
+                  <i className="fas fa-file-invoice-dollar"></i>
+                  <span>Invoice</span>
+                </Link>
                 <button
                   onClick={(e) => handlePullSheetClick(e, job)}
                   disabled={creatingPullSheet === job.id}
