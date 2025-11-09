@@ -217,6 +217,11 @@ export async function createInventoryItem(item: {
   qty_in_warehouse?: number;
   quantity_on_hand?: number;
   unit_value?: number;
+  purchase_cost?: number;
+  purchase_date?: string | null;
+  useful_life_years?: number;
+  estimated_jobs_per_year?: number;
+  residual_value?: number;
 }): Promise<InventoryItem> {
   const payload: TablesInsert<"inventory_items"> = {
     barcode: item.barcode,
@@ -224,6 +229,11 @@ export async function createInventoryItem(item: {
     qty_in_warehouse: item.qty_in_warehouse ?? 0,
     quantity_on_hand: item.quantity_on_hand ?? 0,
     unit_value: item.unit_value ?? null,
+    purchase_cost: item.purchase_cost ?? null,
+    purchase_date: item.purchase_date ?? null,
+    useful_life_years: item.useful_life_years ?? null,
+    estimated_jobs_per_year: item.estimated_jobs_per_year ?? null,
+    residual_value: item.residual_value ?? null,
   };
   const { data, error } = await supabase
     .from("inventory_items")
@@ -251,6 +261,11 @@ export async function updateInventoryItem(
     qty_in_warehouse?: number;
     quantity_on_hand?: number;
     unit_value?: number;
+    purchase_cost?: number;
+    purchase_date?: string | null;
+    useful_life_years?: number;
+    estimated_jobs_per_year?: number;
+    residual_value?: number;
   }
 ): Promise<InventoryItem> {
   const { data, error } = await supabase

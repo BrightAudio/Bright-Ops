@@ -34,6 +34,14 @@ export interface Database {
           rental_cost_daily: number | null;
           rental_cost_weekly: number | null;
           rental_notes: string | null;
+          purchase_cost: number | null;
+          purchase_date: string | null;
+          useful_life_years: number | null;
+          estimated_jobs_per_year: number | null;
+          residual_value: number | null;
+          amortization_per_job: number | null;
+          total_jobs_used: number | null;
+          accumulated_amortization: number | null;
           created_at: string | null;
         };
         Insert: {
@@ -49,6 +57,11 @@ export interface Database {
           rental_cost_daily?: number | null;
           rental_cost_weekly?: number | null;
           rental_notes?: string | null;
+          purchase_cost?: number | null;
+          purchase_date?: string | null;
+          useful_life_years?: number | null;
+          estimated_jobs_per_year?: number | null;
+          residual_value?: number | null;
           created_at?: string | null;
         };
         Update: {
@@ -64,6 +77,11 @@ export interface Database {
           rental_cost_daily?: number | null;
           rental_cost_weekly?: number | null;
           rental_notes?: string | null;
+          purchase_cost?: number | null;
+          purchase_date?: string | null;
+          useful_life_years?: number | null;
+          estimated_jobs_per_year?: number | null;
+          residual_value?: number | null;
           created_at?: string | null;
         };
         Relationships: [];
