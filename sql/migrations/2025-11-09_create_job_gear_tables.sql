@@ -14,7 +14,7 @@ COMMENT ON COLUMN jobs.total_amortization IS 'Total amortization cost for all eq
 CREATE TABLE IF NOT EXISTS job_gear (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   job_id UUID NOT NULL REFERENCES jobs(id) ON DELETE CASCADE,
-  inventory_item_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
+  gear_id UUID NOT NULL REFERENCES inventory_items(id) ON DELETE RESTRICT,
   quantity INTEGER NOT NULL DEFAULT 1,
   amortization_each DECIMAL(10, 4) NOT NULL,  -- Snapshot of amortization_per_job at time of job
   amortization_total DECIMAL(10, 2) NOT NULL, -- quantity × amortization_each
@@ -22,18 +22,18 @@ CREATE TABLE IF NOT EXISTS job_gear (
   updated_at TIMESTAMPTZ DEFAULT NOW(),
   
   CONSTRAINT job_gear_quantity_positive CHECK (quantity > 0),
-  CONSTRAINT job_gear_unique_item_per_job UNIQUE (job_id, inventory_item_id)
+  CONSTRAINT job_gear_unique_item_per_job UNIQUE (job_id, gear_id)
 );
 
 -- Create indexes for performance
 CREATE INDEX IF NOT EXISTS idx_job_gear_job_id ON job_gear(job_id);
-CREATE INDEX IF NOT EXISTS idx_job_gear_inventory_item_id ON job_gear(inventory_item_id);
+CREATE INDEX IF NOT EXISTS idx_job_gear_gear_id ON job_gear(gear_id);
 CREATE INDEX IF NOT EXISTS idx_job_gear_created_at ON job_gear(created_at DESC);
 
 -- Add comments
 COMMENT ON TABLE job_gear IS 'Tracks equipment used on each job with amortization snapshots';
 COMMENT ON COLUMN job_gear.job_id IS 'Reference to the job';
-COMMENT ON COLUMN job_gear.inventory_item_id IS 'Reference to the equipment item';
+COMMENT ON COLUMN job_gear.gear_id IS 'Reference to the equipment item from inventory_items table';
 COMMENT ON COLUMN job_gear.quantity IS 'Number of units used on this job';
 COMMENT ON COLUMN job_gear.amortization_each IS 'Amortization per job at the time this job was created (snapshot for historical accuracy)';
 COMMENT ON COLUMN job_gear.amortization_total IS 'Total amortization for this equipment on this job (quantity × amortization_each)';

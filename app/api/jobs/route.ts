@@ -108,7 +108,7 @@ export async function POST(request: NextRequest) {
     // Insert job_gear rows
     const jobGearRows = gearWithAmortization.map((g: any) => ({
       job_id: jobData.id,
-      inventory_item_id: g.gear_id,
+      gear_id: g.gear_id,
       quantity: g.quantity,
       amortization_each: g.amortization_each,
       amortization_total: g.amortization_total
