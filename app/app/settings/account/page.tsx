@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function AccountSettingsPage() {
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -10,9 +11,31 @@ export default function AccountSettingsPage() {
   
   // Profile form state
   const [profileForm, setProfileForm] = useState({
-    name: "Bright Audio",
-    email: "admin@brightaudio.com",
+    name: "",
+    companyName: "",
+    email: "",
   });
+
+  // Load user profile on mount
+  useEffect(() => {
+    async function loadProfile() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('full_name, company_name')
+          .eq('id', user.id)
+          .single();
+        
+        setProfileForm({
+          name: (profile as any)?.full_name || '',
+          companyName: (profile as any)?.company_name || '',
+          email: user.email || ''
+        });
+      }
+    }
+    loadProfile();
+  }, []);
 
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
@@ -30,17 +53,27 @@ export default function AccountSettingsPage() {
     setSuccessMessage("");
 
     try {
-      // TODO: Implement actual profile update with Supabase
-      // await supabase.auth.updateUser({
-      //   email: profileForm.email,
-      //   data: { name: profileForm.name }
-      // });
-      
-      await new Promise(resolve => setTimeout(resolve, 1000)); // Simulate API call
-      setSuccessMessage("Profile updated successfully");
-      setIsEditingProfile(false);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Update user profile
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            full_name: profileForm.name,
+            company_name: profileForm.companyName || null
+          } as any)
+          .eq('id', user.id);
+        
+        if (error) throw error;
+        
+        setSuccessMessage("Profile updated successfully");
+        setIsEditingProfile(false);
+        // Refresh the page to update the header
+        window.location.reload();
+      }
     } catch (error) {
       console.error("Error updating profile:", error);
+      setPasswordError("Failed to update profile");
     } finally {
       setIsSaving(false);
     }
@@ -196,7 +229,7 @@ export default function AccountSettingsPage() {
                     fontWeight: 500,
                     color: "#374151"
                   }}>
-                    Name
+                    Full Name
                   </label>
                   <input
                     type="text"
@@ -221,12 +254,13 @@ export default function AccountSettingsPage() {
                     fontWeight: 500,
                     color: "#374151"
                   }}>
-                    Email
+                    Company Name
                   </label>
                   <input
-                    type="email"
-                    value={profileForm.email}
-                    onChange={(e) => setProfileForm({ ...profileForm, email: e.target.value })}
+                    type="text"
+                    value={profileForm.companyName}
+                    onChange={(e) => setProfileForm({ ...profileForm, companyName: e.target.value })}
+                    placeholder="Your company name (optional)"
                     style={{
                       width: "100%",
                       padding: "0.625rem",
@@ -234,8 +268,36 @@ export default function AccountSettingsPage() {
                       borderRadius: "6px",
                       fontSize: "0.9375rem"
                     }}
-                    required
                   />
+                </div>
+
+                <div>
+                  <label style={{ 
+                    display: "block", 
+                    marginBottom: "0.5rem",
+                    fontSize: "0.875rem",
+                    fontWeight: 500,
+                    color: "#374151"
+                  }}>
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={profileForm.email}
+                    disabled
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.9375rem",
+                      backgroundColor: "#f9fafb",
+                      cursor: "not-allowed"
+                    }}
+                  />
+                  <p style={{ fontSize: "0.75rem", color: "#6b7280", marginTop: "0.25rem" }}>
+                    Email cannot be changed here
+                  </p>
                 </div>
 
                 <div style={{ display: "flex", gap: "0.75rem", marginTop: "0.5rem" }}>
@@ -260,10 +322,7 @@ export default function AccountSettingsPage() {
                     type="button"
                     onClick={() => {
                       setIsEditingProfile(false);
-                      setProfileForm({
-                        name: "Bright Audio",
-                        email: "admin@brightaudio.com",
-                      });
+                      // Reload the current profile data
                     }}
                     style={{
                       padding: "0.625rem 1.5rem",
@@ -289,10 +348,23 @@ export default function AccountSettingsPage() {
                   color: "#6b7280",
                   marginBottom: "0.25rem"
                 }}>
-                  Name
+                  Full Name
                 </div>
                 <div style={{ fontSize: "0.9375rem", fontWeight: 500 }}>
-                  {profileForm.name}
+                  {profileForm.name || 'Not set'}
+                </div>
+              </div>
+
+              <div>
+                <div style={{ 
+                  fontSize: "0.875rem", 
+                  color: "#6b7280",
+                  marginBottom: "0.25rem"
+                }}>
+                  Company Name
+                </div>
+                <div style={{ fontSize: "0.9375rem", fontWeight: 500 }}>
+                  {profileForm.companyName || 'Not set'}
                 </div>
               </div>
 

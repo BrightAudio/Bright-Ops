@@ -221,7 +221,7 @@ export default function PullSheetsClient({
         <div>
           <h1 className="text-3xl font-bold">Pull Sheets</h1>
           <p className="text-gray-600 text-sm mt-1 max-w-2xl">
-            Create and manage Flex-style pull sheets for jobs. Generate lists from confirmed work or build ad-hoc sheets for warehouse picks.
+            Create and manage pull sheets for jobs. Generate lists from confirmed work or build ad-hoc sheets for warehouse picks.
           </p>
         </div>
         {canCreate ? (
