@@ -24,11 +24,11 @@ export default function OpenInvoices() {
     async function fetchInvoiceData() {
       const supabase = supabaseBrowser();
 
-      // Fetch all jobs with income
+      // Fetch all jobs with cost estimate
       const { data: jobsData } = await supabase
         .from("jobs")
         .select("*")
-        .gt("income", 0);
+        .gt("cost_estimate_amount", 0);
 
       // Fetch all invoices
       const { data: invoicesData } = await supabase
@@ -63,8 +63,8 @@ export default function OpenInvoices() {
       // Process jobs without invoices
       const jobsWithInvoices = new Set(invoices.map(inv => inv.job_id));
       jobs.forEach(job => {
-        if (!jobsWithInvoices.has(job.id) && job.income) {
-          yetToInvoice += job.income;
+        if (!jobsWithInvoices.has(job.id) && job.cost_estimate_amount) {
+          yetToInvoice += job.cost_estimate_amount;
         }
       });
 

@@ -31,6 +31,9 @@ export interface Database {
           qty_in_warehouse: number | null;
           quantity_on_hand: number | null;
           unit_value: number | null;
+          rental_cost_daily: number | null;
+          rental_cost_weekly: number | null;
+          rental_notes: string | null;
           created_at: string | null;
         };
         Insert: {
@@ -43,6 +46,9 @@ export interface Database {
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
           unit_value?: number | null;
+          rental_cost_daily?: number | null;
+          rental_cost_weekly?: number | null;
+          rental_notes?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -55,6 +61,9 @@ export interface Database {
           qty_in_warehouse?: number | null;
           quantity_on_hand?: number | null;
           unit_value?: number | null;
+          rental_cost_daily?: number | null;
+          rental_cost_weekly?: number | null;
+          rental_notes?: string | null;
           created_at?: string | null;
         };
         Relationships: [];
@@ -128,9 +137,12 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
-          income?: number | null;
+          cost_estimate_amount?: number | null;
           labor_cost?: number | null;
           profit?: number | null;
+          suggested_invoice_amount?: number | null;
+          final_invoice_amount?: number | null;
+          invoice_status?: string | null;
           event_date?: string | null;
           load_in_date?: string | null;
           load_out_date?: string | null;
@@ -143,8 +155,10 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
-          income?: number | null;
+          cost_estimate_amount?: number | null;
           labor_cost?: number | null;
+          final_invoice_amount?: number | null;
+          invoice_status?: string | null;
           event_date?: string | null;
           load_in_date?: string | null;
           load_out_date?: string | null;
@@ -157,14 +171,75 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
-          income?: number | null;
+          cost_estimate_amount?: number | null;
           labor_cost?: number | null;
+          final_invoice_amount?: number | null;
+          invoice_status?: string | null;
           event_date?: string | null;
           load_in_date?: string | null;
           load_out_date?: string | null;
           prep_start_date?: string | null;
           created_at?: string | null;
         };
+      };
+      /**
+       * Cost estimate line items for itemized job quotes and invoices
+       */
+      cost_estimate_line_items: {
+        Row: {
+          id: string;
+          job_id: string | null;
+          item_type: string;
+          item_name: string;
+          description: string | null;
+          quantity: number | null;
+          unit_cost: number | null;
+          total_cost: number | null;
+          rental_period: string | null;
+          role: string | null;
+          is_editable: boolean | null;
+          sort_order: number | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          job_id?: string | null;
+          item_type: string;
+          item_name: string;
+          description?: string | null;
+          quantity?: number | null;
+          unit_cost?: number | null;
+          rental_period?: string | null;
+          role?: string | null;
+          is_editable?: boolean | null;
+          sort_order?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          job_id?: string | null;
+          item_type?: string;
+          item_name?: string;
+          description?: string | null;
+          quantity?: number | null;
+          unit_cost?: number | null;
+          rental_period?: string | null;
+          role?: string | null;
+          is_editable?: boolean | null;
+          sort_order?: number | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "cost_estimate_line_items_job_id_fkey";
+            columns: ["job_id"];
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       /**
        * Clients represent companies or individuals that book jobs. Only the id and name are typed; additional columns default to Json.
