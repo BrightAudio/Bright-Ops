@@ -128,6 +128,13 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
+          income?: number | null;
+          labor_cost?: number | null;
+          profit?: number | null;
+          event_date?: string | null;
+          load_in_date?: string | null;
+          load_out_date?: string | null;
+          prep_start_date?: string | null;
           created_at?: string | null;
         };
         Insert: {
@@ -136,6 +143,12 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
+          income?: number | null;
+          labor_cost?: number | null;
+          event_date?: string | null;
+          load_in_date?: string | null;
+          load_out_date?: string | null;
+          prep_start_date?: string | null;
           created_at?: string | null;
         };
         Update: {
@@ -144,6 +157,12 @@ export interface Database {
           title?: string;
           status?: string;
           client?: string;
+          income?: number | null;
+          labor_cost?: number | null;
+          event_date?: string | null;
+          load_in_date?: string | null;
+          load_out_date?: string | null;
+          prep_start_date?: string | null;
           created_at?: string | null;
         };
       };
@@ -187,6 +206,107 @@ export interface Database {
           created_at?: string | null;
         };
         Relationships: [];
+      };
+      /**
+       * Invoices track payment status and revenue for jobs
+       */
+      invoices: {
+        Row: {
+          id: string;
+          job_id: string | null;
+          invoice_number: string | null;
+          amount: number;
+          status: string;
+          issue_date: string | null;
+          due_date: string | null;
+          paid_date: string | null;
+          notes: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          job_id?: string | null;
+          invoice_number?: string | null;
+          amount?: number;
+          status?: string;
+          issue_date?: string | null;
+          due_date?: string | null;
+          paid_date?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          job_id?: string | null;
+          invoice_number?: string | null;
+          amount?: number;
+          status?: string;
+          issue_date?: string | null;
+          due_date?: string | null;
+          paid_date?: string | null;
+          notes?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "invoices_job_id_fkey";
+            columns: ["job_id"];
+            referencedRelation: "jobs";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+      /**
+       * Tasks for user to-do items and task management
+       */
+      tasks: {
+        Row: {
+          id: string;
+          user_id: string | null;
+          title: string;
+          description: string | null;
+          status: string;
+          due_date: string | null;
+          assignees: string | null;
+          completed_at: string | null;
+          created_at: string | null;
+          updated_at: string | null;
+        };
+        Insert: {
+          id?: string;
+          user_id?: string | null;
+          title: string;
+          description?: string | null;
+          status?: string;
+          due_date?: string | null;
+          assignees?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Update: {
+          id?: string;
+          user_id?: string | null;
+          title?: string;
+          description?: string | null;
+          status?: string;
+          due_date?: string | null;
+          assignees?: string | null;
+          completed_at?: string | null;
+          created_at?: string | null;
+          updated_at?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "tasks_user_id_fkey";
+            columns: ["user_id"];
+            referencedRelation: "users";
+            referencedColumns: ["id"];
+          }
+        ];
       };
       home_base_members: {
         Row: {
