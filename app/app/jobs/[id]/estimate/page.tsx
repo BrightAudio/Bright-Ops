@@ -1,20 +1,21 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
 import { useCostEstimate } from "@/lib/hooks/useCostEstimate";
 import { generateInvoicePDF } from "@/lib/utils/generateInvoicePDF";
 import { supabase } from "@/lib/supabaseClient";
 
 interface CostEstimatePageProps {
-  params: {
+  params: Promise<{
     id: string;
-  };
+  }>;
 }
 
 export default function CostEstimatePage({ params }: CostEstimatePageProps) {
+  const resolvedParams = use(params);
   const router = useRouter();
-  const { loading, estimate, updateLineItem, addLineItem, deleteLineItem, saveLineItems } = useCostEstimate(params.id);
+  const { loading, estimate, updateLineItem, addLineItem, deleteLineItem, saveLineItems } = useCostEstimate(resolvedParams.id);
   const [editingItem, setEditingItem] = useState<string | null>(null);
   const [finalInvoiceAmount, setFinalInvoiceAmount] = useState<number>(0);
   const [showAddLabor, setShowAddLabor] = useState(false);
@@ -50,7 +51,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
       const { data: job } = await supabase
         .from('jobs')
         .select('*, clients(*)')
-        .eq('id', params.id)
+        .eq('id', resolvedParams.id)
         .single();
       
       if (job) {
@@ -62,7 +63,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
       }
     }
     fetchJobData();
-  }, [params.id]);
+  }, [resolvedParams.id]);
 
   // Update final invoice amount when estimate changes
   useEffect(() => {
@@ -96,7 +97,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
     // Prepare invoice data
     const invoiceData = {
       jobName: jobData.job_name || 'Untitled Job',
-      jobId: params.id,
+      jobId: resolvedParams.id,
       clientName: clientData?.client_name || undefined,
       invoiceNumber: `INV-${new Date().getFullYear()}-${String(Date.now()).slice(-6)}`,
       invoiceDate: new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }),
@@ -115,7 +116,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
     // Optional: Save invoice record to database
     try {
       await supabase.from('invoices').insert({
-        job_id: params.id,
+        job_id: resolvedParams.id,
         invoice_number: invoiceData.invoiceNumber,
         amount: finalInvoiceAmount,
         status: 'sent',
@@ -142,11 +143,11 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-5xl mx-auto">
         {/* Header */}
-        <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
+          <div className="bg-white rounded-lg shadow-sm p-6 mb-6">
           <div className="flex items-center justify-between mb-4">
             <h1 className="text-2xl font-bold text-gray-900">Cost Estimate & Invoice</h1>
             <button
-              onClick={() => router.push(`/app/jobs/${params.id}`)}
+              onClick={() => router.push(`/app/jobs/${resolvedParams.id}`)}
               className="text-gray-600 hover:text-gray-900"
             >
               <i className="fas fa-times"></i>
@@ -553,8 +554,8 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
                 Generate PDF Invoice
               </button>
               <button
-                onClick={() => router.push(`/app/jobs/${params.id}`)}
-                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
+                onClick={() => router.push(`/app/jobs/${resolvedParams.id}`)}
+                className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 font-semibold"
               >
                 Back to Job
               </button>
