@@ -1,8 +1,8 @@
--- Add amortization tracking fields to serials (individual inventory items)
+-- Add amortization tracking fields to inventory_items
 -- Run this in Supabase SQL Editor
 
--- Add amortization fields to serials table
-ALTER TABLE serials
+-- Add amortization fields
+ALTER TABLE inventory_items
 ADD COLUMN IF NOT EXISTS purchase_cost DECIMAL(10, 2) DEFAULT 0,
 ADD COLUMN IF NOT EXISTS purchase_date DATE,
 ADD COLUMN IF NOT EXISTS useful_life_years DECIMAL(4, 1) DEFAULT 5.0,
@@ -17,20 +17,20 @@ ADD COLUMN IF NOT EXISTS amortization_per_job DECIMAL(10, 4) GENERATED ALWAYS AS
 ) STORED;
 
 -- Add depreciation tracking
-ALTER TABLE serials
+ALTER TABLE inventory_items
 ADD COLUMN IF NOT EXISTS total_jobs_used INTEGER DEFAULT 0,
 ADD COLUMN IF NOT EXISTS accumulated_amortization DECIMAL(10, 2) DEFAULT 0;
 
 -- Create index for amortization queries
-CREATE INDEX IF NOT EXISTS idx_serials_amortization ON serials(amortization_per_job);
-CREATE INDEX IF NOT EXISTS idx_serials_purchase_date ON serials(purchase_date);
+CREATE INDEX IF NOT EXISTS idx_inventory_amortization ON inventory_items(amortization_per_job);
+CREATE INDEX IF NOT EXISTS idx_inventory_purchase_date ON inventory_items(purchase_date);
 
 -- Comments for documentation
-COMMENT ON COLUMN serials.purchase_cost IS 'Original purchase price of this specific unit';
-COMMENT ON COLUMN serials.purchase_date IS 'Date this unit was purchased';
-COMMENT ON COLUMN serials.useful_life_years IS 'Expected useful life in years';
-COMMENT ON COLUMN serials.estimated_jobs_per_year IS 'Estimated number of jobs this unit is used on per year';
-COMMENT ON COLUMN serials.residual_value IS 'Expected resale/scrap value at end of useful life';
-COMMENT ON COLUMN serials.amortization_per_job IS 'Auto-calculated: cost recovery per job based on depreciation';
-COMMENT ON COLUMN serials.total_jobs_used IS 'Total number of jobs this unit has been used on';
-COMMENT ON COLUMN serials.accumulated_amortization IS 'Total amortization recovered so far from this unit';
+COMMENT ON COLUMN inventory_items.purchase_cost IS 'Purchase cost per unit (for amortization calculation)';
+COMMENT ON COLUMN inventory_items.purchase_date IS 'Date purchased';
+COMMENT ON COLUMN inventory_items.useful_life_years IS 'Expected useful life in years';
+COMMENT ON COLUMN inventory_items.estimated_jobs_per_year IS 'Estimated number of jobs per year';
+COMMENT ON COLUMN inventory_items.residual_value IS 'Expected resale/scrap value at end of useful life';
+COMMENT ON COLUMN inventory_items.amortization_per_job IS 'Auto-calculated: cost recovery per job per unit';
+COMMENT ON COLUMN inventory_items.total_jobs_used IS 'Total number of jobs this item has been used on';
+COMMENT ON COLUMN inventory_items.accumulated_amortization IS 'Total amortization recovered so far';

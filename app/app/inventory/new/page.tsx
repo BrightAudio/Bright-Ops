@@ -20,6 +20,11 @@ export default function NewInventoryItemPage() {
 		qty_in_warehouse: 0,
 		quantity_on_hand: 0,
 		unit_value: 0,
+		purchase_cost: 0,
+		purchase_date: "",
+		useful_life_years: 5.0,
+		estimated_jobs_per_year: 50,
+		residual_value: 0,
 	});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -39,6 +44,11 @@ export default function NewInventoryItemPage() {
 				qty_in_warehouse: form.qty_in_warehouse,
 				quantity_on_hand: form.quantity_on_hand,
 				unit_value: form.unit_value,
+				purchase_cost: form.purchase_cost,
+				purchase_date: form.purchase_date || null,
+				useful_life_years: form.useful_life_years,
+				estimated_jobs_per_year: form.estimated_jobs_per_year,
+				residual_value: form.residual_value,
 			});
 			router.push("/app/inventory");
 		} catch (err) {
@@ -121,6 +131,113 @@ export default function NewInventoryItemPage() {
 						placeholder="0.00"
 					/>
 				</div>
+
+				{/* Amortization Section */}
+				<div className="border-t border-zinc-700 pt-4 mt-4">
+					<h3 className="text-lg font-semibold text-white mb-3">Amortization Tracking</h3>
+					<p className="text-sm text-zinc-400 mb-4">
+						Track equipment depreciation and cost recovery per job
+					</p>
+
+					<div className="grid grid-cols-2 gap-4">
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Purchase Cost ($)
+							</label>
+							<input
+								type="number"
+								min={0}
+								step="0.01"
+								value={form.purchase_cost}
+								onChange={(e) =>
+									handleChange("purchase_cost", Number(e.target.value))
+								}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								placeholder="0.00"
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Purchase Date
+							</label>
+							<input
+								type="date"
+								value={form.purchase_date}
+								onChange={(e) =>
+									handleChange("purchase_date", e.target.value)
+								}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							/>
+						</div>
+					</div>
+
+					<div className="grid grid-cols-2 gap-4 mt-4">
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Useful Life (years)
+							</label>
+							<input
+								type="number"
+								min={0.1}
+								step="0.1"
+								value={form.useful_life_years}
+								onChange={(e) =>
+									handleChange("useful_life_years", Number(e.target.value))
+								}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								placeholder="5.0"
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Jobs/Year
+							</label>
+							<input
+								type="number"
+								min={1}
+								value={form.estimated_jobs_per_year}
+								onChange={(e) =>
+									handleChange("estimated_jobs_per_year", Number(e.target.value))
+								}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								placeholder="50"
+							/>
+						</div>
+					</div>
+
+					<div className="mt-4">
+						<label className="block text-sm font-medium text-zinc-200">
+							Residual Value ($)
+						</label>
+						<input
+							type="number"
+							min={0}
+							step="0.01"
+							value={form.residual_value}
+							onChange={(e) =>
+								handleChange("residual_value", Number(e.target.value))
+							}
+							className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							placeholder="0.00"
+						/>
+						<p className="text-xs text-zinc-500 mt-1">
+							Expected value at end of useful life
+						</p>
+					</div>
+
+					{form.purchase_cost > 0 && form.useful_life_years > 0 && form.estimated_jobs_per_year > 0 && (
+						<div className="mt-4 p-3 bg-blue-900/20 border border-blue-700 rounded-md">
+							<p className="text-sm text-blue-300">
+								<strong>Amortization per job:</strong> $
+								{((form.purchase_cost - form.residual_value) / (form.useful_life_years * form.estimated_jobs_per_year)).toFixed(4)}
+							</p>
+							<p className="text-xs text-blue-400 mt-1">
+								Depreciation cost recovered per job
+							</p>
+						</div>
+					)}
+				</div>
+
 				{error && <p className="text-red-500">{error}</p>}
 				<div className="flex justify-end space-x-2">
 					<button
