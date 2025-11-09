@@ -8,6 +8,7 @@ import {
   FaUsers,
   FaCalendarAlt,
   FaHome,
+  FaFileInvoiceDollar,
 } from 'react-icons/fa';
 
 type Item = {
@@ -19,8 +20,10 @@ type Item = {
 
 const items: Item[] = [
   { label: 'Home Base', href: '/app', icon: <FaHome /> },
+  { label: 'Jobs', href: '/app/jobs', icon: <FaCalendarAlt /> },
   { label: 'Warehouse', href: '/app/warehouse', icon: <FaBoxes /> },
   { label: 'Pull Sheets', href: '/app/warehouse/pull-sheets', icon: <FaClipboardList /> },
+  { label: 'Invoices', href: '/app/invoices', icon: <FaFileInvoiceDollar /> },
   { label: 'Crew Planner', href: '/app/crew-planner', icon: <FaCalendarAlt /> },
   { label: 'Team', href: '/app/settings/home-base', icon: <FaUsers /> },
 ];
