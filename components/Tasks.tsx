@@ -12,6 +12,7 @@ export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTaskTitle, setNewTaskTitle] = useState("");
+  const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
 
   useEffect(() => {
@@ -72,11 +73,13 @@ export default function Tasks() {
       .insert({
         user_id: user.id,
         title: newTaskTitle,
-        status: "pending"
+        status: "pending",
+        due_date: newTaskDueDate || null
       });
 
     if (!error) {
       setNewTaskTitle("");
+      setNewTaskDueDate("");
       setShowAddTask(false);
       fetchTasks();
     }
@@ -170,11 +173,19 @@ export default function Tasks() {
               } else if (e.key === "Escape") {
                 setShowAddTask(false);
                 setNewTaskTitle("");
+                setNewTaskDueDate("");
               }
             }}
             placeholder="Enter task title..."
             className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
             autoFocus
+          />
+          <input
+            type="date"
+            value={newTaskDueDate}
+            onChange={(e) => setNewTaskDueDate(e.target.value)}
+            placeholder="Due date (optional)"
+            className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
           />
           <div className="flex gap-2">
             <button
@@ -187,6 +198,7 @@ export default function Tasks() {
               onClick={() => {
                 setShowAddTask(false);
                 setNewTaskTitle("");
+                setNewTaskDueDate("");
               }}
               className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-sm"
             >
