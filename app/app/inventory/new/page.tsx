@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createInventoryItem } from "@/lib/hooks/useInventory";
+import { generateBarcode } from "@/lib/utils/barcodeGenerator";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Form for creating a new inventory item
@@ -28,10 +29,30 @@ export default function NewInventoryItemPage() {
 	});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
+	const [generatingBarcode, setGeneratingBarcode] = useState(false);
 
 	const handleChange = (field: keyof typeof form, value: string | number) => {
 		setForm((prev) => ({ ...prev, [field]: value }));
 	};
+
+	async function handleGenerateBarcode() {
+		if (!form.name.trim()) {
+			setError("Please enter an item name first");
+			return;
+		}
+		
+		setGeneratingBarcode(true);
+		setError(null);
+		
+		try {
+			const barcode = await generateBarcode(form.name);
+			setForm((prev) => ({ ...prev, barcode }));
+		} catch (err) {
+			setError(err instanceof Error ? err.message : "Failed to generate barcode");
+		} finally {
+			setGeneratingBarcode(false);
+		}
+	}
 
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
@@ -77,13 +98,27 @@ export default function NewInventoryItemPage() {
 					<label className="block text-sm font-medium text-zinc-200">
 						Barcode
 					</label>
-					<input
-						type="text"
-						value={form.barcode}
-						onChange={(e) => handleChange("barcode", e.target.value)}
-						className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-						required
-					/>
+					<div className="flex gap-2">
+						<input
+							type="text"
+							value={form.barcode}
+							onChange={(e) => handleChange("barcode", e.target.value)}
+							className="flex-1 px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							placeholder="e.g., X32-001"
+							required
+						/>
+						<button
+							type="button"
+							onClick={handleGenerateBarcode}
+							disabled={generatingBarcode || !form.name.trim()}
+							className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+						>
+							{generatingBarcode ? "Generating..." : "Generate"}
+						</button>
+					</div>
+					<p className="text-xs text-zinc-500 mt-1">
+						Auto-generates unique barcode like PREFIX-001 based on item name
+					</p>
 				</div>
 				<div className="grid grid-cols-2 gap-4">
 					<div>

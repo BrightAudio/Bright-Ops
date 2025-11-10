@@ -77,9 +77,16 @@ export async function POST(req: Request): Promise<NextResponse<SuccessResponse |
     const { data, error } = await supabase.rpc('scan_direction', params);
     
     if (error) {
+      // Check if it's a duplicate scan error
+      const isDuplicateScan = error.message?.includes('Duplicate scan') || 
+                              error.message?.includes('already scanned');
+      
       return NextResponse.json(
-        { error: error.message },
-        { status: 400 }
+        { 
+          error: error.message,
+          duplicate: isDuplicateScan 
+        },
+        { status: isDuplicateScan ? 409 : 400 } // 409 = Conflict for duplicates
       );
     }
 
