@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createInventoryItem } from "@/lib/hooks/useInventory";
 import { generateBarcode } from "@/lib/utils/barcodeGenerator";
+import { PrintBarcodeButton } from "@/components/PrintBarcodeButton";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Form for creating a new inventory item
@@ -115,6 +116,10 @@ export default function NewInventoryItemPage() {
 						>
 							{generatingBarcode ? "Generating..." : "Generate"}
 						</button>
+						<PrintBarcodeButton
+							barcode={form.barcode}
+							itemName={form.name}
+						/>
 					</div>
 					<p className="text-xs text-zinc-500 mt-1">
 						Auto-generates unique barcode like PREFIX-001 based on item name

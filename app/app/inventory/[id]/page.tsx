@@ -8,6 +8,7 @@ import {
 	deleteInventoryItem,
 } from "@/lib/hooks/useInventory";
 import { generateBarcode } from "@/lib/utils/barcodeGenerator";
+import { PrintBarcodeButton } from "@/components/PrintBarcodeButton";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Edit inventory item page
@@ -174,6 +175,10 @@ export default function EditInventoryItemPage() {
 						>
 							{generatingBarcode ? "Generating..." : "Generate"}
 						</button>
+						<PrintBarcodeButton
+							barcode={form.barcode}
+							itemName={form.name}
+						/>
 					</div>
 					<p className="text-xs text-zinc-500 mt-1">
 						Auto-generates unique barcode like PREFIX-001 based on item name
