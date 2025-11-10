@@ -61,7 +61,7 @@ export async function getNextSerial(prefix: string): Promise<string> {
   
   // Extract serial numbers and find the highest
   const serials = items
-    .map(item => {
+    .map((item: any) => {
       const parts = item.barcode?.split('-');
       const serial = parts?.[parts.length - 1]; // Last part is the serial
       return parseInt(serial || '0', 10);
