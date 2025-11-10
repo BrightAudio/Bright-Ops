@@ -261,78 +261,90 @@ export default function DashboardLayout({
                 </div>
 
                 <div>
-                  {/* Sample notifications */}
-                  <div style={{
-                    padding: '0.75rem 1rem',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  {/* Functional notifications */}
+                  <Link
+                    href="/app/warehouse"
+                    onClick={() => setNotificationsOpen(false)}
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
-                      <div style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        backgroundColor: '#137CFB',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <i className="fas fa-clipboard-list" style={{ fontSize: '0.875rem' }}></i>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                          Pull Sheet Ready
+                    <div style={{
+                      padding: '0.75rem 1rem',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: '#137CFB',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <i className="fas fa-clipboard-list" style={{ fontSize: '0.875rem' }}></i>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                          Pull sheet PS-1003 is ready for picking
-                        </div>
-                        <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
-                          2 hours ago
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                            Pull Sheet Ready
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                            Pull sheet PS-1003 is ready for picking
+                          </div>
+                          <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
+                            2 hours ago
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
-                  <div style={{
-                    padding: '0.75rem 1rem',
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                    cursor: 'pointer',
-                    transition: 'background 0.15s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                  onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  <Link
+                    href="/app/jobs"
+                    onClick={() => setNotificationsOpen(false)}
+                    style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
-                      <div style={{
-                        width: '36px',
-                        height: '36px',
-                        borderRadius: '50%',
-                        backgroundColor: '#10B981',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0
-                      }}>
-                        <i className="fas fa-check" style={{ fontSize: '0.875rem' }}></i>
-                      </div>
-                      <div style={{ flex: 1 }}>
-                        <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                          Job Completed
+                    <div style={{
+                      padding: '0.75rem 1rem',
+                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                      cursor: 'pointer',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
+                        <div style={{
+                          width: '36px',
+                          height: '36px',
+                          borderRadius: '50%',
+                          backgroundColor: '#10B981',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0
+                        }}>
+                          <i className="fas fa-check" style={{ fontSize: '0.875rem' }}></i>
                         </div>
-                        <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                          Bob Evans event has been marked as complete
-                        </div>
-                        <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
-                          5 hours ago
+                        <div style={{ flex: 1 }}>
+                          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                            Job Completed
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                            Bob Evans event has been marked as complete
+                          </div>
+                          <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
+                            5 hours ago
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
+                  </Link>
 
                   <div style={{
                     padding: '1rem',
