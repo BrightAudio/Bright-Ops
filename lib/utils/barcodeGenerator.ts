@@ -1,14 +1,16 @@
 /**
  * Barcode Generation Utilities
- * 
+ *
  * Generates unique barcodes for inventory items using a prefix (item type)
  * and a 3-digit serial number to differentiate physical units.
- * 
+ *
  * Format: PREFIX-XXX
  * Example: X32-001, X32-002, SM58-001, SM58-023
  */
 
 import { supabaseBrowser } from '@/lib/supabaseClient';
+import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 
 /**
  * Generate a barcode prefix from item name
@@ -157,4 +159,116 @@ export function getBarcodeSerial(barcode: string): string {
  */
 export function isSameItemType(barcode1: string, barcode2: string): boolean {
   return getBarcodePrefix(barcode1) === getBarcodePrefix(barcode2);
+}
+
+/**
+ * Generate a barcode image as a data URL
+ *
+ * @param barcode - The barcode text to encode
+ * @param options - Options for barcode generation
+ * @returns Promise resolving to data URL of the barcode image
+ */
+export async function generateBarcodeImage(
+  barcode: string,
+  options: {
+    format?: 'CODE128' | 'CODE39' | 'EAN13' | 'UPC';
+    width?: number;
+    height?: number;
+    displayValue?: boolean;
+  } = {}
+): Promise<string> {
+  const {
+    format = 'CODE128',
+    width = 2,
+    height = 100,
+    displayValue = true
+  } = options;
+
+  return new Promise((resolve, reject) => {
+    try {
+      // Create a canvas element
+      const canvas = document.createElement('canvas');
+
+      // Generate barcode on canvas
+      JsBarcode(canvas, barcode, {
+        format,
+        width,
+        height,
+        displayValue,
+        margin: 10,
+        background: '#ffffff',
+        lineColor: '#000000',
+        fontSize: 20
+      });
+
+      // Convert to data URL
+      const dataUrl = canvas.toDataURL('image/png');
+      resolve(dataUrl);
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * Generate a QR code image as a data URL
+ *
+ * @param text - The text to encode in the QR code
+ * @param options - Options for QR code generation
+ * @returns Promise resolving to data URL of the QR code image
+ */
+export async function generateQRCodeImage(
+  text: string,
+  options: {
+    width?: number;
+    margin?: number;
+    color?: {
+      dark?: string;
+      light?: string;
+    };
+    errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
+  } = {}
+): Promise<string> {
+  const {
+    width = 256,
+    margin = 4,
+    color = { dark: '#000000', light: '#FFFFFF' },
+    errorCorrectionLevel = 'M'
+  } = options;
+
+  return new Promise((resolve, reject) => {
+    QRCode.toDataURL(text, {
+      width,
+      margin,
+      color,
+      errorCorrectionLevel
+    }, (error, url) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(url);
+      }
+    });
+  });
+}
+
+/**
+ * Generate both barcode and QR code images for a given barcode text
+ *
+ * @param barcode - The barcode text
+ * @returns Promise resolving to object with both image data URLs
+ */
+export async function generateBarcodeAndQRImages(barcode: string): Promise<{
+  barcodeImage: string;
+  qrCodeImage: string;
+}> {
+  const [barcodeImage, qrCodeImage] = await Promise.all([
+    generateBarcodeImage(barcode),
+    generateQRCodeImage(barcode)
+  ]);
+
+  return {
+    barcodeImage,
+    qrCodeImage
+  };
 }

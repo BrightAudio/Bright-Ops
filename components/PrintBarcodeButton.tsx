@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   printBarcodeLabel,
   getPrinterCapabilities,
@@ -8,6 +8,7 @@ import {
   type PrinterType,
   type LabelConfig,
 } from "@/lib/utils/labelPrinter";
+import { generateBarcodeAndQRImages } from "@/lib/utils/barcodeGenerator";
 
 interface PrintBarcodeButtonProps {
   barcode: string;
@@ -25,8 +26,33 @@ export function PrintBarcodeButton({
   const [printing, setPrinting] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [barcodeImage, setBarcodeImage] = useState<string>("");
+  const [qrCodeImage, setQrCodeImage] = useState<string>("");
+  const [loadingImages, setLoadingImages] = useState(false);
 
   const capabilities = getPrinterCapabilities();
+
+  // Generate barcode and QR code images when barcode changes
+  useEffect(() => {
+    if (barcode) {
+      setLoadingImages(true);
+      generateBarcodeAndQRImages(barcode)
+        .then(({ barcodeImage: bcImg, qrCodeImage: qrImg }) => {
+          setBarcodeImage(bcImg);
+          setQrCodeImage(qrImg);
+        })
+        .catch((err) => {
+          console.error("Failed to generate barcode images:", err);
+          setError("Failed to generate barcode images");
+        })
+        .finally(() => {
+          setLoadingImages(false);
+        });
+    } else {
+      setBarcodeImage("");
+      setQrCodeImage("");
+    }
+  }, [barcode]);
 
   async function handlePrint(
     method: "browser" | "bluetooth" | "usb",
@@ -85,7 +111,39 @@ export function PrintBarcodeButton({
 
       {/* Dropdown Menu */}
       {showOptions && !printing && (
-        <div className="absolute right-0 mt-2 w-64 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+        <div className="absolute right-0 mt-2 w-80 bg-zinc-800 border border-zinc-700 rounded-md shadow-lg z-50">
+          {/* Barcode Preview */}
+          <div className="p-4 border-b border-zinc-700">
+            <div className="text-xs text-zinc-400 font-semibold mb-2">
+              Label Preview
+            </div>
+            <div className="bg-white p-3 rounded text-center">
+              {loadingImages ? (
+                <div className="text-gray-500 text-sm">Generating barcode...</div>
+              ) : barcodeImage && qrCodeImage ? (
+                <div className="flex flex-col items-center gap-2">
+                  <div className="text-sm font-semibold text-gray-800">{itemName}</div>
+                  <img
+                    src={barcodeImage}
+                    alt={`Barcode ${barcode}`}
+                    className="max-w-full h-12 object-contain"
+                  />
+                  <img
+                    src={qrCodeImage}
+                    alt={`QR Code ${barcode}`}
+                    className="w-16 h-16 object-contain"
+                  />
+                  <div className="text-xs font-mono text-gray-600">{barcode}</div>
+                  {additionalInfo && (
+                    <div className="text-xs text-gray-500">{additionalInfo}</div>
+                  )}
+                </div>
+              ) : (
+                <div className="text-gray-500 text-sm">No barcode available</div>
+              )}
+            </div>
+          </div>
+
           <div className="p-2">
             <div className="text-xs text-zinc-400 font-semibold mb-2 px-2">
               Select Print Method

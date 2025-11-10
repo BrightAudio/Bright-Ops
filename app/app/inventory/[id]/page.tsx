@@ -9,6 +9,7 @@ import {
 } from "@/lib/hooks/useInventory";
 import { generateBarcode } from "@/lib/utils/barcodeGenerator";
 import { PrintBarcodeButton } from "@/components/PrintBarcodeButton";
+import { BarcodePreview } from "@/components/BarcodePreview";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 // Edit inventory item page
@@ -184,6 +185,18 @@ export default function EditInventoryItemPage() {
 						Auto-generates unique barcode like PREFIX-001 based on item name
 					</p>
 				</div>
+
+				{/* Barcode Preview */}
+				{form.barcode && (
+					<div>
+						<label className="block text-sm font-medium text-zinc-200 mb-2">
+							Barcode Preview
+						</label>
+						<div className="bg-white p-4 rounded-md border border-zinc-700">
+							<BarcodePreview barcode={form.barcode} itemName={form.name} />
+						</div>
+					</div>
+				)}
 				<div className="grid grid-cols-2 gap-4">
 					<div>
 						<label className="block text-sm font-medium text-zinc-200">

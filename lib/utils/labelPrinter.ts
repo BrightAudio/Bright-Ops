@@ -77,16 +77,23 @@ export function generateESCP(config: LabelConfig): string {
  * Print barcode label using browser's native print dialog
  * Works with any printer but requires manual printer selection
  */
-export function printLabelBrowser(config: LabelConfig): void {
+export async function printLabelBrowser(config: LabelConfig): Promise<void> {
   const { barcode, itemName, additionalInfo, width, height } = config;
-  
+
+  // Generate barcode and QR code images
+  const { generateBarcodeImage, generateQRCodeImage } = await import('@/lib/utils/barcodeGenerator');
+  const [barcodeImage, qrCodeImage] = await Promise.all([
+    generateBarcodeImage(barcode),
+    generateQRCodeImage(barcode)
+  ]);
+
   // Create a new window with printable content
   const printWindow = window.open('', '_blank', `width=${width * 4},height=${height * 4}`);
-  
+
   if (!printWindow) {
     throw new Error('Popup blocked. Please allow popups for label printing.');
   }
-  
+
   // Generate HTML content for printing
   const htmlContent = `
 <!DOCTYPE html>
@@ -99,10 +106,10 @@ export function printLabelBrowser(config: LabelConfig): void {
       size: ${width}mm ${height}mm;
       margin: 0;
     }
-    
+
     body {
       margin: 0;
-      padding: 10mm;
+      padding: 5mm;
       font-family: Arial, sans-serif;
       display: flex;
       flex-direction: column;
@@ -110,34 +117,50 @@ export function printLabelBrowser(config: LabelConfig): void {
       justify-content: center;
       height: ${height}mm;
       width: ${width}mm;
+      box-sizing: border-box;
     }
-    
+
     .item-name {
-      font-size: 14pt;
-      font-weight: bold;
-      margin-bottom: 5mm;
-      text-align: center;
-    }
-    
-    .barcode {
-      font-family: 'Libre Barcode 128', monospace;
-      font-size: 48pt;
-      letter-spacing: 0;
-      margin-bottom: 2mm;
-    }
-    
-    .barcode-text {
       font-size: 12pt;
       font-weight: bold;
       margin-bottom: 3mm;
+      text-align: center;
     }
-    
-    .additional-info {
+
+    .barcode-image {
+      width: 100%;
+      max-width: 80mm;
+      height: auto;
+      margin-bottom: 2mm;
+    }
+
+    .qr-code-image {
+      width: 30mm;
+      height: 30mm;
+      margin-bottom: 2mm;
+    }
+
+    .barcode-text {
       font-size: 10pt;
+      font-weight: bold;
+      margin-bottom: 2mm;
+      text-align: center;
+      font-family: monospace;
+    }
+
+    .additional-info {
+      font-size: 8pt;
       color: #666;
       text-align: center;
     }
-    
+
+    .label-content {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      width: 100%;
+    }
+
     @media print {
       body {
         print-color-adjust: exact;
@@ -145,22 +168,22 @@ export function printLabelBrowser(config: LabelConfig): void {
       }
     }
   </style>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Libre+Barcode+128&display=swap" rel="stylesheet">
 </head>
 <body>
-  <div class="item-name">${itemName}</div>
-  <div class="barcode">*${barcode}*</div>
-  <div class="barcode-text">${barcode}</div>
-  ${additionalInfo ? `<div class="additional-info">${additionalInfo}</div>` : ''}
+  <div class="label-content">
+    <div class="item-name">${itemName}</div>
+    <img src="${barcodeImage}" alt="Barcode ${barcode}" class="barcode-image" />
+    <img src="${qrCodeImage}" alt="QR Code ${barcode}" class="qr-code-image" />
+    <div class="barcode-text">${barcode}</div>
+    ${additionalInfo ? `<div class="additional-info">${additionalInfo}</div>` : ''}
+  </div>
 </body>
 </html>`;
-  
+
   printWindow.document.write(htmlContent);
   printWindow.document.close();
-  
-  // Wait for fonts to load, then print
+
+  // Wait for images to load, then print
   printWindow.onload = () => {
     setTimeout(() => {
       printWindow.print();
