@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useRef } from "react";
+import { useNotifications } from "@/lib/hooks/useNotifications";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import ProfileDropdown from "./ProfileDropdown";
@@ -58,6 +59,7 @@ export default function DashboardLayout({
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const { notifications, markAsRead, markAllAsRead } = useNotifications();
   const [userProfile, setUserProfile] = useState<{ full_name: string; company_name: string | null; email: string } | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -253,7 +255,7 @@ export default function DashboardLayout({
                         fontSize: '0.75rem',
                         cursor: 'pointer'
                       }}
-                      onClick={() => {/* TODO: Mark all as read */}}
+                      onClick={markAllAsRead}
                     >
                       Mark all read
                     </button>
@@ -261,95 +263,115 @@ export default function DashboardLayout({
                 </div>
 
                 <div>
-                  {/* Functional notifications */}
-                  <Link
-                    href="/app/warehouse"
-                    onClick={() => setNotificationsOpen(false)}
-                    style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-                  >
-                    <div style={{
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: '#137CFB',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <i className="fas fa-clipboard-list" style={{ fontSize: '0.875rem' }}></i>
+                  {notifications.length === 0 ? (
+                    <div style={{ padding: '1rem', textAlign: 'center', color: '#aaa' }}>No notifications</div>
+                  ) : (
+                    notifications.map((notification) => {
+                      const { type, title, message, timestamp, read, link, id } = notification;
+                      let icon = "fas fa-info-circle";
+                      let color = "#6B7280";
+                      if (type === "pull_sheet") { icon = "fas fa-clipboard-list"; color = "#137CFB"; }
+                      if (type === "job") { icon = "fas fa-briefcase"; color = "#10B981"; }
+                      if (type === "inventory") { icon = "fas fa-box"; color = "#F59E0B"; }
+                      if (type === "system") { icon = "fas fa-bell"; color = "#8B5CF6"; }
+                      return link ? (
+                        <Link
+                          key={id}
+                          href={link}
+                          onClick={() => { setNotificationsOpen(false); markAsRead(id); }}
+                          style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                        >
+                          <div style={{
+                            padding: '0.75rem 1rem',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                            cursor: 'pointer',
+                            transition: 'background 0.15s',
+                            backgroundColor: !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'
+                          }}
+                          onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'}
+                          >
+                            <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
+                              <div style={{
+                                width: '36px',
+                                height: '36px',
+                                borderRadius: '50%',
+                                backgroundColor: color,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center',
+                                flexShrink: 0
+                              }}>
+                                <i className={icon} style={{ color: '#fff', fontSize: '0.875rem' }}></i>
+                              </div>
+                              <div style={{ flex: 1 }}>
+                                <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                                  {title}
+                                  {!read && (
+                                    <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
+                                  )}
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                                  {message}
+                                </div>
+                                <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
+                                  {typeof timestamp === 'string' ? timestamp : new Date(timestamp).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </Link>
+                      ) : (
+                        <div
+                          key={id}
+                          style={{
+                            padding: '0.75rem 1rem',
+                            borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+                            cursor: 'default',
+                            backgroundColor: !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'
+                          }}
+                        >
+                          <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
+                            <div style={{
+                              width: '36px',
+                              height: '36px',
+                              borderRadius: '50%',
+                              backgroundColor: color,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              flexShrink: 0
+                            }}>
+                              <i className={icon} style={{ color: '#fff', fontSize: '0.875rem' }}></i>
+                            </div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                                {title}
+                                {!read && (
+                                  <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
+                                )}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
+                                {message}
+                              </div>
+                              <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
+                                {typeof timestamp === 'string' ? timestamp : new Date(timestamp).toLocaleString()}
+                              </div>
+                              {!read && (
+                                <button
+                                  onClick={() => markAsRead(id)}
+                                  style={{ fontSize: '0.75rem', color: '#137CFB', background: 'none', border: 'none', cursor: 'pointer', marginTop: '4px' }}
+                                >
+                                  Mark as read
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                            Pull Sheet Ready
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Pull sheet PS-1003 is ready for picking
-                          </div>
-                          <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
-                            2 hours ago
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <Link
-                    href="/app/jobs"
-                    onClick={() => setNotificationsOpen(false)}
-                    style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
-                  >
-                    <div style={{
-                      padding: '0.75rem 1rem',
-                      borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
-                      cursor: 'pointer',
-                      transition: 'background 0.15s'
-                    }}
-                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
-                        <div style={{
-                          width: '36px',
-                          height: '36px',
-                          borderRadius: '50%',
-                          backgroundColor: '#10B981',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0
-                        }}>
-                          <i className="fas fa-check" style={{ fontSize: '0.875rem' }}></i>
-                        </div>
-                        <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
-                            Job Completed
-                          </div>
-                          <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                            Bob Evans event has been marked as complete
-                          </div>
-                          <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
-                            5 hours ago
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </Link>
-
-                  <div style={{
-                    padding: '1rem',
-                    textAlign: 'center'
-                  }}>
+                      );
+                    })
+                  )}
+                  <div style={{ padding: '1rem', textAlign: 'center' }}>
                     <Link
                       href="/app/notifications"
                       onClick={() => setNotificationsOpen(false)}
