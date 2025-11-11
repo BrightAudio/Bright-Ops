@@ -36,6 +36,7 @@ const navSections: NavSection[] = [
     title: "EQUIPMENT",
     items: [
       { href: "/app/inventory", icon: "fa-boxes", label: "Serial Numbers" },
+      { href: "/app/inventory/rigs", icon: "fa-layer-group", label: "Rig Containers" },
       { href: "/app/inventory/locations", icon: "fa-map-marker-alt", label: "Stock Locations" },
       { href: "/app/inventory/archived", icon: "fa-archive", label: "Archived Equipment" },
     ],

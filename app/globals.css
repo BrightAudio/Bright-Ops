@@ -13,9 +13,14 @@
   border-radius: 8px;
 }
 
-/* Always show scrollbars for overflow */
-body, .app-container, .scrollbar-thin {
-  overflow: scroll !important;
+/* Enable smooth scrolling */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  overflow-y: auto;
+  overflow-x: hidden;
 }
 
 /* Force scrollbars to always be visible (Webkit browsers) */

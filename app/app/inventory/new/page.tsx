@@ -33,6 +33,16 @@ export default function NewInventoryItemPage() {
 		image_url: "",
 		repair_cost: 0,
 		maintenance_status: "operational",
+		speaker_test_data: {
+			impedance: "",
+			frequency_response_low: "",
+			frequency_response_high: "",
+			sensitivity: "",
+			max_spl: "",
+			power_rating: "",
+			last_tested: "",
+			test_notes: "",
+		},
 	});
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -97,6 +107,7 @@ export default function NewInventoryItemPage() {
 				image_url: form.image_url || null,
 				repair_cost: form.repair_cost,
 				maintenance_status: form.maintenance_status,
+				speaker_test_data: form.speaker_test_data,
 			} as any);
 			router.push("/app/inventory");
 		} catch (err) {
@@ -322,6 +333,144 @@ export default function NewInventoryItemPage() {
 						</div>
 					</div>
 				</div>
+
+				{/* Speaker Test Data Section */}
+				{(form.category === "monitor_wedges" || form.category === "tops" || form.category === "subs" || form.category === "column_speakers") && (
+					<div className="border-t border-zinc-700 pt-4 mt-4">
+						<h3 className="text-lg font-semibold text-white mb-3">Speaker Test Data</h3>
+						<p className="text-sm text-zinc-400 mb-4">
+							Technical specifications and test results for speaker equipment
+						</p>
+
+						<div className="grid grid-cols-3 gap-4">
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Impedance (Ω)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.impedance}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, impedance: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="4, 8, 16"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Frequency Low (Hz)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.frequency_response_low}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, frequency_response_low: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="50"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Frequency High (Hz)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.frequency_response_high}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, frequency_response_high: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="20000"
+								/>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-3 gap-4 mt-4">
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Sensitivity (dB)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.sensitivity}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, sensitivity: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="95"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Max SPL (dB)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.max_spl}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, max_spl: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="130"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Power Rating (W)
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.power_rating}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, power_rating: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="500"
+								/>
+							</div>
+						</div>
+
+						<div className="grid grid-cols-2 gap-4 mt-4">
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Last Tested
+								</label>
+								<input
+									type="date"
+									value={form.speaker_test_data.last_tested}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, last_tested: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								/>
+							</div>
+							<div>
+								<label className="block text-sm font-medium text-zinc-200">
+									Test Notes
+								</label>
+								<input
+									type="text"
+									value={form.speaker_test_data.test_notes}
+									onChange={(e) => setForm(prev => ({ 
+										...prev, 
+										speaker_test_data: { ...prev.speaker_test_data, test_notes: e.target.value }
+									}))}
+									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+									placeholder="All drivers functional, slight cabinet wear"
+								/>
+							</div>
+						</div>
+					</div>
+				)}
 
 				{/* Amortization Section */}
 				<div className="border-t border-zinc-700 pt-4 mt-4">
