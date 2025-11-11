@@ -42,6 +42,11 @@ export default function EditInventoryItemPage() {
 		useful_life_years: 5.0,
 		estimated_jobs_per_year: 50,
 		residual_value: 0,
+		category: "",
+		tags: [] as string[],
+		image_url: "",
+		repair_cost: 0,
+		maintenance_status: "operational",
 	});
 	const [saving, setSaving] = useState(false);
 	const [deleting, setDeleting] = useState(false);
@@ -69,6 +74,11 @@ export default function EditInventoryItemPage() {
 				useful_life_years: item.useful_life_years ?? 5.0,
 				estimated_jobs_per_year: item.estimated_jobs_per_year ?? 50,
 				residual_value: item.residual_value ?? 0,
+				category: (item as any).category ?? "",
+				tags: (item as any).tags ?? [],
+				image_url: (item as any).image_url ?? "",
+				repair_cost: (item as any).repair_cost ?? 0,
+				maintenance_status: (item as any).maintenance_status ?? "operational",
 			});
 			setOriginalBarcode(item.barcode ?? "");
 		}
@@ -154,7 +164,12 @@ export default function EditInventoryItemPage() {
 				useful_life_years: form.useful_life_years,
 				estimated_jobs_per_year: form.estimated_jobs_per_year,
 				residual_value: form.residual_value,
-			});
+				category: form.category || null,
+				tags: form.tags,
+				image_url: form.image_url || null,
+				repair_cost: form.repair_cost,
+				maintenance_status: form.maintenance_status,
+			} as any);
 			router.push("/app/inventory");
 		} catch (err) {
 			setLocalError(err instanceof Error ? err.message : "Failed to update item");
@@ -295,6 +310,119 @@ export default function EditInventoryItemPage() {
 						className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
 						placeholder="0.00"
 					/>
+				</div>
+
+				{/* Category and Tags Section */}
+				<div className="border-t border-zinc-700 pt-4 mt-4">
+					<h3 className="text-lg font-semibold text-white mb-3">Categorization</h3>
+					
+					<div className="grid grid-cols-2 gap-4">
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Category
+							</label>
+							<select
+								value={form.category}
+								onChange={(e) => handleChange("category", e.target.value)}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							>
+								<option value="">Select category...</option>
+								<option value="monitor_wedges">Monitor Wedges</option>
+								<option value="tops">Tops</option>
+								<option value="subs">Subs</option>
+								<option value="amps">Amps</option>
+								<option value="amprack">Amp Rack</option>
+								<option value="road_cases">Road Cases</option>
+								<option value="lights">Lights</option>
+								<option value="uplights">Uplights</option>
+								<option value="field_audio">Field Audio</option>
+								<option value="column_speakers">Column Speakers</option>
+								<option value="other">Other</option>
+							</select>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Tags (comma-separated)
+							</label>
+							<input
+								type="text"
+								value={form.tags.join(", ")}
+								onChange={(e) => {
+									const tags = e.target.value.split(",").map(t => t.trim()).filter(t => t);
+									setForm(prev => ({ ...prev, tags }));
+								}}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								placeholder="mon, fill, sub"
+							/>
+							<p className="text-xs text-zinc-500 mt-1">
+								e.g., mon, fill, sub, powered, passive
+							</p>
+						</div>
+					</div>
+				</div>
+
+				{/* Image and Maintenance Section */}
+				<div className="border-t border-zinc-700 pt-4 mt-4">
+					<h3 className="text-lg font-semibold text-white mb-3">Equipment Details</h3>
+					
+					<div>
+						<label className="block text-sm font-medium text-zinc-200">
+							Image URL
+						</label>
+						<input
+							type="url"
+							value={form.image_url}
+							onChange={(e) => handleChange("image_url", e.target.value)}
+							className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							placeholder="https://example.com/image.jpg"
+						/>
+						{form.image_url && (
+							<div className="mt-2">
+								<img 
+									src={form.image_url} 
+									alt={form.name}
+									className="max-w-xs max-h-48 rounded-md border border-zinc-700"
+									onError={(e) => {
+										(e.target as HTMLImageElement).style.display = 'none';
+									}}
+								/>
+							</div>
+						)}
+					</div>
+
+					<div className="grid grid-cols-2 gap-4 mt-4">
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Repair Cost ($)
+							</label>
+							<input
+								type="number"
+								min={0}
+								step="0.01"
+								value={form.repair_cost}
+								onChange={(e) =>
+									handleChange("repair_cost", Number(e.target.value))
+								}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+								placeholder="0.00"
+							/>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Maintenance Status
+							</label>
+							<select
+								value={form.maintenance_status}
+								onChange={(e) => handleChange("maintenance_status", e.target.value)}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							>
+								<option value="operational">Operational</option>
+								<option value="needs_repair">Needs Repair</option>
+								<option value="in_repair">In Repair</option>
+								<option value="retired">Retired</option>
+							</select>
+						</div>
+					</div>
 				</div>
 
 				{/* Amortization Section */}

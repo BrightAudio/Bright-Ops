@@ -91,7 +91,11 @@ export default function InventoryPage() {
 									const unitValue = item.unit_value ?? 0;
 									const itemTotal = qty * unitValue;
 									return (
-										<tr key={item.id} className="border-b border-zinc-800">
+										<tr 
+											key={item.id} 
+											className="border-b border-zinc-800 hover:bg-zinc-800/50 cursor-pointer transition-colors"
+											onClick={() => window.location.href = `/app/inventory/${item.id}`}
+										>
 											<td className="py-2 px-1">{item.barcode}</td>
 											<td className="py-2 px-1">{item.name}</td>
 											<td className="py-2 px-1">{item.qty_in_warehouse ?? 0}</td>
@@ -102,7 +106,7 @@ export default function InventoryPage() {
 											<td className="py-2 px-1 text-right">
 												{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
 											</td>
-											<td className="py-2 px-1">
+											<td className="py-2 px-1" onClick={(e) => e.stopPropagation()}>
 												<Link
 													href={`/app/inventory/${item.id}`}
 													className="text-blue-400 hover:underline mr-2"
