@@ -347,23 +347,30 @@ export default function NewInventoryItemPage() {
 								<label className="block text-sm font-medium text-zinc-200">
 									Impedance (Ω)
 								</label>
-								<input
-									type="text"
+								<select
 									value={form.speaker_test_data.impedance}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
 										speaker_test_data: { ...prev.speaker_test_data, impedance: e.target.value }
 									}))}
 									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-									placeholder="4, 8, 16"
-								/>
+								>
+									<option value="">Select...</option>
+									<option value="2">2Ω</option>
+									<option value="4">4Ω</option>
+									<option value="8">8Ω</option>
+									<option value="16">16Ω</option>
+									<option value="other">Other</option>
+								</select>
 							</div>
 							<div>
 								<label className="block text-sm font-medium text-zinc-200">
 									Frequency Low (Hz)
 								</label>
 								<input
-									type="text"
+									type="number"
+									min="20"
+									max="500"
 									value={form.speaker_test_data.frequency_response_low}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
@@ -378,7 +385,9 @@ export default function NewInventoryItemPage() {
 									Frequency High (Hz)
 								</label>
 								<input
-									type="text"
+									type="number"
+									min="1000"
+									max="30000"
 									value={form.speaker_test_data.frequency_response_high}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
@@ -396,7 +405,10 @@ export default function NewInventoryItemPage() {
 									Sensitivity (dB)
 								</label>
 								<input
-									type="text"
+									type="number"
+									min="80"
+									max="120"
+									step="0.1"
 									value={form.speaker_test_data.sensitivity}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
@@ -411,7 +423,10 @@ export default function NewInventoryItemPage() {
 									Max SPL (dB)
 								</label>
 								<input
-									type="text"
+									type="number"
+									min="100"
+									max="150"
+									step="0.1"
 									value={form.speaker_test_data.max_spl}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
@@ -426,7 +441,9 @@ export default function NewInventoryItemPage() {
 									Power Rating (W)
 								</label>
 								<input
-									type="text"
+									type="number"
+									min="0"
+									step="1"
 									value={form.speaker_test_data.power_rating}
 									onChange={(e) => setForm(prev => ({ 
 										...prev, 
