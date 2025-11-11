@@ -138,66 +138,63 @@ export default function InventoryPage() {
 				<p className="text-red-500">{error}</p>
 			) : (
 				<>
-					<table className="w-full text-left text-sm">
-						<thead>
-							<tr className="border-b border-zinc-700">
-								<th className="py-2 px-1">Barcode</th>
-								<th className="py-2 px-1">Name</th>
-								<th className="py-2 px-1">Qty in Warehouse</th>
-								<th className="py-2 px-1">Qty on Hand</th>
-								<th className="py-2 px-1 text-right">Unit Value</th>
-								<th className="py-2 px-1 text-right">Total Value</th>
-								<th className="py-2 px-1">Actions</th>
-							</tr>
-						</thead>
-						<tbody>
-							{filteredItems && filteredItems.length > 0 ? (
-								filteredItems.map((item: InventoryItem) => {
-									const qty = item.quantity_on_hand ?? 0;
-									const unitValue = item.unit_value ?? 0;
-									const itemTotal = qty * unitValue;
-									return (
-										<tr 
-											key={item.id} 
-											className="border-b border-zinc-800 hover:bg-zinc-800/50 cursor-pointer transition-colors"
-											onClick={() => window.location.href = `/app/inventory/${item.id}`}
-										>
-											<td className="py-2 px-1">{item.barcode}</td>
-											<td className="py-2 px-1">{item.name}</td>
-											<td className="py-2 px-1">{item.qty_in_warehouse ?? 0}</td>
-											<td className="py-2 px-1">{qty}</td>
-											<td className="py-2 px-1 text-right">
-												{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-											</td>
-											<td className="py-2 px-1 text-right">
-												{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
-											</td>
-											<td className="py-2 px-1" onClick={(e) => e.stopPropagation()}>
-												<Link
-													href={`/app/inventory/${item.id}`}
-													className="text-blue-400 hover:underline mr-2"
-												>
-													Edit
-												</Link>
-												<button
-													onClick={() => handleDelete(item.id)}
-													className="text-red-400 hover:underline"
-												>
-													Delete
-												</button>
-											</td>
-										</tr>
-									);
-								})
-							) : (
-								<tr>
-									<td colSpan={7} className="py-4 text-center text-zinc-500">
-										No items found.
-									</td>
-								</tr>
-							)}
-						</tbody>
-					</table>
+					<div className="space-y-2">
+						{/* Header */}
+						<div className="grid grid-cols-7 gap-4 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
+							<div>Barcode</div>
+							<div>Name</div>
+							<div>Qty in Warehouse</div>
+							<div>Qty on Hand</div>
+							<div className="text-right">Unit Value</div>
+							<div className="text-right">Total Value</div>
+							<div>Actions</div>
+						</div>
+						
+						{/* Item rows as cards */}
+						{filteredItems && filteredItems.length > 0 ? (
+							filteredItems.map((item: InventoryItem) => {
+								const qty = item.quantity_on_hand ?? 0;
+								const unitValue = item.unit_value ?? 0;
+								const itemTotal = qty * unitValue;
+								return (
+									<div 
+										key={item.id} 
+										className="grid grid-cols-7 gap-4 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
+										onClick={() => window.location.href = `/app/inventory/${item.id}`}
+									>
+										<div className="text-sm text-zinc-300">{item.barcode}</div>
+										<div className="text-sm font-medium text-white">{item.name}</div>
+										<div className="text-sm text-zinc-300">{item.qty_in_warehouse ?? 0}</div>
+										<div className="text-sm text-zinc-300">{qty}</div>
+										<div className="text-sm text-zinc-300 text-right">
+											{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+										</div>
+										<div className="text-sm font-semibold text-green-400 text-right">
+											{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+										</div>
+										<div className="text-sm flex gap-2" onClick={(e) => e.stopPropagation()}>
+											<Link
+												href={`/app/inventory/${item.id}`}
+												className="text-blue-400 hover:text-blue-300 hover:underline"
+											>
+												Edit
+											</Link>
+											<button
+												onClick={() => handleDelete(item.id)}
+												className="text-red-400 hover:text-red-300 hover:underline"
+											>
+												Delete
+											</button>
+										</div>
+									</div>
+								);
+							})
+						) : (
+							<div className="py-8 text-center text-zinc-500">
+								No items found.
+							</div>
+						)}
+					</div>
 					<div className="mt-4 pt-4 border-t border-zinc-700 flex justify-end">
 						<div className="text-lg font-bold">
 							Total Inventory Value: <span className="text-green-400">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
