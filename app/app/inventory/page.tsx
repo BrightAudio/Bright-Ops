@@ -140,9 +140,10 @@ export default function InventoryPage() {
 				<>
 					<div className="space-y-2">
 						{/* Header */}
-						<div className="grid grid-cols-7 gap-0 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
+						<div className="grid grid-cols-8 gap-0 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
 							<div className="px-2 border-r border-zinc-700">Barcode</div>
 							<div className="px-2 border-r border-zinc-700">Name</div>
+							<div className="px-2 border-r border-zinc-700">Location</div>
 							<div className="px-2 border-r border-zinc-700">Qty in Warehouse</div>
 							<div className="px-2 border-r border-zinc-700">Qty on Hand</div>
 							<div className="px-2 border-r border-zinc-700 text-right">Unit Value</div>
@@ -156,15 +157,25 @@ export default function InventoryPage() {
 								const qty = item.quantity_on_hand ?? 0;
 								const unitValue = item.unit_value ?? 0;
 								const itemTotal = qty * unitValue;
+								const qtyInWarehouse = item.qty_in_warehouse ?? 0;
+								const location = qtyInWarehouse > 0 ? 'Warehouse' : 'On Job';
+								
 								return (
 									<div 
 										key={item.id} 
-										className="grid grid-cols-7 gap-0 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
+										className="grid grid-cols-8 gap-0 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
 									>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.barcode}</div>
 										<div className="text-sm font-medium text-white px-2 border-r border-zinc-700/50">{item.name}</div>
-										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.qty_in_warehouse ?? 0}</div>
+										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">
+											{qtyInWarehouse > 0 ? (
+												<span className="text-green-400">Warehouse</span>
+											) : (
+												<span className="text-yellow-400">On Job</span>
+											)}
+										</div>
+										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qtyInWarehouse}</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qty}</div>
 										<div className="text-sm text-zinc-300 text-right px-2 border-r border-zinc-700/50">
 											{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
@@ -172,16 +183,16 @@ export default function InventoryPage() {
 										<div className="text-sm font-semibold text-green-400 text-right px-2 border-r border-zinc-700/50">
 											{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
 										</div>
-										<div className="text-sm flex gap-2 px-2" onClick={(e) => e.stopPropagation()}>
+										<div className="text-sm flex justify-between items-center px-2" onClick={(e) => e.stopPropagation()}>
 											<Link
 												href={`/app/inventory/${item.id}`}
-												className="text-blue-400 hover:text-blue-300 hover:underline"
+												className="text-blue-400 hover:text-blue-300 hover:underline flex-1 text-center"
 											>
 												Edit
 											</Link>
 											<button
 												onClick={() => handleDelete(item.id)}
-												className="text-red-400 hover:text-red-300 hover:underline"
+												className="text-red-400 hover:text-red-300 hover:underline flex-1 text-center"
 											>
 												Delete
 											</button>
