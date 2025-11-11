@@ -108,7 +108,7 @@ export default function NewInventoryItemPage() {
 				repair_cost: form.repair_cost,
 				maintenance_status: form.maintenance_status,
 				speaker_test_data: form.speaker_test_data,
-			} as any);
+			});
 			router.push("/app/inventory");
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to create item");

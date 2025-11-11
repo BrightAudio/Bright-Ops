@@ -226,10 +226,10 @@ export default function RigDetailPage() {
                 {rig.items.map((item) => (
                   <tr key={item.id} className="border-b border-zinc-800">
                     <td className="py-3 text-white">
-                      {(item.inventory_items as any)?.name || "Unknown"}
+                      {item.inventory_items?.name || "Unknown"}
                     </td>
                     <td className="py-3 text-zinc-400">
-                      {(item.inventory_items as any)?.barcode || "-"}
+                      {item.inventory_items?.barcode || "-"}
                     </td>
                     <td className="py-3 text-right">
                       <input

@@ -51,8 +51,8 @@ export default function InventoryPage() {
 	// Apply filters and sorting
 	const filteredItems = items
 		?.filter(item => {
-			if (categoryFilter && (item as any).category !== categoryFilter) return false;
-			if (maintenanceFilter && (item as any).maintenance_status !== maintenanceFilter) return false;
+			if (categoryFilter && item.category !== categoryFilter) return false;
+			if (maintenanceFilter && item.maintenance_status !== maintenanceFilter) return false;
 			return true;
 		})
 		.sort((a, b) => {
@@ -66,7 +66,7 @@ export default function InventoryPage() {
 					const bValue = (b.quantity_on_hand ?? 0) * (b.unit_value ?? 0);
 					return bValue - aValue;
 				case "maintenance":
-					return ((a as any).maintenance_status || "").localeCompare((b as any).maintenance_status || "");
+					return (a.maintenance_status || "").localeCompare(b.maintenance_status || "");
 				default:
 					return 0;
 			}

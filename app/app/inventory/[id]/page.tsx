@@ -73,7 +73,7 @@ export default function EditInventoryItemPage() {
 		console.log('[DEBUG] EditInventoryItemPage - error:', error);
 		
 		if (item) {
-			const speakerData = (item as any).speaker_test_data || {};
+			const speakerData = item.speaker_test_data as any || {};
 			setForm({
 				name: item.name ?? "",
 				barcode: item.barcode ?? "",
@@ -85,11 +85,11 @@ export default function EditInventoryItemPage() {
 				useful_life_years: item.useful_life_years ?? 5.0,
 				estimated_jobs_per_year: item.estimated_jobs_per_year ?? 50,
 				residual_value: item.residual_value ?? 0,
-				category: (item as any).category ?? "",
-				tags: (item as any).tags ?? [],
-				image_url: (item as any).image_url ?? "",
-				repair_cost: (item as any).repair_cost ?? 0,
-				maintenance_status: (item as any).maintenance_status ?? "operational",
+				category: item.category ?? "",
+				tags: item.tags ?? [],
+				image_url: item.image_url ?? "",
+				repair_cost: item.repair_cost ?? 0,
+				maintenance_status: item.maintenance_status ?? "operational",
 				speaker_test_data: {
 					impedance: speakerData.impedance ?? "",
 					frequency_response_low: speakerData.frequency_response_low ?? "",
@@ -191,7 +191,7 @@ export default function EditInventoryItemPage() {
 				repair_cost: form.repair_cost,
 				maintenance_status: form.maintenance_status,
 				speaker_test_data: form.speaker_test_data,
-			} as any);
+			});
 			router.push("/app/inventory");
 		} catch (err) {
 			setLocalError(err instanceof Error ? err.message : "Failed to update item");
