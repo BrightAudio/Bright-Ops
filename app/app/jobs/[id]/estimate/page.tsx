@@ -352,7 +352,7 @@ export default function CostEstimatePage({ params }: CostEstimatePageProps) {
                   <tr>
                     <td colSpan={5} className="py-8 text-center text-gray-500">
                       <i className="fas fa-user-slash text-3xl mb-2"></i>
-                      <p>No labor items yet. Click "Add Labor Item" to get started.</p>
+                      <p>No labor items yet. Click &quot;Add Labor Item&quot; to get started.</p>
                     </td>
                   </tr>
                 )}

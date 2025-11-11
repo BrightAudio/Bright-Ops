@@ -168,7 +168,7 @@ export default function Transports() {
         <div className="mb-6 p-6 bg-zinc-800 border border-amber-500/30 rounded-lg text-center">
           <i className="fas fa-truck text-amber-400 text-4xl mb-3"></i>
           <h3 className="text-xl font-semibold mb-2">No Transports for This Job</h3>
-          <p className="text-gray-400 mb-4">This job doesn't have any transports scheduled yet.</p>
+          <p className="text-gray-400 mb-4">This job doesn&apos;t have any transports scheduled yet.</p>
           <button
             onClick={() => openModal()}
             className="px-6 py-3 bg-amber-500 hover:bg-amber-400 text-black font-semibold rounded-lg transition-colors"

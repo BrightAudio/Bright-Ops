@@ -76,7 +76,7 @@ export default function OpenInvoices() {
       const yetToInvoicePercent = total > 0 ? Math.round((yetToInvoice / total) * 100) : 0;
 
       // Ensure percentages add up to 100
-      let percentTotal = outstandingPercent + overduePercent + yetToInvoicePercent;
+      const percentTotal = outstandingPercent + overduePercent + yetToInvoicePercent;
       let adjustedYetToInvoice = yetToInvoicePercent;
       if (percentTotal !== 100 && total > 0) {
         adjustedYetToInvoice += (100 - percentTotal);

@@ -13,7 +13,7 @@ export default function ExampleWidget() {
     >
       <div className="widget-empty">
         <i className="fas fa-info-circle"></i>
-        <p>This is an example widget following Rentman's design pattern.</p>
+        <p>This is an example widget following Rentman&apos;s design pattern.</p>
       </div>
     </WidgetCard>
   );

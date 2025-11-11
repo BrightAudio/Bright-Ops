@@ -1,3 +1,31 @@
+/* Custom Scrollbar Styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: #a0aec0 #f7fafc;
+}
+
+.scrollbar-thumb-gray-400::-webkit-scrollbar-thumb {
+  background-color: #a0aec0;
+  border-radius: 8px;
+}
+.scrollbar-track-gray-100::-webkit-scrollbar-track {
+  background-color: #f7fafc;
+  border-radius: 8px;
+}
+
+/* Always show scrollbars for overflow */
+body, .app-container, .scrollbar-thin {
+  overflow: scroll !important;
+}
+
+/* Force scrollbars to always be visible (Webkit browsers) */
+body::-webkit-scrollbar,
+.app-container::-webkit-scrollbar,
+.scrollbar-thin::-webkit-scrollbar {
+  display: block;
+  height: 12px;
+  width: 12px;
+}
 /* app/globals.css — Rentman-inspired theme for Bright Ops
    Uses Source Sans (same family in Rentman HTML).
 */
@@ -92,6 +120,7 @@ body{
   -moz-osx-font-smoothing:grayscale;
   line-height:1.45;
   font-size:15px;
+  overflow: auto;
 }
 
 /* Links & buttons */
@@ -194,7 +223,7 @@ button{font-family:inherit; cursor:pointer}
   display: flex;
   flex-direction: column;
   height: 100vh;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .top-bar {

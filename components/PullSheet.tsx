@@ -60,7 +60,7 @@ interface PullSheetProps {
 export default function PullSheet({
   data,
   initialMode = 'consolidated',
-  pageSize = 'letter',
+  pageSize: _pageSize = 'letter',
   onExportPDF = null,
 }: PullSheetProps) {
   const [mode, setMode] = useState<'consolidated' | 'expanded'>(initialMode)

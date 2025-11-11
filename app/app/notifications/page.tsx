@@ -6,7 +6,7 @@ import { useNotifications } from "@/lib/hooks/useNotifications";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import Link from "next/link";
 
-import type { NotificationType, Notification } from "@/lib/hooks/useNotifications";
+import type { NotificationType } from "@/lib/hooks/useNotifications";
 
 function getNotificationIcon(type: NotificationType) {
   switch (type) {

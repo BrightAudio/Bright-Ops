@@ -47,6 +47,8 @@ export default function EditInventoryItemPage() {
 	const [deleting, setDeleting] = useState(false);
 	const [localError, setLocalError] = useState<string | null>(null);
 	const [generatingBarcode, setGeneratingBarcode] = useState(false);
+	const [savingBarcode, setSavingBarcode] = useState(false);
+	const [originalBarcode, setOriginalBarcode] = useState("");
 
 	// Populate form when item loads
 	useEffect(() => {
@@ -68,6 +70,7 @@ export default function EditInventoryItemPage() {
 				estimated_jobs_per_year: item.estimated_jobs_per_year ?? 50,
 				residual_value: item.residual_value ?? 0,
 			});
+			setOriginalBarcode(item.barcode ?? "");
 		}
 	}, [item, loading, error]);
 
@@ -91,6 +94,30 @@ export default function EditInventoryItemPage() {
 			setLocalError(err instanceof Error ? err.message : "Failed to generate barcode");
 		} finally {
 			setGeneratingBarcode(false);
+		}
+	}
+
+	async function handleSaveBarcode() {
+		if (!id || !form.barcode.trim()) {
+			setLocalError("No barcode to save");
+			return;
+		}
+
+		setSavingBarcode(true);
+		setLocalError(null);
+
+		try {
+			await updateInventoryItem(id, {
+				barcode: form.barcode.trim(),
+			});
+			setOriginalBarcode(form.barcode.trim());
+			// Show success message briefly
+			setLocalError("Barcode saved successfully!");
+			setTimeout(() => setLocalError(null), 3000);
+		} catch (err) {
+			setLocalError(err instanceof Error ? err.message : "Failed to save barcode");
+		} finally {
+			setSavingBarcode(false);
 		}
 	}
 
@@ -176,6 +203,16 @@ export default function EditInventoryItemPage() {
 						>
 							{generatingBarcode ? "Generating..." : "Generate"}
 						</button>
+						{form.barcode && form.barcode !== originalBarcode && (
+							<button
+								type="button"
+								onClick={handleSaveBarcode}
+								disabled={savingBarcode}
+								className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed whitespace-nowrap"
+							>
+								{savingBarcode ? "Saving..." : "Save Barcode"}
+							</button>
+						)}
 						<PrintBarcodeButton
 							barcode={form.barcode}
 							itemName={form.name}

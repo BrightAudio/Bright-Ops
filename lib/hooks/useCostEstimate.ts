@@ -11,7 +11,6 @@ import { useState, useEffect } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import type { Database } from "@/types/database";
 
-type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type CostLineItem = Database["public"]["Tables"]["cost_estimate_line_items"]["Row"];
 type PrepSheetItem = {
   id: string;
