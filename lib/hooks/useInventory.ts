@@ -16,6 +16,15 @@ export type InventoryItem = Tables<"inventory_items">;
 // If you add inventory_movements to types/database.ts, you can uncomment below:
 // export type InventoryMovement = Tables<"inventory_movements">;
 
+// Extended type with job location information
+export type InventoryItemWithJob = InventoryItem & {
+  currentJob?: {
+    id: string;
+    name: string;
+    pull_sheet_id: string;
+  } | null;
+};
+
 /**
  * scanIn
  *
@@ -67,7 +76,7 @@ export async function scanIn(
  * error message.
  */
 export function useInventory(query?: { search?: string }) {
-  const [data, setData] = useState<InventoryItem[]>([]);
+  const [data, setData] = useState<InventoryItemWithJob[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [refreshCount, setRefreshCount] = useState(0);
@@ -89,10 +98,64 @@ export function useInventory(query?: { search?: string }) {
           `name.ilike.%${query.search}%,barcode.ilike.%${query.search}%`
         );
       }
-      const { data: rows, error } = await q;
+      const { data: rows, error: fetchError } = await q;
       if (!active) return;
-      if (error) setError(error.message);
-      else setData((rows ?? []) as InventoryItem[]);
+      if (fetchError) {
+        setError(fetchError.message);
+        setLoading(false);
+        return;
+      }
+      
+      // Fetch job information for items not in warehouse
+      const itemsWithJobs: InventoryItemWithJob[] = await Promise.all(
+        (rows ?? []).map(async (item) => {
+          // If item is in warehouse, no need to fetch job
+          if ((item.qty_in_warehouse ?? 0) > 0) {
+            return { ...item, currentJob: null };
+          }
+          
+          // Find active pull sheet items for this inventory item
+          const { data: pullSheetItems } = await supabase
+            .from("pull_sheet_items")
+            .select(`
+              pull_sheet_id,
+              pull_sheets!inner(
+                id,
+                name,
+                status,
+                job_id,
+                jobs!inner(
+                  id,
+                  name
+                )
+              )
+            `)
+            .eq("inventory_item_id", item.id)
+            .in("pull_sheets.status", ["draft", "finalized", "out"]);
+          
+          if (pullSheetItems && pullSheetItems.length > 0) {
+            // Get the first active pull sheet (most recent)
+            const pullSheet = pullSheetItems[0].pull_sheets as any;
+            const job = pullSheet?.jobs;
+            
+            if (job) {
+              return {
+                ...item,
+                currentJob: {
+                  id: job.id,
+                  name: job.name,
+                  pull_sheet_id: pullSheet.id,
+                },
+              };
+            }
+          }
+          
+          return { ...item, currentJob: null };
+        })
+      );
+      
+      if (!active) return;
+      setData(itemsWithJobs);
       setLoading(false);
     })();
     return () => {

@@ -6,6 +6,7 @@ import {
 	useInventory,
 	deleteInventoryItem,
 	InventoryItem,
+	InventoryItemWithJob,
 } from "@/lib/hooks/useInventory";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
@@ -153,12 +154,21 @@ export default function InventoryPage() {
 						
 						{/* Item rows as cards */}
 						{filteredItems && filteredItems.length > 0 ? (
-							filteredItems.map((item: InventoryItem) => {
+							filteredItems.map((item: InventoryItemWithJob) => {
 								const qty = item.quantity_on_hand ?? 0;
 								const unitValue = item.unit_value ?? 0;
 								const itemTotal = qty * unitValue;
 								const qtyInWarehouse = item.qty_in_warehouse ?? 0;
-								const location = qtyInWarehouse > 0 ? 'Warehouse' : 'On Job';
+								
+								// Determine location display
+								let locationDisplay: React.ReactNode;
+								if (qtyInWarehouse > 0) {
+									locationDisplay = <span className="text-green-400">Warehouse</span>;
+								} else if (item.currentJob) {
+									locationDisplay = <span className="text-yellow-400">{item.currentJob.name}</span>;
+								} else {
+									locationDisplay = <span className="text-yellow-400">On Job</span>;
+								}
 								
 								return (
 									<div 
@@ -169,11 +179,7 @@ export default function InventoryPage() {
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.barcode}</div>
 										<div className="text-sm font-medium text-white px-2 border-r border-zinc-700/50">{item.name}</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">
-											{qtyInWarehouse > 0 ? (
-												<span className="text-green-400">Warehouse</span>
-											) : (
-												<span className="text-yellow-400">On Job</span>
-											)}
+											{locationDisplay}
 										</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qtyInWarehouse}</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qty}</div>
