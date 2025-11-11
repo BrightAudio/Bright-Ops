@@ -140,14 +140,14 @@ export default function InventoryPage() {
 				<>
 					<div className="space-y-2">
 						{/* Header */}
-						<div className="grid grid-cols-7 gap-4 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
-							<div>Barcode</div>
-							<div>Name</div>
-							<div>Qty in Warehouse</div>
-							<div>Qty on Hand</div>
-							<div className="text-right">Unit Value</div>
-							<div className="text-right">Total Value</div>
-							<div>Actions</div>
+						<div className="grid grid-cols-7 gap-0 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
+							<div className="px-2 border-r border-zinc-700">Barcode</div>
+							<div className="px-2 border-r border-zinc-700">Name</div>
+							<div className="px-2 border-r border-zinc-700">Qty in Warehouse</div>
+							<div className="px-2 border-r border-zinc-700">Qty on Hand</div>
+							<div className="px-2 border-r border-zinc-700 text-right">Unit Value</div>
+							<div className="px-2 border-r border-zinc-700 text-right">Total Value</div>
+							<div className="px-2">Actions</div>
 						</div>
 						
 						{/* Item rows as cards */}
@@ -159,20 +159,20 @@ export default function InventoryPage() {
 								return (
 									<div 
 										key={item.id} 
-										className="grid grid-cols-7 gap-4 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
+										className="grid grid-cols-7 gap-0 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
 									>
-										<div className="text-sm text-zinc-300">{item.barcode}</div>
-										<div className="text-sm font-medium text-white">{item.name}</div>
-										<div className="text-sm text-zinc-300">{item.qty_in_warehouse ?? 0}</div>
-										<div className="text-sm text-zinc-300">{qty}</div>
-										<div className="text-sm text-zinc-300 text-right">
+										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.barcode}</div>
+										<div className="text-sm font-medium text-white px-2 border-r border-zinc-700/50">{item.name}</div>
+										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.qty_in_warehouse ?? 0}</div>
+										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qty}</div>
+										<div className="text-sm text-zinc-300 text-right px-2 border-r border-zinc-700/50">
 											{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
 										</div>
-										<div className="text-sm font-semibold text-green-400 text-right">
+										<div className="text-sm font-semibold text-green-400 text-right px-2 border-r border-zinc-700/50">
 											{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
 										</div>
-										<div className="text-sm flex gap-2" onClick={(e) => e.stopPropagation()}>
+										<div className="text-sm flex gap-2 px-2" onClick={(e) => e.stopPropagation()}>
 											<Link
 												href={`/app/inventory/${item.id}`}
 												className="text-blue-400 hover:text-blue-300 hover:underline"
