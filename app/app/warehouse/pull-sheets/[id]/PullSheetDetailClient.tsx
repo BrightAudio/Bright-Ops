@@ -2,6 +2,7 @@
 
 import { supabase } from "@/lib/supabaseClient";
 import React, { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 
 // Types
 type AddItemPayload = {
@@ -211,6 +212,7 @@ const AddItemModal: React.FC<{
 
 // Main Component
 const PullSheetDetailClient: React.FC = () => {
+  const router = useRouter();
   const [editHeader, setEditHeader] = useState(false);
   const [headerForm, setHeaderForm] = useState<HeaderForm>({
     name: "",
@@ -273,6 +275,16 @@ const PullSheetDetailClient: React.FC = () => {
           </div>
         </div>
       )}
+
+      <div className="mb-6">
+        <button
+          onClick={() => router.push('/app/warehouse/pull-sheets')}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+        >
+          <span>←</span>
+          <span>Back to Pull Sheets</span>
+        </button>
+      </div>
 
       <section>
         {editHeader && (
@@ -475,7 +487,7 @@ const PullSheetDetailClient: React.FC = () => {
                 <tr>
                   <td colSpan={6} className="px-4 py-4 text-center">
                     <button
-                      className="rounded-lg bg-amber-400 px-4 py-2 font-semibold text-gray-900 hover:bg-amber-300"
+                      className="rounded-lg bg-gray-700 px-4 py-2 font-semibold text-white hover:bg-gray-600"
                       onClick={() => setAddModalOpen(true)}
                     >
                       + Add Item

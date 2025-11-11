@@ -55,15 +55,18 @@ export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
 
   const markAsRead = (id: string) => {
-    setNotifications((prev) => prev.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    setNotifications((prev) => 
+      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+        .filter((n) => !n.read) // Remove read notifications from the list
+    );
   };
 
   const markAllAsRead = () => {
-    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+    setNotifications([]); // Clear all notifications when marking all as read
   };
 
   return {
-    notifications,
+    notifications: notifications.filter((n) => !n.read), // Only return unread notifications
     markAsRead,
     markAllAsRead,
   };

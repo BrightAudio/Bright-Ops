@@ -61,6 +61,21 @@ export default function NewInventoryItemPage() {
 		setSaving(true);
 		setError(null);
 		try {
+			// Check for duplicate barcode
+			if (form.barcode.trim()) {
+				const { supabase } = await import("@/lib/supabaseClient");
+				const { data: existingItems, error: checkError } = await supabase
+					.from("inventory_items")
+					.select("id")
+					.eq("barcode", form.barcode.trim());
+				
+				if (checkError) throw checkError;
+				
+				if (existingItems && existingItems.length > 0) {
+					throw new Error("Barcode already exists. Please use a unique barcode.");
+				}
+			}
+
 			await createInventoryItem({
 				name: form.name.trim(),
 				barcode: form.barcode.trim(),

@@ -127,6 +127,22 @@ export default function EditInventoryItemPage() {
 		setSaving(true);
 		setLocalError(null);
 		try {
+			// Check for duplicate barcode if barcode has changed
+			if (form.barcode.trim() && form.barcode.trim() !== originalBarcode) {
+				const { supabase } = await import("@/lib/supabaseClient");
+				const { data: existingItems, error: checkError } = await supabase
+					.from("inventory_items")
+					.select("id")
+					.eq("barcode", form.barcode.trim())
+					.neq("id", id);
+				
+				if (checkError) throw checkError;
+				
+				if (existingItems && existingItems.length > 0) {
+					throw new Error("Barcode already exists. Please use a unique barcode.");
+				}
+			}
+
 			await updateInventoryItem(id, {
 				name: form.name.trim(),
 				barcode: form.barcode.trim(),
