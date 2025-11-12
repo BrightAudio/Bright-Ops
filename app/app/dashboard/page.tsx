@@ -17,16 +17,16 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         
-        {/* Gig Calendar - Full Width */}
-        <div className="mb-6">
-          <GigCalendar />
-        </div>
-        
         {/* Dashboard grid with 2-column layout (responsive) */}
         <div className="dashboard-grid">
           <MySchedule />
           <Tasks />
           <OpenInvoices />
+        </div>
+
+        {/* Gig Calendar - Full Width */}
+        <div className="mt-6">
+          <GigCalendar />
         </div>
       </div>
     </DashboardLayout>
