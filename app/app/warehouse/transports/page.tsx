@@ -362,19 +362,27 @@ export default function Transports() {
             <h2 className="text-xl font-bold mb-2">{editing ? "Edit" : "Add"} Transport</h2>
             <div className="flex flex-col">
               <label className="text-sm text-gray-400 mb-1">Vehicle</label>
-              <input
-                list="vehicles-list"
+              <select
                 className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
-                placeholder="Select or type vehicle"
                 value={form.vehicle ?? ""}
                 onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
                 required
-              />
-              <datalist id="vehicles-list">
+              >
+                <option value="">Select a vehicle</option>
                 {vehicles.map(v => (
-                  <option key={v} value={v} />
+                  <option key={v} value={v}>{v}</option>
                 ))}
-              </datalist>
+                <option value="__custom__">+ Add New Vehicle</option>
+              </select>
+              {form.vehicle === "__custom__" && (
+                <input
+                  type="text"
+                  className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg mt-2"
+                  placeholder="Enter new vehicle name"
+                  onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
+                  autoFocus
+                />
+              )}
             </div>
             <input
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
