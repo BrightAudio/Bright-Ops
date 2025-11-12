@@ -225,12 +225,20 @@ export default function PullSheetsClient({
           </p>
         </div>
         {canCreate ? (
-          <button
-            className="bg-amber-400 text-gray-900 px-6 py-3 rounded-lg font-semibold shadow hover:bg-amber-300 transition-colors"
-            onClick={openModal}
-          >
-            + New Pull Sheet
-          </button>
+          <div className="flex gap-3">
+            <Link
+              href="/app/warehouse/pull-sheets/create"
+              className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-blue-500 transition-colors"
+            >
+              🔍 Create with Wizard
+            </Link>
+            <button
+              className="bg-amber-400 text-gray-900 px-6 py-3 rounded-lg font-semibold shadow hover:bg-amber-300 transition-colors"
+              onClick={openModal}
+            >
+              + Quick Create
+            </button>
+          </div>
         ) : (
           <div className="rounded-lg border border-gray-300 bg-gray-100 px-4 py-2 text-xs text-gray-600">
             No permission to create pull sheets
