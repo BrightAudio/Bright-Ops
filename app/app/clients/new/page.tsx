@@ -58,7 +58,15 @@ export default function NewClientPage() {
   return (
     <DashboardLayout>
     <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-6 text-amber-400">New Client</h1>
+      <div className="flex items-center gap-4 mb-6">
+        <button
+          onClick={() => router.back()}
+          className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+        >
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold text-amber-400">New Client</h1>
+      </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>

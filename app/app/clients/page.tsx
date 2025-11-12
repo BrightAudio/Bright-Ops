@@ -38,7 +38,15 @@ export default function ClientsPage() {
     <DashboardLayout>
     <div className="p-6 max-w-6xl mx-auto">
       <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold text-amber-400">Clients</h1>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => window.history.back()}
+            className="px-4 py-2 bg-zinc-800 border border-zinc-700 rounded hover:bg-zinc-700 transition-colors"
+          >
+            ← Back
+          </button>
+          <h1 className="text-2xl font-bold text-amber-400">Clients</h1>
+        </div>
         <Link 
           href="/app/clients/new"
           className="px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors"
