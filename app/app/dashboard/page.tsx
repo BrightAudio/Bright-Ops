@@ -7,25 +7,20 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 export default function DashboardPage() {
   return (
     <DashboardLayout>
-      <div style={{ padding: '1.5rem' }}>
-        <h1 style={{ 
-          fontSize: '1.75rem', 
-          fontWeight: 600, 
-          color: 'var(--color-text-main)', 
-          marginBottom: '1.5rem' 
-        }}>
+      <div className="p-4 md:p-6">
+        <h1 className="text-2xl md:text-3xl font-semibold mb-4 md:mb-6">
           Dashboard
         </h1>
         
         {/* Dashboard grid with 2-column layout (responsive) */}
-        <div className="dashboard-grid">
+        <div className="dashboard-grid grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           <MySchedule />
           <Tasks />
           <OpenInvoices />
         </div>
 
         {/* Gig Calendar - Full Width */}
-        <div className="mt-6">
+        <div className="mt-4 md:mt-6">
           <GigCalendar />
         </div>
       </div>

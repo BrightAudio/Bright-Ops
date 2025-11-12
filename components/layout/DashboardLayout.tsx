@@ -60,6 +60,7 @@ export default function DashboardLayout({
 }) {
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Start collapsed
   const [sidebarHovered, setSidebarHovered] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
@@ -122,6 +123,8 @@ export default function DashboardLayout({
   const handleNavClick = () => {
     // Collapse sidebar after clicking a nav item
     setSidebarCollapsed(true);
+    // Close mobile menu
+    setMobileMenuOpen(false);
   };
 
   const handleMouseEnter = () => {
@@ -140,12 +143,21 @@ export default function DashboardLayout({
       {/* Top Bar */}
       <header className="top-bar">
         <div className="left-section">
+          {/* Desktop sidebar toggle */}
           <button
-            className="sidebar-toggle"
+            className="sidebar-toggle hidden md:block"
             onClick={toggleSidebar}
             aria-label="Toggle sidebar"
           >
-            <i className="fas fa-bars"></i>
+            ☰
+          </button>
+          {/* Mobile menu toggle */}
+          <button
+            className="sidebar-toggle md:hidden"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label="Toggle mobile menu"
+          >
+            ☰
           </button>
           <div className="app-title">Bright Ops</div>
         </div>
@@ -156,7 +168,7 @@ export default function DashboardLayout({
             href="/app/inventory/locations"
             className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm"
           >
-            <i className="fas fa-map-marker-alt text-blue-400"></i>
+            <span className="text-blue-400">📍</span>
             <span className="text-zinc-300">{currentLocation}</span>
           </Link>
 
@@ -167,7 +179,7 @@ export default function DashboardLayout({
               aria-label="Search"
               onClick={() => setSearchOpen(!searchOpen)}
             >
-              <i className="fas fa-search"></i>
+              🔍
             </button>
 
             {searchOpen && (
@@ -220,7 +232,7 @@ export default function DashboardLayout({
               aria-label="Notifications"
               onClick={() => setNotificationsOpen(!notificationsOpen)}
             >
-              <i className="fas fa-bell"></i>
+              🔔
               <span style={{
                 position: 'absolute',
                 top: '6px',
@@ -547,9 +559,15 @@ export default function DashboardLayout({
 
       {/* Main Area: Sidebar + Content */}
       <div className="main-area">
+        {/* Mobile Sidebar Overlay */}
+        <div 
+          className={`sidebar-overlay ${mobileMenuOpen ? 'active' : ''}`}
+          onClick={() => setMobileMenuOpen(false)}
+        ></div>
+
         {/* Sidebar Navigation */}
         <nav 
-          className={`sidebar ${isExpanded ? "" : "collapsed"}`}
+          className={`sidebar ${isExpanded ? "" : "collapsed"} ${mobileMenuOpen ? 'open' : ''}`}
           onMouseEnter={handleMouseEnter}
           onMouseLeave={handleMouseLeave}
         >
@@ -557,6 +575,14 @@ export default function DashboardLayout({
             <div className="sidebar-logo">
               {isExpanded ? "Bright Ops" : "BO"}
             </div>
+            {/* Close button for mobile */}
+            <button 
+              className="md:hidden p-2 text-white hover:bg-white/10 rounded"
+              onClick={() => setMobileMenuOpen(false)}
+              aria-label="Close menu"
+            >
+              ×
+            </button>
           </div>
 
           <div className="sidebar-nav">

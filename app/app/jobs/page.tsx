@@ -79,7 +79,7 @@ export default function JobsPage() {
 
   return (
     <DashboardLayout>
-      <main className="bg-zinc-900 text-gray-100 min-h-screen p-6">
+      <div className="bg-zinc-900 text-gray-100 p-6">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">Jobs</h1>
         <div className="flex items-center gap-3">
@@ -242,7 +242,7 @@ export default function JobsPage() {
           ))}
         </div>
       )}
-    </main>
+    </div>
     </DashboardLayout>
   );
 }

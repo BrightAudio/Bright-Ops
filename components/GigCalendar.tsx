@@ -87,32 +87,32 @@ export default function GigCalendar() {
   }
 
   return (
-    <div className="bg-white rounded-lg border border-zinc-300 p-4 shadow-lg">
+    <div className="bg-white rounded-lg border border-zinc-300 p-3 md:p-4 shadow-lg">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-zinc-900">Gig Calendar</h2>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 md:gap-4">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900">Gig Calendar</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={prevMonth}
-              className="p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
+              className="p-1.5 md:p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
             >
-              <i className="fas fa-chevron-left"></i>
+              <i className="fas fa-chevron-left text-sm md:text-base"></i>
             </button>
-            <span className="text-zinc-900 font-semibold min-w-[180px] text-center">
+            <span className="text-zinc-900 font-semibold text-sm md:text-base min-w-[140px] md:min-w-[180px] text-center">
               {monthNames[month]} {year}
             </span>
             <button
               onClick={nextMonth}
-              className="p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
+              className="p-1.5 md:p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
             >
-              <i className="fas fa-chevron-right"></i>
+              <i className="fas fa-chevron-right text-sm md:text-base"></i>
             </button>
           </div>
         </div>
         <button
           onClick={() => handleAddEvent()}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors"
+          className="flex items-center gap-2 px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition-colors text-sm md:text-base w-full sm:w-auto justify-center"
         >
           <i className="fas fa-plus"></i>
           Add Event
@@ -120,17 +120,17 @@ export default function GigCalendar() {
       </div>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 mb-4 text-sm">
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-green-500 rounded"></div>
+      <div className="flex flex-wrap items-center gap-3 md:gap-4 mb-4 text-xs md:text-sm">
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-green-500 rounded"></div>
           <span className="text-zinc-600">On the Road</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-yellow-500 rounded"></div>
           <span className="text-zinc-600">In Process</span>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="w-4 h-4 bg-gray-400 rounded"></div>
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="w-3 h-3 md:w-4 md:h-4 bg-gray-400 rounded"></div>
           <span className="text-zinc-600">Completed</span>
         </div>
       </div>
@@ -150,16 +150,18 @@ export default function GigCalendar() {
       {!loading && !errorMessage && (
         <div>
           {/* Day headers */}
-          <div className="grid grid-cols-7 gap-1 mb-1">
-            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-zinc-700 py-2">
-                {day}
+          <div className="grid grid-cols-7 gap-0.5 md:gap-1 mb-1">
+            {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+              <div key={day} className="text-center text-[10px] md:text-xs font-semibold text-zinc-700 py-1 md:py-2">
+                {/* Show single letter on very small screens */}
+                <span className="sm:hidden">{day[0]}</span>
+                <span className="hidden sm:inline">{day}</span>
               </div>
             ))}
           </div>
 
           {/* Calendar grid */}
-          <div className="grid grid-cols-7 gap-1">
+          <div className="grid grid-cols-7 gap-0.5 md:gap-1">
             {calendarDays.map((day, index) => {
               const dayEvents = day ? getEventsForDate(day) : [];
               const isToday = day === new Date().getDate() && 
@@ -169,7 +171,7 @@ export default function GigCalendar() {
               return (
                 <div
                   key={index}
-                  className={`min-h-[100px] p-2 rounded border ${
+                  className={`min-h-[60px] sm:min-h-[80px] md:min-h-[100px] p-1 md:p-2 rounded border ${
                     day
                       ? isToday
                         ? 'bg-blue-50 border-blue-400'
@@ -180,12 +182,12 @@ export default function GigCalendar() {
                 >
                   {day && (
                     <>
-                      <div className={`text-sm font-semibold mb-1 ${
+                      <div className={`text-xs md:text-sm font-semibold mb-0.5 md:mb-1 ${
                         isToday ? 'text-blue-600' : 'text-zinc-700'
                       }`}>
                         {day}
                       </div>
-                      <div className="space-y-1">
+                      <div className="space-y-0.5 md:space-y-1">
                         {dayEvents.slice(0, 3).map(event => {
                           const colorMap: Record<string, string> = {
                             'on-the-road': '#22c55e',
@@ -205,9 +207,9 @@ export default function GigCalendar() {
                               style={{
                                 backgroundColor: bgColor,
                                 color: 'white',
-                                padding: '6px 8px',
-                                borderRadius: '4px',
-                                fontSize: '11px',
+                                padding: '4px 6px',
+                                borderRadius: '3px',
+                                fontSize: '10px',
                                 fontWeight: 600,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
@@ -215,6 +217,7 @@ export default function GigCalendar() {
                                 cursor: 'pointer',
                                 transition: 'opacity 0.2s'
                               }}
+                              className="md:text-[11px] md:px-2 md:py-1.5 md:rounded"
                               onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
                               onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
                               title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}\nStatus: ${event.status || 'Unknown'}\n\nClick to edit`}
@@ -224,7 +227,7 @@ export default function GigCalendar() {
                           );
                         })}
                         {dayEvents.length > 3 && (
-                          <div className="text-xs text-zinc-600 text-center">
+                          <div className="text-[10px] md:text-xs text-zinc-600 text-center">
                             +{dayEvents.length - 3} more
                           </div>
                         )}
@@ -401,8 +404,9 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: 99999,
-        padding: '16px'
+        padding: '8px'
       }}
+      className="md:p-4"
       onClick={onClose}
     >
       <div
@@ -411,32 +415,33 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
           borderRadius: '8px',
           maxWidth: '800px',
           width: '100%',
-          maxHeight: '90vh',
+          maxHeight: '95vh',
           overflow: 'auto'
         }}
+        className="md:max-h-[90vh]"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-white border-b border-zinc-300 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-zinc-900">
+        <div className="sticky top-0 bg-white border-b border-zinc-300 p-3 md:p-4 flex items-center justify-between">
+          <h2 className="text-lg md:text-xl font-bold text-zinc-900">
             {initialJobId ? 'Edit Job Schedule' : 'Schedule Job on Calendar'}
           </h2>
           <button
             onClick={onClose}
-            className="text-zinc-600 hover:text-zinc-900 transition-colors"
+            className="text-zinc-600 hover:text-zinc-900 transition-colors p-2"
           >
-            <i className="fas fa-times text-xl"></i>
+            <i className="fas fa-times text-lg md:text-xl"></i>
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-4 md:p-6 space-y-3 md:space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">
+            <label className="block text-xs md:text-sm font-medium text-zinc-700 mb-2">
               Select Job *
             </label>
             <select
               value={selectedJobId}
               onChange={(e) => setSelectedJobId(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
+              className="w-full px-2 md:px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900 text-sm md:text-base"
               disabled={!!initialJobId}
               required
             >
@@ -451,12 +456,12 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
               <p className="mt-1 text-xs text-zinc-500">Job selection is locked when editing</p>
             )}
             {selectedJob && (
-              <div className="mt-2 p-3 bg-zinc-50 rounded border border-zinc-200">
-                <p className="text-sm text-zinc-700">
+              <div className="mt-2 p-2 md:p-3 bg-zinc-50 rounded border border-zinc-200">
+                <p className="text-xs md:text-sm text-zinc-700">
                   <strong>Client:</strong> {selectedJob.client || 'N/A'}
                 </p>
                 {selectedJob.venue && (
-                  <p className="text-sm text-zinc-700">
+                  <p className="text-xs md:text-sm text-zinc-700">
                     <strong>Venue:</strong> {selectedJob.venue}
                   </p>
                 )}
@@ -465,10 +470,10 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-zinc-700 mb-2">
+            <label className="block text-xs md:text-sm font-medium text-zinc-700 mb-2">
               Job Status (Color) *
             </label>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 md:gap-3">
               <button
                 type="button"
                 onClick={() => setStatus('on-the-road')}
@@ -517,52 +522,52 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-2">
+              <label className="block text-xs md:text-sm font-medium text-zinc-700 mb-2">
                 Start Date *
               </label>
               <input
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
+                className="w-full px-2 md:px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900 text-sm md:text-base"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-2">
+              <label className="block text-xs md:text-sm font-medium text-zinc-700 mb-2">
                 End Date
               </label>
               <input
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
+                className="w-full px-2 md:px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900 text-sm md:text-base"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-700 mb-2">
+              <label className="block text-xs md:text-sm font-medium text-zinc-700 mb-2">
                 Expected Return
               </label>
               <input
                 type="date"
                 value={formData.expected_return_date}
                 onChange={(e) => setFormData({ ...formData, expected_return_date: e.target.value })}
-                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
+                className="w-full px-2 md:px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900 text-sm md:text-base"
               />
             </div>
           </div>
 
-          <div className="flex gap-3 pt-4 border-t border-zinc-200">
+          <div className="flex flex-col sm:flex-row gap-2 md:gap-3 pt-3 md:pt-4 border-t border-zinc-200">
             {initialJobId && (
               <button
                 type="button"
                 onClick={handleDelete}
                 disabled={saving}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-md transition-colors font-medium"
+                className="px-3 md:px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-md transition-colors font-medium text-sm md:text-base"
               >
                 <i className="fas fa-trash mr-2"></i>
                 Remove from Calendar
@@ -571,14 +576,14 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
             <button
               type="submit"
               disabled={saving || !selectedJobId}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md transition-colors font-medium"
+              className="flex-1 px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md transition-colors font-medium text-sm md:text-base"
             >
               {saving ? (initialJobId ? 'Updating...' : 'Scheduling...') : (initialJobId ? 'Update Schedule' : 'Schedule Job')}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-md transition-colors"
+              className="px-3 md:px-4 py-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-md transition-colors text-sm md:text-base"
             >
               Cancel
             </button>

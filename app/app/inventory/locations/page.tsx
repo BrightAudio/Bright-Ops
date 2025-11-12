@@ -2,22 +2,23 @@
 
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useLocation, LOCATIONS, LocationType } from "@/lib/contexts/LocationContext";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function StockLocationsPage() {
   const { currentLocation, setCurrentLocation } = useLocation();
+  const router = useRouter();
 
   return (
     <DashboardLayout>
       <main className="p-6">
         <div className="mb-6">
-          <Link 
-            href="/app/inventory"
+          <button 
+            onClick={() => router.back()}
             className="inline-flex items-center gap-2 text-zinc-400 hover:text-white transition-colors mb-4"
           >
-            <i className="fas fa-arrow-left"></i>
-            Back to Inventory
-          </Link>
+            <span>←</span>
+            Back
+          </button>
           <h1 className="text-3xl font-bold text-white mb-2">Stock Locations</h1>
           <p className="text-zinc-400">Select your active warehouse location to filter inventory</p>
         </div>

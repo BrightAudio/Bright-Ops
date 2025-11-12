@@ -495,6 +495,9 @@ button{font-family:inherit; cursor:pointer}
 .sidebar-header {
   padding: 1.25rem 1rem;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .sidebar-logo {
@@ -864,4 +867,204 @@ button{font-family:inherit; cursor:pointer}
   margin-bottom: 12px;
   opacity: 0.3;
 }
+
+/* ==============================================
+   MOBILE RESPONSIVE STYLES
+   ============================================== */
+
+/* Mobile breakpoints:
+   - sm: 640px
+   - md: 768px  
+   - lg: 1024px
+*/
+
+/* Hide sidebar on mobile by default */
+@media (max-width: 768px) {
+  .main-area {
+    flex-direction: column;
+  }
+
+  .sidebar {
+    position: fixed !important;
+    left: -280px;
+    top: 0;
+    bottom: 0;
+    width: 280px;
+    z-index: 9999;
+    transition: left 0.3s ease;
+    background: var(--grey-900);
+  }
+
+  .sidebar.open {
+    left: 0 !important;
+  }
+
+  /* Mobile overlay when sidebar is open */
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 9998;
+  }
+
+  .sidebar-overlay.active {
+    display: block;
+  }
+
+  /* Top bar mobile adjustments */
+  .top-bar {
+    padding: 0.75rem 1rem !important;
+  }
+
+  .app-title {
+    font-size: 1.125rem !important;
+  }
+
+  .right-actions {
+    gap: 0.5rem !important;
+  }
+
+  .icon-btn {
+    padding: 0.5rem !important;
+    font-size: 1rem !important;
+  }
+
+  /* Search and notifications - make full width on mobile */
+  .right-actions > div > div[style*="position: fixed"] {
+    left: 1rem !important;
+    right: 1rem !important;
+    min-width: auto !important;
+    max-width: none !important;
+  }
+
+  /* Dashboard grid - stack on mobile */
+  .dashboard-grid {
+    grid-template-columns: 1fr !important;
+    gap: 1rem !important;
+  }
+
+  /* Widget cards - adjust padding */
+  .widget-card {
+    padding: 1rem !important;
+  }
+
+  .widget-header h3 {
+    font-size: 1rem !important;
+  }
+
+  /* Tables - make scrollable horizontally */
+  table {
+    display: block;
+    overflow-x: auto;
+    white-space: nowrap;
+  }
+
+  thead, tbody, tr {
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+  }
+
+  /* Form inputs - full width on mobile */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="number"],
+  input[type="date"],
+  input[type="datetime-local"],
+  select,
+  textarea {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+
+  /* Modal adjustments */
+  .modal-content {
+    margin: 1rem !important;
+    max-height: calc(100vh - 2rem) !important;
+  }
+
+  /* Navigation items - larger touch targets */
+  .nav-item {
+    padding: 0.875rem 1rem !important;
+    font-size: 0.9375rem !important;
+  }
+
+  /* Hide certain UI elements on very small screens */
+  @media (max-width: 480px) {
+    .hide-on-tiny {
+      display: none !important;
+    }
+    
+    .app-title {
+      font-size: 1rem !important;
+    }
+
+    .right-actions {
+      gap: 0.25rem !important;
+    }
+
+    .icon-btn i {
+      font-size: 0.875rem !important;
+    }
+  }
+}
+
+/* Tablet adjustments (768px - 1024px) */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .sidebar {
+    width: 200px;
+  }
+
+  .nav-item {
+    padding: 0.625rem 0.875rem !important;
+    font-size: 0.875rem !important;
+  }
+
+  .dashboard-grid {
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)) !important;
+  }
+}
+
+/* Desktop - hide mobile-only elements */
+@media (min-width: 768px) {
+  .md\:hidden {
+    display: none !important;
+  }
+}
+
+/* Ensure text is readable on all devices */
+@media (max-width: 768px) {
+  body {
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  h1 {
+    font-size: 1.5rem;
+  }
+
+  h2 {
+    font-size: 1.25rem;
+  }
+
+  h3 {
+    font-size: 1.125rem;
+  }
+
+  /* Improve button touch targets */
+  button {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Stack form grids on mobile */
+  .grid {
+    grid-template-columns: 1fr !important;
+  }
+}
+
 
