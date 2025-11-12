@@ -41,8 +41,7 @@ export function useGigCalendar(month?: number, year?: number) {
     // Fetch jobs that have any dates in this month
     const { data: jobs, error } = await supabase
       .from('jobs')
-      .select('*')
-      .or(`start_date.gte.${firstDay.toISOString()},start_date.lte.${lastDay.toISOString()},event_date.gte.${firstDay.toISOString()},event_date.lte.${lastDay.toISOString()},expected_return_date.gte.${firstDay.toISOString()},expected_return_date.lte.${lastDay.toISOString()}`);
+      .select('*');
 
     if (error) {
       console.error('Calendar error:', error);

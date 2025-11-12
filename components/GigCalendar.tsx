@@ -18,8 +18,6 @@ export default function GigCalendar() {
 
   const errorMessage = error ? String(error) : null;
 
-  console.log('GigCalendar render - showAddModal:', showAddModal);
-
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -60,10 +58,8 @@ export default function GigCalendar() {
   };
 
   const handleAddEvent = (date?: string) => {
-    console.log('Add event clicked, date:', date);
     setSelectedDate(date || new Date().toISOString().split('T')[0]);
     setShowAddModal(true);
-    console.log('Modal should show now');
   };
 
   // Generate calendar grid
@@ -206,68 +202,16 @@ export default function GigCalendar() {
       )}
 
       {/* Add Event Modal */}
-      <div style={{ position: 'fixed', top: 0, left: 0, padding: '10px', background: 'yellow', zIndex: 10000 }}>
-        Debug: showAddModal = {String(showAddModal)}
-      </div>
-      
       {showAddModal && (
-        <div 
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: 'rgba(0, 0, 0, 0.8)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            zIndex: 99999,
-            padding: '20px'
-          }}
-          onClick={() => {
-            console.log('Backdrop clicked');
+        <AddEventModal
+          selectedDate={selectedDate}
+          crew={availableCrew}
+          onClose={() => setShowAddModal(false)}
+          onSuccess={() => {
             setShowAddModal(false);
+            reload();
           }}
-        >
-          <div 
-            style={{
-              backgroundColor: 'white',
-              borderRadius: '8px',
-              padding: '30px',
-              maxWidth: '500px',
-              width: '100%',
-              border: '5px solid red'
-            }}
-            onClick={(e) => {
-              e.stopPropagation();
-              console.log('Modal content clicked');
-            }}
-          >
-            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', marginBottom: '20px' }}>
-              TEST MODAL IS SHOWING
-            </h2>
-            <p style={{ color: 'black', marginBottom: '20px' }}>
-              Selected date: {selectedDate || 'No date selected'}
-            </p>
-            <button
-              onClick={() => {
-                console.log('Close button clicked');
-                setShowAddModal(false);
-              }}
-              style={{
-                padding: '10px 20px',
-                backgroundColor: 'blue',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                cursor: 'pointer'
-              }}
-            >
-              Close Modal
-            </button>
-          </div>
-        </div>
+        />
       )}
     </div>
   );
@@ -291,15 +235,12 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
   });
   const [saving, setSaving] = useState(false);
 
-  console.log('AddEventModal rendered with selectedDate:', selectedDate);
-
   useEffect(() => {
     async function fetchJobs() {
       const { data } = await supabase
         .from('jobs')
         .select('*')
         .order('created_at', { ascending: false });
-      console.log('Fetched jobs:', data);
       setJobs(data || []);
     }
     fetchJobs();
@@ -350,11 +291,30 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
 
   return (
     <div
-      className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4"
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 99999,
+        padding: '16px'
+      }}
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto"
+        style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          maxWidth: '800px',
+          width: '100%',
+          maxHeight: '90vh',
+          overflow: 'auto'
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white border-b border-zinc-300 p-4 flex items-center justify-between">
