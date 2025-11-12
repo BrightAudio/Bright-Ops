@@ -24,6 +24,7 @@ export interface CalendarEvent {
   employees: string[];
   location?: string;
   notes?: string;
+  status?: string;
   job_id: string;
 }
 
@@ -66,6 +67,7 @@ export function useGigCalendar(month?: number, year?: number) {
             employees: assignedCrew,
             location: job.venue,
             notes: job.notes,
+            status: job.status,
             job_id: job.id
           });
         }
@@ -83,6 +85,7 @@ export function useGigCalendar(month?: number, year?: number) {
             employees: assignedCrew,
             location: job.venue,
             notes: job.notes,
+            status: job.status,
             job_id: job.id
           });
         }
@@ -100,6 +103,7 @@ export function useGigCalendar(month?: number, year?: number) {
             employees: assignedCrew,
             location: job.venue,
             notes: job.notes,
+            status: job.status,
             job_id: job.id
           });
         }
@@ -125,6 +129,7 @@ export function useGigCalendar(month?: number, year?: number) {
               employees: assignedCrew,
               location: job.venue,
               notes: job.notes,
+              status: job.status,
               job_id: job.id
             });
           }

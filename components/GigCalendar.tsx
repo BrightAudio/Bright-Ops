@@ -179,7 +179,7 @@ export default function GigCalendar() {
                           <div
                             key={event.id}
                             className={`text-xs px-2 py-1 rounded truncate font-medium ${
-                              getStatusColor(event.notes || '')
+                              getStatusColor(event.status || '')
                             }`}
                             title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}`}
                           >
@@ -265,8 +265,7 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
           end_date: formData.end_date || null,
           expected_return_date: formData.expected_return_date || null,
           event_date: formData.start_date,
-          status: status,
-          notes: status // Store status in notes for color coding
+          status: status
         })
         .eq('id', selectedJobId);
 
