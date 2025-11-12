@@ -210,23 +210,65 @@ export default function GigCalendar() {
         Debug: showAddModal = {String(showAddModal)}
       </div>
       
-      {showAddModal ? (
+      {showAddModal && (
         <div 
-          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
-          style={{ zIndex: 9999 }}
+          style={{
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 99999,
+            padding: '20px'
+          }}
+          onClick={() => {
+            console.log('Backdrop clicked');
+            setShowAddModal(false);
+          }}
         >
-          <div className="bg-white rounded-lg p-6 max-w-md">
-            <h2 className="text-xl font-bold text-zinc-900 mb-4">Test Modal</h2>
-            <p className="text-zinc-700">Modal is showing! Selected date: {selectedDate}</p>
+          <div 
+            style={{
+              backgroundColor: 'white',
+              borderRadius: '8px',
+              padding: '30px',
+              maxWidth: '500px',
+              width: '100%',
+              border: '5px solid red'
+            }}
+            onClick={(e) => {
+              e.stopPropagation();
+              console.log('Modal content clicked');
+            }}
+          >
+            <h2 style={{ fontSize: '24px', fontWeight: 'bold', color: 'black', marginBottom: '20px' }}>
+              TEST MODAL IS SHOWING
+            </h2>
+            <p style={{ color: 'black', marginBottom: '20px' }}>
+              Selected date: {selectedDate || 'No date selected'}
+            </p>
             <button
-              onClick={() => setShowAddModal(false)}
-              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+              onClick={() => {
+                console.log('Close button clicked');
+                setShowAddModal(false);
+              }}
+              style={{
+                padding: '10px 20px',
+                backgroundColor: 'blue',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                cursor: 'pointer'
+              }}
             >
-              Close
+              Close Modal
             </button>
           </div>
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
