@@ -42,7 +42,10 @@ export default function Transports() {
   
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tables<"transports"> | null>(null);
-  const [form, setForm] = useState<TablesInsert<"transports">>({
+  
+  type TransportForm = TablesInsert<"transports">;
+  
+  const [form, setForm] = useState<TransportForm>({
     job_id: jobIdFromUrl || "",
     vehicle: "",
     driver: "",
@@ -73,11 +76,14 @@ export default function Transports() {
   }
 
   function openModal(transport?: Tables<"transports">) {
-    console.log('Opening modal with transport:', transport);
     setEditing(transport ?? null);
     setForm(
       transport
-        ? { ...transport }
+        ? { 
+            ...transport,
+            depart_at: transport.depart_at ? transport.depart_at.slice(0, 16) : "",
+            arrive_at: transport.arrive_at ? transport.arrive_at.slice(0, 16) : ""
+          }
         : { job_id: jobIdFromUrl || "", vehicle: "", driver: "", depart_at: "", arrive_at: "", notes: "" }
     );
     setError(null);
@@ -102,9 +108,17 @@ export default function Transports() {
     const err = validateForm();
     if (err) return setError(err);
     if (editing) {
-      await supabase
-        .from("transports")
-        .update(form as TablesUpdate<"transports">)
+      await (supabase
+        .from("transports") as any)
+        .update({
+          vehicle: form.vehicle,
+          driver: form.driver,
+          depart_at: form.depart_at,
+          arrive_at: form.arrive_at,
+          job_id: form.job_id,
+          notes: form.notes,
+          status: form.status
+        })
         .eq("id", editing.id);
     } else {
       await supabase
@@ -165,6 +179,7 @@ export default function Transports() {
   );
 
   return (
+    <>
     <DashboardLayout>
     <main className="min-h-screen bg-zinc-900 px-6 py-10 text-white">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
@@ -312,10 +327,26 @@ export default function Transports() {
           </tbody>
         </table>
       </div>
-      {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={closeModal}>
+    </main>
+    </DashboardLayout>
+    
+    {/* Edit Modal - Outside DashboardLayout for proper z-index */}
+    {modalOpen && (
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-[9999]" 
+          onClick={closeModal}
+          style={{ 
+            position: 'fixed', 
+            top: 0, 
+            left: 0, 
+            right: 0, 
+            bottom: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)'
+          }}
+        >
           <form
             className="bg-zinc-800 rounded-lg p-8 shadow-lg w-full max-w-md flex flex-col gap-4"
+            style={{ backgroundColor: '#27272a' }}
             onSubmit={handleSave}
             onClick={(e) => e.stopPropagation()}
           >
@@ -324,14 +355,14 @@ export default function Transports() {
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               placeholder="Vehicle"
               value={form.vehicle ?? ""}
-              onChange={e => setForm(f => ({ ...f, vehicle: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
               required
             />
             <input
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               placeholder="Driver"
               value={form.driver ?? ""}
-              onChange={e => setForm(f => ({ ...f, driver: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, driver: e.target.value }))}
               required
             />
             <label className="text-sm text-gray-400">Departure</label>
@@ -339,7 +370,7 @@ export default function Transports() {
               type="datetime-local"
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               value={form.depart_at ?? ""}
-              onChange={e => setForm(f => ({ ...f, depart_at: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, depart_at: e.target.value }))}
               required
             />
             <label className="text-sm text-gray-400">Arrival</label>
@@ -347,26 +378,26 @@ export default function Transports() {
               type="datetime-local"
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               value={form.arrive_at ?? ""}
-              onChange={e => setForm(f => ({ ...f, arrive_at: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, arrive_at: e.target.value }))}
               required
             />
             <input
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               placeholder="Job ID (optional)"
               value={form.job_id ?? ""}
-              onChange={e => setForm(f => ({ ...f, job_id: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, job_id: e.target.value }))}
             />
             <textarea
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               placeholder="Notes"
               value={form.notes ?? ""}
-              onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, notes: e.target.value }))}
               rows={3}
             />
             <select
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               value={form.status || "Scheduled"}
-              onChange={e => setForm(f => ({ ...f, status: e.target.value }))}
+              onChange={e => setForm((f: TransportForm) => ({ ...f, status: e.target.value }))}
             >
               <option value="Scheduled">Scheduled</option>
               <option value="In Transit">In Transit</option>
@@ -392,7 +423,6 @@ export default function Transports() {
           </form>
         </div>
       )}
-    </main>
-    </DashboardLayout>
+    </>
   );
 }
