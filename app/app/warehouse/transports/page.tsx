@@ -28,11 +28,18 @@ export default function Transports() {
   const searchParams = useSearchParams();
   const jobIdFromUrl = searchParams.get('job');
   
-  const [dateFrom, setDateFrom] = useState("");
-  const [dateTo, setDateTo] = useState("");
-  const [warehouse, setWarehouse] = useState("");
+  // Create form at the top
   const [vehicle, setVehicle] = useState("");
-  const [status, setStatus] = useState("");
+  const [driver, setDriver] = useState("");
+  const [departAt, setDepartAt] = useState("");
+  const [arriveAt, setArriveAt] = useState("");
+  const [notes, setNotes] = useState("");
+  const [transportStatus, setTransportStatus] = useState("Scheduled");
+  
+  // Filter states
+  const [filterVehicle, setFilterVehicle] = useState("");
+  const [filterStatus, setFilterStatus] = useState("");
+  
   const [modalOpen, setModalOpen] = useState(false);
   const [editing, setEditing] = useState<Tables<"transports"> | null>(null);
   const [form, setForm] = useState<TablesInsert<"transports">>({
@@ -107,6 +114,44 @@ export default function Transports() {
     loadTransports();
   }
 
+  async function handleCreateTransport() {
+    if (!vehicle.trim() || !driver.trim()) {
+      setError("Vehicle and driver required.");
+      return;
+    }
+    if (!departAt || !arriveAt) {
+      setError("Departure and arrival times required.");
+      return;
+    }
+    if (new Date(arriveAt) < new Date(departAt)) {
+      setError("Arrival must be after departure.");
+      return;
+    }
+
+    const newTransport: TablesInsert<"transports"> = {
+      job_id: jobIdFromUrl || "",
+      vehicle,
+      driver,
+      depart_at: departAt,
+      arrive_at: arriveAt,
+      notes,
+      status: transportStatus
+    };
+
+    await supabase.from("transports").insert(newTransport);
+    
+    // Clear form
+    setVehicle("");
+    setDriver("");
+    setDepartAt("");
+    setArriveAt("");
+    setNotes("");
+    setTransportStatus("Scheduled");
+    setError(null);
+    
+    loadTransports();
+  }
+
   function formatDateTime(dt: string) {
     if (!dt) return "";
     return new Date(dt).toLocaleString();
@@ -114,8 +159,8 @@ export default function Transports() {
 
   // Filter logic
   const filtered = transports.filter(t =>
-    (!vehicle || t.vehicle === vehicle) &&
-    (!status || t.status === status)
+    (!filterVehicle || t.vehicle === filterVehicle) &&
+    (!filterStatus || t.status === filterStatus)
   );
 
   return (
@@ -126,42 +171,104 @@ export default function Transports() {
         <button
           type="button"
           className="bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 rounded-lg shadow transition-colors"
-          onClick={() => openModal()}
+          onClick={handleCreateTransport}
         >
-          + New Transport
+          + Create Transport
         </button>
       </div>
-      <form className="flex flex-wrap gap-4 mb-6 items-end">
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Date From</label>
-          <input type="date" className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={dateFrom} onChange={e => setDateFrom(e.target.value)} />
+
+      {/* Create Transport Form */}
+      <div className="bg-zinc-800 rounded-xl border border-zinc-700 p-6 mb-6">
+        <h2 className="text-xl font-semibold mb-4">New Transport</h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Vehicle *</label>
+            <select 
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              value={vehicle} 
+              onChange={e => setVehicle(e.target.value)}
+            >
+              <option value="">Select Vehicle</option>
+              {vehicles.map(v => <option key={v} value={v}>{v}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Driver *</label>
+            <input 
+              type="text"
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              placeholder="Driver name"
+              value={driver} 
+              onChange={e => setDriver(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Departure *</label>
+            <input 
+              type="datetime-local"
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              value={departAt} 
+              onChange={e => setDepartAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Arrival *</label>
+            <input 
+              type="datetime-local"
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              value={arriveAt} 
+              onChange={e => setArriveAt(e.target.value)}
+            />
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Status</label>
+            <select 
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              value={transportStatus} 
+              onChange={e => setTransportStatus(e.target.value)}
+            >
+              {statuses.map(s => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </div>
+          <div className="flex flex-col">
+            <label className="text-sm mb-1 text-gray-400">Notes</label>
+            <input 
+              type="text"
+              className="bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+              placeholder="Optional notes"
+              value={notes} 
+              onChange={e => setNotes(e.target.value)}
+            />
+          </div>
         </div>
+        {error && <div className="mt-4 text-red-400 text-sm">{error}</div>}
+      </div>
+
+      {/* Filter Section */}
+      <div className="flex flex-wrap gap-4 mb-6 items-end">
         <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Date To</label>
-          <input type="date" className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={dateTo} onChange={e => setDateTo(e.target.value)} />
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Warehouse</label>
-          <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={warehouse} onChange={e => setWarehouse(e.target.value)}>
-            <option value="">All</option>
-            {warehouses.map(w => <option key={w} value={w}>{w}</option>)}
-          </select>
-        </div>
-        <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Vehicle</label>
-          <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={vehicle} onChange={e => setVehicle(e.target.value)}>
-            <option value="">All</option>
+          <label className="text-sm mb-1 text-gray-400">Filter by Vehicle</label>
+          <select 
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+            value={filterVehicle} 
+            onChange={e => setFilterVehicle(e.target.value)}
+          >
+            <option value="">All Vehicles</option>
             {vehicles.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
         </div>
         <div className="flex flex-col">
-          <label className="text-sm mb-1 text-gray-400">Status</label>
-          <select className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" value={status} onChange={e => setStatus(e.target.value)}>
-            <option value="">All</option>
+          <label className="text-sm mb-1 text-gray-400">Filter by Status</label>
+          <select 
+            className="bg-zinc-800 border border-zinc-700 rounded-lg px-4 py-2 text-white focus:outline-none focus:border-amber-400" 
+            value={filterStatus} 
+            onChange={e => setFilterStatus(e.target.value)}
+          >
+            <option value="">All Statuses</option>
             {statuses.map(s => <option key={s} value={s}>{s}</option>)}
           </select>
         </div>
-      </form>
+      </div>
       
       {/* Show prompt if viewing a specific job with no transports */}
       {jobIdFromUrl && filtered.length === 0 && (
