@@ -64,7 +64,10 @@ export default function DashboardLayout({
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const { notifications, markAsRead, markAllAsRead } = useNotifications();
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const { notifications, markAsRead, markAllAsRead, hasUnread } = useNotifications();
   const [userProfile, setUserProfile] = useState<{ full_name: string; company_name: string | null; email: string } | null>(null);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
@@ -115,6 +118,93 @@ export default function DashboardLayout({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, [profileOpen, searchOpen, notificationsOpen]);
+
+  // Search functionality
+  useEffect(() => {
+    const performSearch = async () => {
+      if (!searchQuery.trim()) {
+        setSearchResults([]);
+        return;
+      }
+
+      setSearchLoading(true);
+      
+      try {
+        const results: any[] = [];
+        const query = searchQuery.toLowerCase();
+
+        // Search jobs
+        const { data: jobs } = await supabase
+          .from('jobs')
+          .select('id, name, job_id, status')
+          .or(`name.ilike.%${query}%,job_id.ilike.%${query}%`)
+          .limit(5);
+        
+        if (jobs) {
+          jobs.forEach(job => {
+            results.push({
+              type: 'job',
+              id: job.id,
+              title: job.name,
+              subtitle: `Job ID: ${job.job_id}`,
+              link: `/app/jobs/${job.id}`
+            });
+          });
+        }
+
+        // Search inventory items
+        const { data: inventory } = await supabase
+          .from('inventory_items')
+          .select('id, name, barcode, gear_type')
+          .or(`name.ilike.%${query}%,barcode.ilike.%${query}%,gear_type.ilike.%${query}%`)
+          .limit(5);
+        
+        if (inventory) {
+          inventory.forEach(item => {
+            results.push({
+              type: 'inventory',
+              id: item.id,
+              title: item.name,
+              subtitle: item.barcode ? `Barcode: ${item.barcode}` : `Type: ${item.gear_type || 'N/A'}`,
+              link: `/app/inventory/${item.id}`
+            });
+          });
+        }
+
+        // Search clients
+        const { data: clients } = await supabase
+          .from('clients')
+          .select('id, name, email')
+          .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
+          .limit(5);
+        
+        if (clients) {
+          clients.forEach(client => {
+            results.push({
+              type: 'client',
+              id: client.id,
+              title: client.name,
+              subtitle: client.email || '',
+              link: `/app/clients/${client.id}`
+            });
+          });
+        }
+
+        setSearchResults(results);
+      } catch (error) {
+        console.error('Search error:', error);
+        setSearchResults([]);
+      } finally {
+        setSearchLoading(false);
+      }
+    };
+
+    const debounce = setTimeout(() => {
+      performSearch();
+    }, 300);
+
+    return () => clearTimeout(debounce);
+  }, [searchQuery]);
 
   const toggleSidebar = () => {
     setSidebarCollapsed(!sidebarCollapsed);
@@ -195,7 +285,10 @@ export default function DashboardLayout({
                 minWidth: '400px',
                 maxWidth: '500px',
                 zIndex: 10000,
-                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)'
+                boxShadow: '0 8px 16px rgba(0, 0, 0, 0.3)',
+                maxHeight: '500px',
+                display: 'flex',
+                flexDirection: 'column'
               }}>
                 <div style={{ marginBottom: '1rem' }}>
                   <h3 style={{ margin: '0 0 0.75rem 0', fontSize: '1rem', fontWeight: 600 }}>Search</h3>
@@ -203,6 +296,8 @@ export default function DashboardLayout({
                     type="text"
                     placeholder="Search jobs, inventory, contacts..."
                     autoFocus
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '0.625rem',
@@ -214,13 +309,60 @@ export default function DashboardLayout({
                     }}
                   />
                 </div>
-                <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
-                  <p style={{ margin: 0 }}>Quick tips:</p>
-                  <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0 }}>
-                    <li>Type to search across all jobs, inventory, and contacts</li>
-                    <li>Use quotes for exact matches</li>
-                  </ul>
-                </div>
+                
+                {searchQuery.trim() && (
+                  <div style={{ flex: 1, overflowY: 'auto', marginBottom: '1rem' }}>
+                    {searchLoading ? (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#aaa' }}>Searching...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div style={{ padding: '1rem', textAlign: 'center', color: '#aaa' }}>No results found</div>
+                    ) : (
+                      <div>
+                        {searchResults.map((result) => (
+                          <Link
+                            key={`${result.type}-${result.id}`}
+                            href={result.link}
+                            onClick={() => setSearchOpen(false)}
+                            style={{ textDecoration: 'none', color: 'inherit', display: 'block' }}
+                          >
+                            <div style={{
+                              padding: '0.75rem',
+                              borderRadius: '6px',
+                              marginBottom: '0.5rem',
+                              cursor: 'pointer',
+                              backgroundColor: 'rgba(255, 255, 255, 0.05)',
+                              transition: 'background 0.15s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.1)'}
+                            onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
+                            >
+                              <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
+                                {result.title}
+                              </div>
+                              <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                                {result.subtitle}
+                              </div>
+                              <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
+                                {result.type.charAt(0).toUpperCase() + result.type.slice(1)}
+                              </div>
+                            </div>
+                          </Link>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {!searchQuery.trim() && (
+                  <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.6)' }}>
+                    <p style={{ margin: 0 }}>Quick tips:</p>
+                    <ul style={{ margin: '0.5rem 0 0 1.25rem', padding: 0 }}>
+                      <li>Search by job ID, name, or status</li>
+                      <li>Search inventory by name, barcode, or category</li>
+                      <li>Search contacts by name or email</li>
+                    </ul>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -233,16 +375,18 @@ export default function DashboardLayout({
               onClick={() => setNotificationsOpen(!notificationsOpen)}
             >
               🔔
-              <span style={{
-                position: 'absolute',
-                top: '6px',
-                right: '6px',
-                width: '8px',
-                height: '8px',
-                backgroundColor: '#FC3668',
-                borderRadius: '50%',
-                border: '2px solid #1a1b1e'
-              }}></span>
+              {hasUnread && (
+                <span style={{
+                  position: 'absolute',
+                  top: '6px',
+                  right: '6px',
+                  width: '8px',
+                  height: '8px',
+                  backgroundColor: '#FC3668',
+                  borderRadius: '50%',
+                  border: '2px solid #1a1b1e'
+                }}></span>
+              )}
             </button>
 
             {notificationsOpen && (

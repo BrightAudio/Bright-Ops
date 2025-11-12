@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 export type NotificationType = "pull_sheet" | "job" | "inventory" | "system";
 
@@ -37,7 +37,7 @@ const initialNotifications: Notification[] = [
     title: "Low Stock Alert",
     message: "X32 Mixer inventory is running low (2 units remaining)",
     timestamp: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    read: true,
+    read: false,
     link: "/app/inventory",
   },
   {
@@ -46,28 +46,58 @@ const initialNotifications: Notification[] = [
     title: "New Job Assigned",
     message: "Corporate Conference - Event Center has been assigned to you",
     timestamp: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000),
-    read: true,
+    read: false,
     link: "/app/jobs",
   },
 ];
 
+// Load notifications from localStorage
+const loadNotifications = (): Notification[] => {
+  if (typeof window === 'undefined') return initialNotifications;
+  
+  const stored = localStorage.getItem('notifications');
+  if (stored) {
+    try {
+      const parsed = JSON.parse(stored);
+      return parsed.map((n: any) => ({
+        ...n,
+        timestamp: new Date(n.timestamp)
+      }));
+    } catch (e) {
+      return initialNotifications;
+    }
+  }
+  return initialNotifications;
+};
+
 export function useNotifications() {
-  const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>(loadNotifications);
+
+  // Persist notifications to localStorage whenever they change
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('notifications', JSON.stringify(notifications));
+    }
+  }, [notifications]);
 
   const markAsRead = (id: string) => {
     setNotifications((prev) => 
       prev.map((n) => (n.id === id ? { ...n, read: true } : n))
-        .filter((n) => !n.read) // Remove read notifications from the list
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications([]); // Clear all notifications when marking all as read
+    setNotifications((prev) => 
+      prev.map((n) => ({ ...n, read: true }))
+    );
   };
 
+  const hasUnread = notifications.some((n) => !n.read);
+
   return {
-    notifications: notifications.filter((n) => !n.read), // Only return unread notifications
+    notifications,
     markAsRead,
     markAllAsRead,
+    hasUnread,
   };
 }
