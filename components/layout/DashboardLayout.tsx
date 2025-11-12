@@ -48,6 +48,7 @@ const navSections: NavSection[] = [
       { href: "/app/clients", icon: "fa-users", label: "Contacts" },
       { href: "/app/crew", icon: "fa-user-friends", label: "Crew Members" },
       { href: "/app/venues", icon: "fa-building", label: "Venues" },
+      { href: "/app/training", icon: "fa-graduation-cap", label: "Training Videos" },
     ],
   },
 ];
