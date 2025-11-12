@@ -33,15 +33,16 @@ export function useGigCalendar(month?: number, year?: number) {
 
   return useAsync<CalendarEvent[]>(async () => {
     // Get first and last day of the month
-    const firstDay = new Date(currentYear, currentMonth, 1).toISOString();
-    const lastDay = new Date(currentYear, currentMonth + 1, 0).toISOString();
+    const firstDay = new Date(currentYear, currentMonth, 1);
+    firstDay.setHours(0, 0, 0, 0);
+    const lastDay = new Date(currentYear, currentMonth + 1, 0);
+    lastDay.setHours(23, 59, 59, 999);
 
-    // Fetch jobs for the month
+    // Fetch jobs that have any dates in this month
     const { data: jobs, error } = await supabase
       .from('jobs')
       .select('*')
-      .gte('created_at', firstDay)
-      .lte('created_at', lastDay);
+      .or(`start_date.gte.${firstDay.toISOString()},start_date.lte.${lastDay.toISOString()},event_date.gte.${firstDay.toISOString()},event_date.lte.${lastDay.toISOString()},expected_return_date.gte.${firstDay.toISOString()},expected_return_date.lte.${lastDay.toISOString()}`);
 
     if (error) {
       console.error('Calendar error:', error);
@@ -50,20 +51,86 @@ export function useGigCalendar(month?: number, year?: number) {
 
     const events: CalendarEvent[] = [];
 
-    // For now, we'll just show when jobs were created
-    // We can enhance this later when date fields are added to jobs table
     jobs?.forEach((job: any) => {
-      if (job.created_at) {
-        events.push({
-          id: `${job.id}-created`,
-          title: job.title || job.code || 'Job',
-          date: job.created_at,
-          type: 'gig-start',
-          employees: [],
-          location: job.client,
-          notes: job.status,
-          job_id: job.id
-        });
+      const jobTitle = job.title || job.code || 'Job';
+      const assignedCrew = Array.isArray(job.assigned_crew) ? job.assigned_crew : [];
+
+      // Add start date event (gig begins)
+      if (job.start_date) {
+        const startDate = new Date(job.start_date);
+        if (startDate >= firstDay && startDate <= lastDay) {
+          events.push({
+            id: `${job.id}-start`,
+            title: jobTitle,
+            date: job.start_date,
+            type: 'gig-start',
+            employees: assignedCrew,
+            location: job.venue,
+            notes: job.notes,
+            job_id: job.id
+          });
+        }
+      }
+
+      // Add event date (main show date)
+      if (job.event_date) {
+        const eventDate = new Date(job.event_date);
+        if (eventDate >= firstDay && eventDate <= lastDay) {
+          events.push({
+            id: `${job.id}-event`,
+            title: `🎭 ${jobTitle}`,
+            date: job.event_date,
+            type: 'gig-start',
+            employees: assignedCrew,
+            location: job.venue,
+            notes: job.notes,
+            job_id: job.id
+          });
+        }
+      }
+
+      // Add return date event
+      if (job.expected_return_date) {
+        const returnDate = new Date(job.expected_return_date);
+        if (returnDate >= firstDay && returnDate <= lastDay) {
+          events.push({
+            id: `${job.id}-return`,
+            title: `${jobTitle} - Return`,
+            date: job.expected_return_date,
+            type: 'gig-return',
+            employees: assignedCrew,
+            location: job.venue,
+            notes: job.notes,
+            job_id: job.id
+          });
+        }
+      }
+
+      // Add active days between start and return
+      if (job.start_date && job.expected_return_date) {
+        const start = new Date(job.start_date);
+        const end = new Date(job.expected_return_date);
+        start.setHours(0, 0, 0, 0);
+        end.setHours(0, 0, 0, 0);
+        
+        const current = new Date(start);
+        current.setDate(current.getDate() + 1); // Start from day after start_date
+
+        while (current < end) {
+          if (current >= firstDay && current <= lastDay) {
+            events.push({
+              id: `${job.id}-active-${current.toISOString()}`,
+              title: jobTitle,
+              date: current.toISOString(),
+              type: 'gig-active',
+              employees: assignedCrew,
+              location: job.venue,
+              notes: job.notes,
+              job_id: job.id
+            });
+          }
+          current.setDate(current.getDate() + 1);
+        }
       }
     });
 
@@ -73,32 +140,40 @@ export function useGigCalendar(month?: number, year?: number) {
 
 export function useUpcomingGigs() {
   return useAsync<any[]>(async () => {
-    const today = new Date().toISOString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
-      .gte('start_date', today)
+      .or(`start_date.gte.${today.toISOString()},event_date.gte.${today.toISOString()}`)
       .order('start_date', { ascending: true })
       .limit(10);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching upcoming gigs:', error);
+      return [];
+    }
     return data || [];
   }, []);
 }
 
 export function useActiveGigs() {
   return useAsync<any[]>(async () => {
-    const today = new Date().toISOString();
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
-      .lte('start_date', today)
-      .gte('expected_return_date', today)
+      .lte('start_date', today.toISOString())
+      .gte('expected_return_date', today.toISOString())
       .order('start_date', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching active gigs:', error);
+      return [];
+    }
     return data || [];
   }, []);
 }
@@ -113,11 +188,17 @@ export async function createGigEvent(input: {
   location?: string;
   notes?: string;
 }): Promise<any> {
-  // Create a simple job entry with available fields
+  // Create job entry with all date fields
   const jobData: any = {
     title: input.title,
     code: `GIG-${Date.now()}`,
-    client: input.location,
+    start_date: input.start_date,
+    end_date: input.end_date || null,
+    event_date: input.start_date, // Use start date as event date by default
+    expected_return_date: input.expected_return_date || null,
+    venue: input.location || null,
+    assigned_crew: input.assigned_employees || [],
+    notes: input.notes || null,
     status: 'scheduled'
   };
 
