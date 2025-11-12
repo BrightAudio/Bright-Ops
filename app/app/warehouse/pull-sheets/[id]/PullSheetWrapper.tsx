@@ -12,6 +12,7 @@ type Item = {
   item_name?: string;
   qty_requested?: number;
   qty_pulled?: number;
+  qty_fulfilled?: number;
   notes?: string | null;
   category?: string | null;
   prep_status?: string | null;
@@ -46,7 +47,11 @@ export default function PullSheetDetailWrapper() {
   const [error, setError] = useState<string | null>(null);
 
   async function loadData() {
-    if (!pullSheetId) return;
+    if (!pullSheetId) {
+      setError('No pull sheet ID provided');
+      setLoading(false);
+      return;
+    }
     
     setLoading(true);
     setError(null);
@@ -62,7 +67,15 @@ export default function PullSheetDetailWrapper() {
         .eq('id', pullSheetId)
         .single();
 
-      if (sheetError) throw sheetError;
+      if (sheetError) {
+        console.error('Sheet error:', sheetError);
+        throw new Error(sheetError.message || 'Failed to load pull sheet');
+      }
+      
+      if (!sheetData) {
+        throw new Error('Pull sheet not found');
+      }
+      
       setPullSheet(sheetData as any);
 
       // Load items with inventory details
@@ -75,12 +88,16 @@ export default function PullSheetDetailWrapper() {
         .eq('pull_sheet_id', pullSheetId)
         .order('sort_index', { ascending: true });
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Items error:', itemsError);
+        throw new Error(itemsError.message || 'Failed to load items');
+      }
+      
       setItems((itemsData as any) || []);
       
     } catch (err: any) {
       console.error('Error loading pull sheet:', err);
-      setError(err.message || 'Failed to load pull sheet');
+      setError(err?.message || 'Failed to load pull sheet');
     } finally {
       setLoading(false);
     }

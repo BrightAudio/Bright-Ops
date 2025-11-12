@@ -27,6 +27,7 @@ export default function CreatePullSheetPage() {
   const router = useRouter();
   const [pullSheetName, setPullSheetName] = useState("");
   const [jobId, setJobId] = useState<string>("");
+  const [jobSearchQuery, setJobSearchQuery] = useState("");
   const [jobs, setJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
   
@@ -42,6 +43,8 @@ export default function CreatePullSheetPage() {
 
   // Load jobs for selection
   async function loadJobs(search: string) {
+    setJobSearchQuery(search);
+    
     if (!search.trim()) {
       setJobs([]);
       return;
@@ -64,6 +67,14 @@ export default function CreatePullSheetPage() {
     }
   }
 
+  // Select a job
+  function selectJob(job: any) {
+    setJobId(job.id);
+    setJobSearchQuery(`${job.code} - ${job.title}`);
+    setPullSheetName(`${job.code} - ${job.title}`);
+    setJobs([]);
+  }
+
   // Search for inventory items
   async function searchInventory() {
     if (!searchQuery.trim()) {
@@ -72,18 +83,21 @@ export default function CreatePullSheetPage() {
     }
     
     setSearching(true);
+    setError(null);
+    
     try {
-      const { data, error } = await supabase
+      const { data, error: searchError } = await supabase
         .from('inventory_items')
         .select('id, name, barcode, category, location')
         .or(`name.ilike.%${searchQuery.trim()}%,category.ilike.%${searchQuery.trim()}%,barcode.ilike.%${searchQuery.trim()}%`)
         .order('name', { ascending: true })
         .limit(20);
       
-      if (error) throw error;
+      if (searchError) throw searchError;
       setSearchResults((data as any) || []);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error searching inventory:', err);
+      setError(err.message || 'Failed to search inventory');
     } finally {
       setSearching(false);
     }
@@ -225,14 +239,15 @@ export default function CreatePullSheetPage() {
                 />
               </div>
               
-              <div>
+              <div className="relative">
                 <label className="block text-sm font-medium text-zinc-300 mb-2">
                   Link to Job (Optional)
                 </label>
                 <input
                   type="text"
-                  placeholder="Search for job..."
+                  value={jobSearchQuery}
                   onChange={(e) => loadJobs(e.target.value)}
+                  placeholder="Search for job..."
                   className="w-full bg-zinc-900 border border-zinc-700 rounded px-4 py-2 text-white focus:border-amber-400 focus:outline-none"
                 />
                 {jobs.length > 0 && (
@@ -240,14 +255,11 @@ export default function CreatePullSheetPage() {
                     {jobs.map(job => (
                       <button
                         key={job.id}
-                        onClick={() => {
-                          setJobId(job.id);
-                          setPullSheetName(`${job.code} - ${job.title}`);
-                          setJobs([]);
-                        }}
+                        type="button"
+                        onClick={() => selectJob(job)}
                         className="w-full text-left px-4 py-2 hover:bg-zinc-700 text-sm"
                       >
-                        <div className="font-medium">{job.code}</div>
+                        <div className="font-medium text-white">{job.code}</div>
                         <div className="text-zinc-400 text-xs">{job.title}</div>
                       </button>
                     ))}
@@ -275,8 +287,8 @@ export default function CreatePullSheetPage() {
               </div>
               <button
                 onClick={searchInventory}
-                disabled={searching}
-                className="px-6 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 font-medium disabled:opacity-50"
+                disabled={searching || !searchQuery.trim()}
+                className="px-6 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {searching ? 'Searching...' : 'Search'}
               </button>
