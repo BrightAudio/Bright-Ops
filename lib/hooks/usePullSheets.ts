@@ -168,6 +168,42 @@ export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
   if (error || !data) {
     throw new Error(error?.message ?? "Failed to update pull sheet");
   }
+  
+  // If updating dates or status, sync with the job
+  if (updates.scheduled_out_at || updates.expected_return_at || updates.status) {
+    const pullSheet = data as PullSheet;
+    if (pullSheet.job_id) {
+      const jobUpdates: any = {};
+      
+      // Sync dates
+      if (updates.scheduled_out_at !== undefined) {
+        jobUpdates.start_at = updates.scheduled_out_at;
+      }
+      if (updates.expected_return_at !== undefined) {
+        jobUpdates.end_at = updates.expected_return_at;
+      }
+      
+      // Update job status based on pull sheet status
+      if (updates.status) {
+        if (updates.status === 'finalized') {
+          jobUpdates.status = 'active'; // Job is in progress
+        } else if (updates.status === 'picking') {
+          jobUpdates.status = 'active'; // Job is being prepared
+        } else if (updates.status === 'draft') {
+          jobUpdates.status = 'draft'; // Job is still being planned
+        }
+      }
+      
+      // Only update if there are changes
+      if (Object.keys(jobUpdates).length > 0) {
+        await supabase
+          .from("jobs")
+          .update(jobUpdates as any)
+          .eq("id", pullSheet.job_id);
+      }
+    }
+  }
+  
   return data as PullSheet;
 }
 
