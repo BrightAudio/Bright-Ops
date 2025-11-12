@@ -443,7 +443,7 @@ export default function DashboardLayout({
                     <div style={{ padding: '1rem', textAlign: 'center', color: '#aaa' }}>No notifications</div>
                   ) : (
                     notifications.map((notification) => {
-                      const { type, title, message, timestamp, read, link, id } = notification;
+                      const { type, title, message, timestamp, link, id } = notification;
                       let icon = "fas fa-info-circle";
                       let color = "#6B7280";
                       if (type === "pull_sheet") { icon = "fas fa-clipboard-list"; color = "#137CFB"; }
@@ -462,10 +462,10 @@ export default function DashboardLayout({
                             borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                             cursor: 'pointer',
                             transition: 'background 0.15s',
-                            backgroundColor: !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'
+                            backgroundColor: 'rgba(19, 124, 251, 0.05)'
                           }}
                           onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.05)'}
-                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'}
+                          onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'rgba(19, 124, 251, 0.05)'}
                           >
                             <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
                               <div style={{
@@ -483,9 +483,7 @@ export default function DashboardLayout({
                               <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
                                   {title}
-                                  {!read && (
-                                    <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
-                                  )}
+                                  <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
                                 </div>
                                 <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
                                   {message}
@@ -504,7 +502,7 @@ export default function DashboardLayout({
                             padding: '0.75rem 1rem',
                             borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
                             cursor: 'default',
-                            backgroundColor: !read ? 'rgba(19, 124, 251, 0.05)' : 'transparent'
+                            backgroundColor: 'rgba(19, 124, 251, 0.05)'
                           }}
                         >
                           <div style={{ display: 'flex', alignItems: 'start', gap: '0.75rem' }}>
@@ -523,9 +521,7 @@ export default function DashboardLayout({
                             <div style={{ flex: 1 }}>
                               <div style={{ fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.25rem' }}>
                                 {title}
-                                {!read && (
-                                  <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
-                                )}
+                                <span style={{ marginLeft: '8px', display: 'inline-block', width: '8px', height: '8px', background: '#137CFB', borderRadius: '50%' }}></span>
                               </div>
                               <div style={{ fontSize: '0.75rem', color: 'rgba(255, 255, 255, 0.7)' }}>
                                 {message}
@@ -533,14 +529,12 @@ export default function DashboardLayout({
                               <div style={{ fontSize: '0.6875rem', color: 'rgba(255, 255, 255, 0.5)', marginTop: '0.25rem' }}>
                                 {typeof timestamp === 'string' ? timestamp : new Date(timestamp).toLocaleString()}
                               </div>
-                              {!read && (
-                                <button
-                                  onClick={() => markAsRead(id)}
-                                  style={{ fontSize: '0.75rem', color: '#137CFB', background: 'none', border: 'none', cursor: 'pointer', marginTop: '4px' }}
-                                >
-                                  Mark as read
-                                </button>
-                              )}
+                              <button
+                                onClick={() => markAsRead(id)}
+                                style={{ fontSize: '0.75rem', color: '#137CFB', background: 'none', border: 'none', cursor: 'pointer', marginTop: '4px' }}
+                              >
+                                Mark as read
+                              </button>
                             </div>
                           </div>
                         </div>
