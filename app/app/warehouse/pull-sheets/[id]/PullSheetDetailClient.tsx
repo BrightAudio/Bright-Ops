@@ -114,13 +114,13 @@ const AddItemModal: React.FC<{
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Search Inventory</label>
         <input
-          className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
+          className="w-full rounded border border-gray-300 bg-white px-3 md:px-4 py-2 text-sm md:text-base text-gray-900 focus:border-amber-400 focus:outline-none"
           placeholder="Scan or search by name / barcode"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onFocus={() => setSearch("")}
         />
-        <div className="mt-2 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
+        <div className="mt-2 max-h-48 md:max-h-64 overflow-y-auto rounded-lg border border-gray-200 bg-gray-50">
           {loading ? (
             <div className="px-3 py-2 text-sm text-gray-500">Searching…</div>
           ) : results.length === 0 ? (
@@ -138,8 +138,8 @@ const AddItemModal: React.FC<{
                   setCustomName(result.name);
                 }}
               >
-                <span>{result.name}</span>
-                <span className="text-xs text-gray-500">{result.barcode ?? ""}</span>
+                <span className="truncate pr-2">{result.name}</span>
+                <span className="text-xs text-gray-500 flex-shrink-0">{result.barcode ?? ""}</span>
               </button>
             ))
           )}
@@ -148,7 +148,7 @@ const AddItemModal: React.FC<{
       <div>
         <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Or enter custom name</label>
         <input
-          className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
+          className="w-full rounded border border-gray-300 bg-white px-3 md:px-4 py-2 text-sm md:text-base text-gray-900 focus:border-amber-400 focus:outline-none"
           placeholder="Custom item name"
           value={customName}
           onChange={(e) => {
@@ -159,13 +159,13 @@ const AddItemModal: React.FC<{
           }}
         />
       </div>
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-3 md:gap-4 grid-cols-1 sm:grid-cols-2">
         <div>
           <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Quantity</label>
           <input
             type="number"
             min={1}
-            className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
+            className="w-full rounded border border-gray-300 bg-white px-3 md:px-4 py-2 text-sm md:text-base text-gray-900 focus:border-amber-400 focus:outline-none"
             value={quantity}
             onChange={(e) => setQuantity(Number(e.target.value))}
           />
@@ -173,7 +173,7 @@ const AddItemModal: React.FC<{
         <div>
           <label className="mb-1 block text-xs uppercase tracking-wide text-gray-500">Notes</label>
           <input
-            className="w-full rounded border border-gray-300 bg-white px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
+            className="w-full rounded border border-gray-300 bg-white px-3 md:px-4 py-2 text-sm md:text-base text-gray-900 focus:border-amber-400 focus:outline-none"
             placeholder="Optional notes"
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
@@ -185,10 +185,10 @@ const AddItemModal: React.FC<{
           {modalError}
         </div>
       )}
-      <div className="mt-6 flex justify-end gap-3">
+      <div className="mt-4 md:mt-6 flex flex-col sm:flex-row justify-end gap-2 md:gap-3">
         <button
           type="button"
-          className="rounded border border-gray-300 px-4 py-2 text-gray-700 hover:border-gray-400"
+          className="rounded border border-gray-300 px-4 py-2 text-sm md:text-base text-gray-700 hover:border-gray-400 order-2 sm:order-1"
           onClick={() => {
             setSelected(null);
             setNotes("");
@@ -200,7 +200,7 @@ const AddItemModal: React.FC<{
         </button>
         <button
           type="submit"
-          className="rounded bg-amber-400 px-4 py-2 font-semibold text-gray-900 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60"
+          className="rounded bg-amber-400 px-4 py-2 text-sm md:text-base font-semibold text-gray-900 hover:bg-amber-300 disabled:cursor-not-allowed disabled:opacity-60 order-1 sm:order-2"
           disabled={submitting}
         >
           {submitting ? "Adding…" : "Add Item"}
@@ -261,10 +261,10 @@ const PullSheetDetailClient: React.FC = () => {
   };
 
   return (
-    <div>
+    <div className="p-4 md:p-6">
       {addModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="max-w-2xl w-full bg-white rounded-lg p-6">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="max-w-2xl w-full bg-white rounded-lg p-4 md:p-6 max-h-[90vh] overflow-y-auto">
             <AddItemModal
               onClose={() => setAddModalOpen(false)}
               onAdd={async (payload) => {
@@ -276,10 +276,10 @@ const PullSheetDetailClient: React.FC = () => {
         </div>
       )}
 
-      <div className="mb-6">
+      <div className="mb-4 md:mb-6">
         <button
           onClick={() => router.push('/app/warehouse/pull-sheets')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors"
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 transition-colors text-sm md:text-base"
         >
           <span>←</span>
           <span>Back to Pull Sheets</span>
@@ -368,14 +368,135 @@ const PullSheetDetailClient: React.FC = () => {
         )}
       </section>
 
-      <section className="rounded-xl border-2 border-gray-200 bg-white p-6 shadow">
+      <section className="rounded-xl border-2 border-gray-200 bg-white p-4 md:p-6 shadow">
         <div className="mb-4">
-          <h2 className="text-lg font-semibold text-gray-900">Pull Sheet Items</h2>
-          <p className="text-sm text-gray-600">Adjust quantities inline, reorder for workflow, or add new equipment from inventory.</p>
+          <h2 className="text-base md:text-lg font-semibold text-gray-900">Pull Sheet Items</h2>
+          <p className="text-xs md:text-sm text-gray-600">Adjust quantities inline, reorder for workflow, or add new equipment from inventory.</p>
         </div>
 
-        <div className="rounded-xl border border-gray-200 max-w-full">
-          <table className="min-w-[900px] text-sm">
+        {/* Mobile Card View */}
+        <div className="md:hidden space-y-3">
+          {items.length === 0 ? (
+            <div className="text-center py-8 text-gray-500 text-sm">
+              No items on this pull sheet yet.
+            </div>
+          ) : (
+            items.map((item, index) => {
+              const blocked = blockedIds.includes(item.id);
+              const resolvedName = resolvedItemName(item);
+              const sku = item.products?.sku ?? item.inventory_items?.barcode ?? "—";
+              const itemDisabled = blocked || !canCreateSheet;
+              return (
+                <div key={item.id} className="border border-gray-200 rounded-lg p-3 bg-white">
+                  <div className="flex justify-between items-start mb-2">
+                    <div className="flex-1">
+                      <div className="font-medium text-gray-900 text-sm">{resolvedName}</div>
+                      <div className="text-xs text-gray-500 mt-1">SKU: {sku}</div>
+                    </div>
+                    {canCreateSheet && (
+                      <button
+                        className="rounded border border-red-300 bg-red-50 px-2 py-1 text-xs text-red-700 hover:bg-red-100 disabled:opacity-40 ml-2"
+                        onClick={() => handleRemoveItem(item.id)}
+                        disabled={itemDisabled}
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Qty Requested</label>
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-amber-400 focus:outline-none"
+                        defaultValue={item.qty_requested ?? 0}
+                        disabled={itemDisabled}
+                        onBlur={(e) => {
+                          if (!canCreateSheet) return;
+                          const value = Number(e.target.value);
+                          if (!Number.isFinite(value)) return;
+                          if (value !== item.qty_requested) {
+                            updateItemField(item.id, { qty_requested: value });
+                          }
+                        }}
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs text-gray-500 block mb-1">Qty Pulled</label>
+                      <input
+                        type="number"
+                        min={0}
+                        className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-amber-400 focus:outline-none"
+                        defaultValue={item.qty_pulled ?? 0}
+                        disabled={itemDisabled}
+                        onBlur={(e) => {
+                          if (!canCreateSheet) return;
+                          const value = Number(e.target.value);
+                          if (!Number.isFinite(value)) return;
+                          if (value !== item.qty_pulled) {
+                            updateItemField(item.id, { qty_pulled: value });
+                          }
+                        }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="mb-2">
+                    <label className="text-xs text-gray-500 block mb-1">Notes</label>
+                    <textarea
+                      rows={2}
+                      className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-sm text-gray-900 focus:border-amber-400 focus:outline-none"
+                      defaultValue={item.notes ?? ""}
+                      disabled={itemDisabled}
+                      onBlur={(e) => {
+                        if (!canCreateSheet) return;
+                        const value = e.target.value.trim();
+                        if (value !== (item.notes ?? "")) {
+                          updateItemField(item.id, { notes: value || null });
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {canCreateSheet && (
+                    <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                      <button
+                        className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
+                        onClick={() => moveItem(item.id, -1)}
+                        disabled={index === 0 || itemDisabled}
+                      >
+                        ↑ Move Up
+                      </button>
+                      <button
+                        className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
+                        onClick={() => moveItem(item.id, 1)}
+                        disabled={index === items.length - 1 || itemDisabled}
+                      >
+                        ↓ Move Down
+                      </button>
+                    </div>
+                  )}
+                </div>
+              );
+            })
+          )}
+          {canCreateSheet && (
+            <div className="text-center pt-2">
+              <button
+                className="rounded-lg bg-gray-700 px-4 py-2 font-semibold text-white hover:bg-gray-600 text-sm w-full"
+                onClick={() => setAddModalOpen(true)}
+              >
+                + Add Item
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Desktop Table View */}
+        <div className="hidden md:block rounded-xl border border-gray-200 overflow-x-auto">
+          <table className="min-w-full text-sm">
             <thead className="bg-gray-100 text-xs uppercase tracking-wide text-gray-600">
               <tr>
                 <th className="px-4 py-3 text-left">Item</th>
