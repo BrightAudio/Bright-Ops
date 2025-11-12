@@ -313,10 +313,11 @@ export default function Transports() {
         </table>
       </div>
       {modalOpen && (
-        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50">
+        <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[9999]" onClick={closeModal}>
           <form
             className="bg-zinc-800 rounded-lg p-8 shadow-lg w-full max-w-md flex flex-col gap-4"
             onSubmit={handleSave}
+            onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold mb-2">{editing ? "Edit" : "Add"} Transport</h2>
             <input
