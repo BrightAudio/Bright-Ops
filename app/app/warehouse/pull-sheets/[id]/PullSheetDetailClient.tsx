@@ -3,6 +3,8 @@
 import { supabase } from "@/lib/supabaseClient";
 import React, { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
+import BarcodeScanner from "@/components/BarcodeScanner";
+import GearSubstitutionModal from "@/components/GearSubstitutionModal";
 
 // Types
 type AddItemPayload = {
@@ -30,8 +32,10 @@ type HeaderForm = {
 
 type Item = {
   id: string;
+  inventory_item_id?: string | null;
   products?: { sku?: string };
-  inventory_items?: { barcode?: string };
+  inventory_items?: { barcode?: string; name?: string; category?: string };
+  item_name?: string;
   qty_requested?: number;
   qty_pulled?: number;
   notes?: string | null;
@@ -226,8 +230,12 @@ const PullSheetDetailClient: React.FC = () => {
   const [items, setItems] = useState<Item[]>([]);
   const [blockedIds, setBlockedIds] = useState<string[]>([]);
   const [canCreateSheet, setCanCreateSheet] = useState(true);
-  const [sheet, setSheet] = useState<{ notes?: string }>({});
+  const [sheet, setSheet] = useState<{ notes?: string; id?: string }>({});
   const [addModalOpen, setAddModalOpen] = useState(false);
+  const [substitutionModal, setSubstitutionModal] = useState<{
+    open: boolean;
+    item: Item | null;
+  }>({ open: false, item: null });
 
   const handleHeaderSave = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -276,6 +284,26 @@ const PullSheetDetailClient: React.FC = () => {
         </div>
       )}
 
+      {/* Gear Substitution Modal */}
+      {substitutionModal.open && substitutionModal.item && (
+        <GearSubstitutionModal
+          pullSheetId={sheet.id || ''}
+          pullSheetItemId={substitutionModal.item.id}
+          originalItem={{
+            id: substitutionModal.item.inventory_item_id || '',
+            name: substitutionModal.item.inventory_items?.name || substitutionModal.item.item_name || 'Unknown',
+            barcode: substitutionModal.item.inventory_items?.barcode || undefined,
+            category: substitutionModal.item.inventory_items?.category || undefined,
+          }}
+          onClose={() => setSubstitutionModal({ open: false, item: null })}
+          onSubstitute={() => {
+            // Refresh items or show notification
+            setSubstitutionModal({ open: false, item: null });
+            // TODO: Reload items
+          }}
+        />
+      )}
+
       <div className="mb-4 md:mb-6">
         <button
           onClick={() => router.push('/app/warehouse/pull-sheets')}
@@ -285,6 +313,20 @@ const PullSheetDetailClient: React.FC = () => {
           <span>Back to Pull Sheets</span>
         </button>
       </div>
+
+      {/* Barcode Scanner - Top Left */}
+      {sheet.id && (
+        <div className="mb-6">
+          <BarcodeScanner
+            pullSheetId={sheet.id}
+            onScan={(scan) => {
+              // Refresh items when scan completes
+              console.log('Item scanned:', scan);
+              // TODO: Reload items to show updated qty_pulled
+            }}
+          />
+        </div>
+      )}
 
       <section>
         {editHeader && (
@@ -463,6 +505,13 @@ const PullSheetDetailClient: React.FC = () => {
                   {canCreateSheet && (
                     <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
                       <button
+                        className="rounded border border-purple-300 bg-purple-50 px-3 py-1 text-xs text-purple-700 hover:bg-purple-100 disabled:opacity-40"
+                        onClick={() => setSubstitutionModal({ open: true, item })}
+                        disabled={itemDisabled}
+                      >
+                        🔄 Substitute
+                      </button>
+                      <button
                         className="rounded border border-gray-300 px-3 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
                         onClick={() => moveItem(item.id, -1)}
                         disabled={index === 0 || itemDisabled}
@@ -576,6 +625,14 @@ const PullSheetDetailClient: React.FC = () => {
                       <td className="px-4 py-3">
                         {canCreateSheet && (
                           <div className="flex justify-end gap-2">
+                            <button
+                              className="rounded border border-purple-300 bg-purple-50 px-2 py-1 text-xs text-purple-700 hover:bg-purple-100 disabled:opacity-40"
+                              onClick={() => setSubstitutionModal({ open: true, item })}
+                              disabled={itemDisabled}
+                              title="Substitute with different gear"
+                            >
+                              🔄
+                            </button>
                             <button
                               className="rounded border border-gray-300 px-2 py-1 text-xs text-gray-700 hover:border-gray-400 disabled:opacity-40"
                               onClick={() => moveItem(item.id, -1)}
