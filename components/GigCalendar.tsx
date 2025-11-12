@@ -66,6 +66,8 @@ export default function GigCalendar() {
 
   const handleEditEvent = (event: CalendarEvent, e: React.MouseEvent) => {
     e.stopPropagation(); // Prevent day cell click
+    console.log('handleEditEvent called with event:', event);
+    console.log('Setting selectedJobId to:', event.job_id);
     setSelectedJobId(event.job_id);
     setSelectedDate(event.date);
     setShowAddModal(true);
@@ -276,6 +278,10 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
   });
   const [saving, setSaving] = useState(false);
 
+  console.log('AddEventModal - initialJobId:', initialJobId);
+  console.log('AddEventModal - selectedJobId:', selectedJobId);
+  console.log('AddEventModal - jobs length:', jobs.length);
+
   // Fetch jobs
   useEffect(() => {
     async function fetchJobs() {
@@ -292,6 +298,7 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
   useEffect(() => {
     if (initialJobId && jobs.length > 0) {
       const job = jobs.find(j => j.id === initialJobId);
+      console.log('Loading job data for editing:', job);
       if (job) {
         setFormData({
           start_date: job.start_date || selectedDate,
@@ -301,6 +308,7 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
         if (job.status) {
           setStatus(job.status as 'on-the-road' | 'in-process' | 'completed');
         }
+        console.log('Loaded formData:', { start_date: job.start_date, end_date: job.end_date, return: job.expected_return_date, status: job.status });
       }
     }
   }, [initialJobId, jobs, selectedDate]);
