@@ -25,6 +25,7 @@ export default function InventoryPage() {
 	const [categoryFilter, setCategoryFilter] = useState("");
 	const [maintenanceFilter, setMaintenanceFilter] = useState("");
 	const [sortBy, setSortBy] = useState("name");
+	const [csvModalOpen, setCsvModalOpen] = useState(false);
 	const { data: items, loading, error, refetch } = useInventory({ search });
 	const { currentLocation } = useLocation();
 
@@ -82,12 +83,20 @@ export default function InventoryPage() {
 		<main className="p-6">
 			<div className="flex justify-between items-center mb-4">
 				<h1 className="text-3xl font-bold text-white">Inventory</h1>
-				<Link
-					href="/app/inventory/new"
-					className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-				>
-					Add Item
-				</Link>
+				<div className="flex gap-2">
+					<button
+						onClick={() => setCsvModalOpen(true)}
+						className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
+					>
+						📁 Import CSV
+					</button>
+					<Link
+						href="/app/inventory/new"
+						className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
+					>
+						Add Item
+					</Link>
+				</div>
 			</div>
 			<div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
 				<input
@@ -223,7 +232,183 @@ export default function InventoryPage() {
 					</div>
 				</>
 			)}
+			
+			{/* CSV Upload Modal */}
+			{csvModalOpen && (
+				<CSVUploadModal
+					onClose={() => setCsvModalOpen(false)}
+					onSuccess={() => {
+						setCsvModalOpen(false);
+						refetch();
+					}}
+				/>
+			)}
 		</main>
 		</DashboardLayout>
+	);
+}
+
+// CSV Upload Modal Component
+function CSVUploadModal({ onClose, onSuccess }: { onClose: () => void; onSuccess: () => void }) {
+	const [file, setFile] = useState<File | null>(null);
+	const [uploading, setUploading] = useState(false);
+	const [results, setResults] = useState<{success: number; failed: number; errors: string[]} | null>(null);
+
+	async function handleUpload() {
+		if (!file) {
+			alert("Please select a CSV file");
+			return;
+		}
+
+		setUploading(true);
+		setResults(null);
+
+		try {
+			const text = await file.text();
+			const lines = text.split('\n').filter(l => l.trim());
+			if (lines.length < 2) {
+				alert("CSV file is empty or invalid");
+				setUploading(false);
+				return;
+			}
+
+			// Parse CSV header
+			const header = lines[0].split(',').map(h => h.trim().toLowerCase());
+			const nameIndex = header.findIndex(h => h === 'name' || h === 'item name');
+			const barcodeIndex = header.findIndex(h => h === 'barcode' || h === 'serial');
+			const categoryIndex = header.findIndex(h => h === 'category' || h === 'type');
+			const quantityIndex = header.findIndex(h => h === 'quantity' || h === 'qty');
+			const valueIndex = header.findIndex(h => h === 'value' || h === 'price' || h === 'unit_value');
+			const locationIndex = header.findIndex(h => h === 'location');
+
+			if (nameIndex === -1) {
+				alert("CSV must have a 'name' or 'item name' column");
+				setUploading(false);
+				return;
+			}
+
+			let success = 0;
+			let failed = 0;
+			const errors: string[] = [];
+
+			// Import each row
+			for (let i = 1; i < lines.length; i++) {
+				const values = lines[i].split(',').map(v => v.trim());
+				const name = values[nameIndex];
+
+				if (!name) {
+					errors.push(`Row ${i + 1}: Missing name`);
+					failed++;
+					continue;
+				}
+
+				const itemData: any = {
+					name,
+					barcode: barcodeIndex >= 0 ? values[barcodeIndex] : null,
+					category: categoryIndex >= 0 ? values[categoryIndex] : null,
+					quantity_on_hand: quantityIndex >= 0 ? parseInt(values[quantityIndex]) || 0 : 0,
+					unit_value: valueIndex >= 0 ? parseFloat(values[valueIndex]) || 0 : 0,
+					location: locationIndex >= 0 ? values[locationIndex] : null,
+				};
+
+				const { error } = await (await import('@/lib/supabaseClient')).supabase
+					.from('inventory_items')
+					.insert(itemData);
+
+				if (error) {
+					errors.push(`Row ${i + 1} (${name}): ${error.message}`);
+					failed++;
+				} else {
+					success++;
+				}
+			}
+
+			setResults({ success, failed, errors });
+
+			if (failed === 0) {
+				setTimeout(() => onSuccess(), 2000);
+			}
+
+		} catch (err) {
+			alert(err instanceof Error ? err.message : "Failed to process CSV");
+		} finally {
+			setUploading(false);
+		}
+	}
+
+	return (
+		<div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+			<div className="bg-zinc-800 rounded-lg p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+				<div className="flex justify-between items-center mb-4">
+					<h2 className="text-2xl font-bold text-white">Import Inventory from CSV</h2>
+					<button
+						onClick={onClose}
+						className="text-zinc-400 hover:text-white text-2xl"
+					>
+						×
+					</button>
+				</div>
+
+				<div className="mb-4 p-4 bg-zinc-700 rounded">
+					<h3 className="font-semibold text-white mb-2">CSV Format:</h3>
+					<p className="text-sm text-zinc-300 mb-2">Your CSV file should have these columns (headers are case-insensitive):</p>
+					<ul className="text-sm text-zinc-300 list-disc list-inside space-y-1">
+						<li><strong>name</strong> or <strong>item name</strong> (required)</li>
+						<li><strong>barcode</strong> or <strong>serial</strong> (optional)</li>
+						<li><strong>category</strong> or <strong>type</strong> (optional)</li>
+						<li><strong>quantity</strong> or <strong>qty</strong> (optional, default: 0)</li>
+						<li><strong>value</strong> or <strong>price</strong> or <strong>unit_value</strong> (optional, default: 0)</li>
+						<li><strong>location</strong> (optional)</li>
+					</ul>
+					<p className="text-xs text-zinc-400 mt-2">Example: name,barcode,category,quantity,value,location</p>
+				</div>
+
+				<div className="mb-4">
+					<label className="block text-white mb-2">Select CSV File:</label>
+					<input
+						type="file"
+						accept=".csv"
+						onChange={e => setFile(e.target.files?.[0] || null)}
+						className="w-full px-3 py-2 bg-zinc-700 border border-zinc-600 rounded text-white"
+					/>
+				</div>
+
+				{results && (
+					<div className={`mb-4 p-4 rounded ${results.failed === 0 ? 'bg-green-900/50' : 'bg-yellow-900/50'}`}>
+						<p className="text-white font-semibold">Import Results:</p>
+						<p className="text-green-400">✓ Successfully imported: {results.success}</p>
+						{results.failed > 0 && (
+							<>
+								<p className="text-red-400">✗ Failed: {results.failed}</p>
+								<details className="mt-2">
+									<summary className="text-zinc-300 cursor-pointer">Show errors</summary>
+									<ul className="mt-2 text-sm text-zinc-300 max-h-40 overflow-y-auto">
+										{results.errors.map((err, idx) => (
+											<li key={idx} className="text-red-300">{err}</li>
+										))}
+									</ul>
+								</details>
+							</>
+						)}
+					</div>
+				)}
+
+				<div className="flex gap-2 justify-end">
+					<button
+						onClick={onClose}
+						className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded"
+					>
+						Cancel
+					</button>
+					<button
+						onClick={handleUpload}
+						disabled={!file || uploading}
+						className="px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed"
+					>
+						{uploading ? "Importing..." : "Import"}
+					</button>
+				</div>
+			</div>
+		</div>
 	);
 }
