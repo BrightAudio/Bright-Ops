@@ -7,6 +7,7 @@ import { usePathname } from "next/navigation";
 import ProfileDropdown from "./ProfileDropdown";
 import { logoutAction } from "@/app/actions/auth";
 import { supabase } from "@/lib/supabaseClient";
+import { useLocation } from "@/lib/contexts/LocationContext";
 
 interface NavItem {
   href: string;
@@ -46,6 +47,7 @@ const navSections: NavSection[] = [
     items: [
       { href: "/app/clients", icon: "fa-users", label: "Contacts" },
       { href: "/app/crew", icon: "fa-user-friends", label: "Crew Members" },
+      { href: "/app/venues", icon: "fa-building", label: "Venues" },
     ],
   },
 ];
@@ -66,6 +68,7 @@ export default function DashboardLayout({
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
+  const { currentLocation } = useLocation();
 
   // Fetch user profile
   useEffect(() => {
@@ -147,6 +150,15 @@ export default function DashboardLayout({
         </div>
 
         <div className="right-actions">
+          {/* Location Indicator */}
+          <Link 
+            href="/app/inventory/locations"
+            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm"
+          >
+            <i className="fas fa-map-marker-alt text-blue-400"></i>
+            <span className="text-zinc-300">{currentLocation}</span>
+          </Link>
+
           {/* Search Button */}
           <div style={{ position: 'relative' }} ref={searchRef}>
             <button 

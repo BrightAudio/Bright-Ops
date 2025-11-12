@@ -43,6 +43,7 @@ export default function EditInventoryItemPage() {
 		estimated_jobs_per_year: 50,
 		residual_value: 0,
 		category: "",
+		location: "NEW SOUND Warehouse",
 		tags: [] as string[],
 		image_url: "",
 		repair_cost: 0,
@@ -86,6 +87,7 @@ export default function EditInventoryItemPage() {
 				estimated_jobs_per_year: item.estimated_jobs_per_year ?? 50,
 				residual_value: item.residual_value ?? 0,
 				category: item.category ?? "",
+				location: item.location ?? "NEW SOUND Warehouse",
 				tags: item.tags ?? [],
 				image_url: item.image_url ?? "",
 				repair_cost: item.repair_cost ?? 0,
@@ -186,6 +188,7 @@ export default function EditInventoryItemPage() {
 				estimated_jobs_per_year: form.estimated_jobs_per_year,
 				residual_value: form.residual_value,
 				category: form.category || null,
+				location: form.location,
 				tags: form.tags,
 				image_url: form.image_url || null,
 				repair_cost: form.repair_cost,
@@ -362,6 +365,22 @@ export default function EditInventoryItemPage() {
 								<option value="other">Other</option>
 							</select>
 						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Stock Location
+							</label>
+							<select
+								value={form.location}
+								onChange={(e) => handleChange("location", e.target.value)}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							>
+								<option value="NEW SOUND Warehouse">NEW SOUND Warehouse</option>
+								<option value="Bright Audio Warehouse">Bright Audio Warehouse</option>
+							</select>
+						</div>
+					</div>
+
+					<div className="mt-4">
 						<div>
 							<label className="block text-sm font-medium text-zinc-200">
 								Tags (comma-separated)

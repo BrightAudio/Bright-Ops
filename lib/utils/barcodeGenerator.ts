@@ -10,7 +10,7 @@
 
 import { supabaseBrowser } from '@/lib/supabaseClient';
 import JsBarcode from 'jsbarcode';
-import QRCode from 'qrcode';
+import * as QRCode from 'qrcode';
 
 /**
  * Generate a barcode prefix from item name
@@ -79,6 +79,7 @@ export async function getNextSerial(prefix: string): Promise<string> {
 
 /**
  * Generate a complete unique barcode for an inventory item
+ * Ensures no duplicates by checking the database and incrementing if needed
  * 
  * @param itemName - Name of the inventory item
  * @returns Complete barcode in format PREFIX-XXX
@@ -89,9 +90,40 @@ export async function getNextSerial(prefix: string): Promise<string> {
  * await generateBarcode("Shure SM58") // "SM58-001"
  */
 export async function generateBarcode(itemName: string): Promise<string> {
+  const supabase = supabaseBrowser();
   const prefix = generatePrefix(itemName);
-  const serial = await getNextSerial(prefix);
-  return `${prefix}-${serial}`;
+  let serial = await getNextSerial(prefix);
+  let barcode = `${prefix}-${serial}`;
+  let attempts = 0;
+  const maxAttempts = 1000; // Safety limit
+  
+  // Keep trying until we find a unique barcode
+  while (attempts < maxAttempts) {
+    // Check if this barcode already exists
+    const { data: existing, error } = await supabase
+      .from('inventory_items')
+      .select('id')
+      .eq('barcode', barcode)
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error checking barcode uniqueness:', error);
+      throw new Error('Failed to verify barcode uniqueness');
+    }
+    
+    // If no existing item found, this barcode is unique
+    if (!existing) {
+      return barcode;
+    }
+    
+    // Barcode exists, increment and try again
+    attempts++;
+    const nextSerialNum = parseInt(serial, 10) + attempts;
+    serial = nextSerialNum.toString().padStart(3, '0');
+    barcode = `${prefix}-${serial}`;
+  }
+  
+  throw new Error(`Could not generate unique barcode after ${maxAttempts} attempts`);
 }
 
 /**
@@ -229,6 +261,10 @@ export async function generateQRCodeImage(
     errorCorrectionLevel?: 'L' | 'M' | 'Q' | 'H';
   } = {}
 ): Promise<string> {
+  // TODO: Fix QRCode types
+  // Using type assertion as workaround
+  const QR = QRCode as any;
+  
   const {
     width = 256,
     margin = 4,
@@ -236,20 +272,17 @@ export async function generateQRCodeImage(
     errorCorrectionLevel = 'M'
   } = options;
 
-  return new Promise((resolve, reject) => {
-    QRCode.toDataURL(text, {
+  try {
+    const url = await QR.toDataURL(text, {
       width,
       margin,
       color,
       errorCorrectionLevel
-    }, (error, url) => {
-      if (error) {
-        reject(error);
-      } else {
-        resolve(url);
-      }
     });
-  });
+    return url;
+  } catch (error) {
+    throw error;
+  }
 }
 
 /**

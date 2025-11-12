@@ -9,6 +9,7 @@ import {
 	InventoryItemWithJob,
 } from "@/lib/hooks/useInventory";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import { useLocation } from "@/lib/contexts/LocationContext";
 
 // Inventory listing page
 //
@@ -25,6 +26,7 @@ export default function InventoryPage() {
 	const [maintenanceFilter, setMaintenanceFilter] = useState("");
 	const [sortBy, setSortBy] = useState("name");
 	const { data: items, loading, error, refetch } = useInventory({ search });
+	const { currentLocation } = useLocation();
 
 	// Handler for removing an item. Because Supabase row level
 	// permissions should protect critical data, deleting an item
@@ -54,6 +56,8 @@ export default function InventoryPage() {
 		?.filter(item => {
 			if (categoryFilter && item.category !== categoryFilter) return false;
 			if (maintenanceFilter && item.maintenance_status !== maintenanceFilter) return false;
+			// Filter by location if not "All Locations"
+			if (currentLocation !== "All Locations" && item.location !== currentLocation) return false;
 			return true;
 		})
 		.sort((a, b) => {
