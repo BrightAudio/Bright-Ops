@@ -247,7 +247,7 @@ export default function DashboardLayout({
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             aria-label="Toggle mobile menu"
           >
-            ☰
+            {mobileMenuOpen ? '×' : '☰'}
           </button>
           <div className="app-title">Bright Ops</div>
         </div>
@@ -719,14 +719,16 @@ export default function DashboardLayout({
             <div className="sidebar-logo">
               {isExpanded ? "Bright Ops" : "BO"}
             </div>
-            {/* Close button for mobile */}
-            <button 
-              className="md:hidden p-2 text-white hover:bg-white/10 rounded"
-              onClick={() => setMobileMenuOpen(false)}
-              aria-label="Close menu"
-            >
-              ×
-            </button>
+            {/* Close button for mobile - only show when mobile menu is open */}
+            {mobileMenuOpen && (
+              <button 
+                className="md:hidden p-2 text-white hover:bg-white/10 rounded"
+                onClick={() => setMobileMenuOpen(false)}
+                aria-label="Close menu"
+              >
+                ×
+              </button>
+            )}
           </div>
 
           <div className="sidebar-nav">
