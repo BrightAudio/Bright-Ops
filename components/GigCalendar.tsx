@@ -338,6 +338,39 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
     }
   };
 
+  const handleDelete = async () => {
+    if (!selectedJobId || !initialJobId) return;
+    
+    const confirmDelete = window.confirm(
+      `Are you sure you want to remove this job from the calendar?\n\nThis will clear the scheduling dates but won't delete the job itself.`
+    );
+    
+    if (!confirmDelete) return;
+
+    setSaving(true);
+    try {
+      // Clear the scheduling dates from the job
+      const { error } = await supabase
+        .from('jobs')
+        .update({
+          start_date: null,
+          end_date: null,
+          expected_return_date: null,
+          event_date: null,
+          status: null
+        })
+        .eq('id', selectedJobId);
+
+      if (error) throw error;
+      onSuccess();
+    } catch (error) {
+      console.error('Error removing job from calendar:', error);
+      alert('Failed to remove job from calendar');
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const getStatusColor = (s: string) => {
     switch (s) {
       case 'on-the-road': return 'bg-green-500';
@@ -516,6 +549,17 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
           </div>
 
           <div className="flex gap-3 pt-4 border-t border-zinc-200">
+            {initialJobId && (
+              <button
+                type="button"
+                onClick={handleDelete}
+                disabled={saving}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-md transition-colors font-medium"
+              >
+                <i className="fas fa-trash mr-2"></i>
+                Remove from Calendar
+              </button>
+            )}
             <button
               type="submit"
               disabled={saving || !selectedJobId}
