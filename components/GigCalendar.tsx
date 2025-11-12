@@ -18,6 +18,8 @@ export default function GigCalendar() {
 
   const errorMessage = error ? String(error) : null;
 
+  console.log('GigCalendar render - showAddModal:', showAddModal);
+
   const monthNames = [
     "January", "February", "March", "April", "May", "June",
     "July", "August", "September", "October", "November", "December"
@@ -204,8 +206,15 @@ export default function GigCalendar() {
       )}
 
       {/* Add Event Modal */}
+      <div style={{ position: 'fixed', top: 0, left: 0, padding: '10px', background: 'yellow', zIndex: 10000 }}>
+        Debug: showAddModal = {String(showAddModal)}
+      </div>
+      
       {showAddModal ? (
-        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+        <div 
+          className="fixed inset-0 bg-black/80 flex items-center justify-center p-4"
+          style={{ zIndex: 9999 }}
+        >
           <div className="bg-white rounded-lg p-6 max-w-md">
             <h2 className="text-xl font-bold text-zinc-900 mb-4">Test Modal</h2>
             <p className="text-zinc-700">Modal is showing! Selected date: {selectedDate}</p>
