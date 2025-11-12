@@ -1,8 +1,5 @@
-import PullSheetDetailClient from "./PullSheetDetailClient";
-import { getPullsheetPermissions } from "@/lib/permissions";
+import PullSheetWrapper from "./PullSheetWrapper";
 
 export default async function PullSheetDetailPage() {
-  const permissions = await getPullsheetPermissions();
-
-  return <PullSheetDetailClient permissions={permissions} />;
+  return <PullSheetWrapper />;
 }
