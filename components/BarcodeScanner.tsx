@@ -2,7 +2,8 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Barcode, Package, Undo2, CheckCircle, X } from "lucide-react";
+import { Barcode, Package, Undo2, CheckCircle, X, AlertCircle } from "lucide-react";
+import { playSuccess, playReject } from "@/lib/utils/sounds";
 
 type ScannerProps = {
   pullSheetId: string;
@@ -66,7 +67,55 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
         .eq('inventory_item_id', (inventoryItem as any).id)
         .maybeSingle();
 
-      // 3. Record the scan
+      // 3. Check for duplicate scans (unit-level tracking)
+      if (pullSheetItem && scanType === 'pull') {
+        const { data: existingScan, error: dupError } = await supabase
+          .from('pull_sheet_item_scans')
+          .select('*')
+          .eq('pull_sheet_item_id', (pullSheetItem as any).id)
+          .eq('barcode', barcode.trim())
+          .eq('scan_status', 'active')
+          .maybeSingle();
+
+        if (dupError) {
+          console.warn('Error checking for duplicates:', dupError);
+        }
+
+        if (existingScan) {
+          // Duplicate detected - reject with sound
+          playReject();
+          setLastScan({
+            success: false,
+            message: `Duplicate scan! ${(inventoryItem as any).name} has already been scanned for this pull sheet.`,
+          });
+          setShowResult(true);
+          setBarcode("");
+          setScanning(false);
+          return;
+        }
+      }
+
+      // 4. Record the unit scan (for pull operations)
+      if (pullSheetItem && scanType === 'pull') {
+        const { error: unitScanError } = await (supabase
+          .from('pull_sheet_item_scans') as any)
+          .insert([{
+            pull_sheet_id: pullSheetId,
+            pull_sheet_item_id: (pullSheetItem as any).id,
+            inventory_item_id: (inventoryItem as any).id,
+            barcode: barcode.trim(),
+            scan_status: 'active',
+            scanned_by: 'Current User', // TODO: Get from auth context
+          }]);
+
+        if (unitScanError) {
+          console.warn('Error recording unit scan:', unitScanError);
+        }
+        // qty_fulfilled auto-updates via trigger
+      }
+
+      // 5. Record the scan history
+      // 5. Record the scan history
       const scanData = {
         pull_sheet_id: pullSheetId,
         pull_sheet_item_id: (pullSheetItem as any)?.id || null,
@@ -85,7 +134,7 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
 
       if (scanError) throw scanError;
 
-      // 4. Update pull sheet item qty_pulled if it's a pull scan
+      // 6. Update pull sheet item qty_pulled if it's a pull scan (legacy tracking)
       if (pullSheetItem && scanType === 'pull') {
         const newQtyPulled = ((pullSheetItem as any).qty_pulled || 0) + 1;
         await (supabase
@@ -94,7 +143,10 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
           .eq('id', (pullSheetItem as any).id);
       }
 
-      // 5. Show success
+      // 7. Play success sound
+      playSuccess();
+
+      // 8. Show success
       setLastScan({
         success: true,
         message: `${(inventoryItem as any).name} scanned successfully`,
@@ -116,6 +168,7 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
 
     } catch (err: any) {
       console.error('Scan error:', err);
+      playReject();
       setLastScan({
         success: false,
         message: err.message || 'Error processing scan',
