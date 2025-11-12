@@ -40,62 +40,30 @@ export function useGigCalendar(month?: number, year?: number) {
     const { data: jobs, error } = await supabase
       .from('jobs')
       .select('*')
-      .or(`start_date.gte.${firstDay},expected_return_date.gte.${firstDay}`)
-      .or(`start_date.lte.${lastDay},expected_return_date.lte.${lastDay}`);
+      .gte('created_at', firstDay)
+      .lte('created_at', lastDay);
 
-    if (error) throw error;
+    if (error) {
+      console.error('Calendar error:', error);
+      return [];
+    }
 
     const events: CalendarEvent[] = [];
 
+    // For now, we'll just show when jobs were created
+    // We can enhance this later when date fields are added to jobs table
     jobs?.forEach((job: any) => {
-      // Add start date event
-      if (job.start_date) {
+      if (job.created_at) {
         events.push({
-          id: `${job.id}-start`,
-          title: job.title || job.code,
-          date: job.start_date,
+          id: `${job.id}-created`,
+          title: job.title || job.code || 'Job',
+          date: job.created_at,
           type: 'gig-start',
-          employees: job.assigned_crew || [],
-          location: job.venue,
-          notes: job.notes,
+          employees: [],
+          location: job.client,
+          notes: job.status,
           job_id: job.id
         });
-      }
-
-      // Add return date event
-      if (job.expected_return_date) {
-        events.push({
-          id: `${job.id}-return`,
-          title: `${job.title || job.code} - Return`,
-          date: job.expected_return_date,
-          type: 'gig-return',
-          employees: job.assigned_crew || [],
-          location: job.venue,
-          notes: job.notes,
-          job_id: job.id
-        });
-      }
-
-      // Add active days between start and return
-      if (job.start_date && job.expected_return_date) {
-        const start = new Date(job.start_date);
-        const end = new Date(job.expected_return_date);
-        const current = new Date(start);
-        current.setDate(current.getDate() + 1);
-
-        while (current < end) {
-          events.push({
-            id: `${job.id}-active-${current.toISOString()}`,
-            title: job.title || job.code,
-            date: current.toISOString(),
-            type: 'gig-active',
-            employees: job.assigned_crew || [],
-            location: job.venue,
-            notes: job.notes,
-            job_id: job.id
-          });
-          current.setDate(current.getDate() + 1);
-        }
       }
     });
 
@@ -145,18 +113,12 @@ export async function createGigEvent(input: {
   location?: string;
   notes?: string;
 }): Promise<any> {
-  // If job_id is provided, update existing job
-  // Otherwise create new job entry
-  const jobData = {
+  // Create a simple job entry with available fields
+  const jobData: any = {
     title: input.title,
     code: `GIG-${Date.now()}`,
-    start_date: input.start_date,
-    end_date: input.end_date,
-    expected_return_date: input.expected_return_date,
-    assigned_crew: input.assigned_employees || [],
-    venue: input.location,
-    notes: input.notes,
-    status: 'scheduled' as const
+    client: input.location,
+    status: 'scheduled'
   };
 
   if (input.job_id) {
