@@ -55,6 +55,7 @@ export default function Transports() {
   });
   const [error, setError] = useState<string | null>(null);
   const [transports, setTransports] = useState<Tables<"transports">[]>([]);
+  const [vehicles, setVehicles] = useState<string[]>([]);
 
   useEffect(() => {
     loadTransports();
@@ -73,6 +74,14 @@ export default function Transports() {
     
     const { data } = await query;
     setTransports(data ?? []);
+    
+    // Extract unique vehicles for autocomplete
+    const uniqueVehicles = [...new Set(
+      (data ?? [])
+        .map(t => t.vehicle)
+        .filter((v): v is string => !!v)
+    )];
+    setVehicles(uniqueVehicles);
   }
 
   function openModal(transport?: Tables<"transports">) {
@@ -351,13 +360,22 @@ export default function Transports() {
             onClick={(e) => e.stopPropagation()}
           >
             <h2 className="text-xl font-bold mb-2">{editing ? "Edit" : "Add"} Transport</h2>
-            <input
-              className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
-              placeholder="Vehicle"
-              value={form.vehicle ?? ""}
-              onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
-              required
-            />
+            <div className="flex flex-col">
+              <label className="text-sm text-gray-400 mb-1">Vehicle</label>
+              <input
+                list="vehicles-list"
+                className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
+                placeholder="Select or type vehicle"
+                value={form.vehicle ?? ""}
+                onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
+                required
+              />
+              <datalist id="vehicles-list">
+                {vehicles.map(v => (
+                  <option key={v} value={v} />
+                ))}
+              </datalist>
+            </div>
             <input
               className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
               placeholder="Driver"
