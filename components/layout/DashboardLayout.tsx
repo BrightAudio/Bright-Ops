@@ -298,6 +298,12 @@ export default function DashboardLayout({
                     autoFocus
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' && searchQuery.trim()) {
+                        // Force immediate search on Enter (bypassing debounce)
+                        e.preventDefault();
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '0.625rem',
