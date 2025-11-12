@@ -8,10 +8,9 @@ import type { Database } from "@/types/database";
 type Job = Database["public"]["Tables"]["jobs"]["Row"];
 type Transport = {
   id: string;
-  depart_at: string | null;
-  arrive_at: string | null;
-  origin: string | null;
-  destination: string | null;
+  scheduled_at: string | null;
+  type: string | null;
+  status: string | null;
 };
 
 type ScheduleItem = {
@@ -35,24 +34,24 @@ export default function MySchedule() {
       // Get today and tomorrow dates
       const today = new Date();
       today.setHours(0, 0, 0, 0);
-      const weekFromNow = new Date(today);
-      weekFromNow.setDate(weekFromNow.getDate() + 7);
+      const dayAfterTomorrow = new Date(today);
+      dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
-      // Fetch upcoming jobs (next 7 days)
+      // Fetch jobs for today and tomorrow only
       const { data: jobsData } = await supabase
         .from("jobs")
         .select("*")
         .or(`event_date.gte.${today.toISOString()},load_in_date.gte.${today.toISOString()},load_out_date.gte.${today.toISOString()},prep_start_date.gte.${today.toISOString()}`)
-        .lte("event_date", weekFromNow.toISOString())
+        .lte("event_date", dayAfterTomorrow.toISOString())
         .order("event_date", { ascending: true });
 
-      // Fetch upcoming transports
+      // Fetch transports for today and tomorrow
       const { data: transportsData } = await supabase
         .from("transports")
-        .select("id, depart_at, arrive_at, origin, destination")
-        .gte("depart_at", today.toISOString())
-        .lte("depart_at", weekFromNow.toISOString())
-        .order("depart_at", { ascending: true });
+        .select("id, scheduled_at, type, status")
+        .gte("scheduled_at", today.toISOString())
+        .lte("scheduled_at", dayAfterTomorrow.toISOString())
+        .order("scheduled_at", { ascending: true });
 
       setJobs(jobsData || []);
       setTransports(transportsData || []);
@@ -134,14 +133,14 @@ export default function MySchedule() {
 
     // Add transport events
     transports.forEach(transport => {
-      if (transport.depart_at) {
-        const departDate = new Date(transport.depart_at);
-        if (departDate >= targetDate && departDate < nextDay) {
+      if (transport.scheduled_at) {
+        const scheduledDate = new Date(transport.scheduled_at);
+        if (scheduledDate >= targetDate && scheduledDate < nextDay) {
           items.push({
-            title: "Transport Departure",
-            location: transport.origin || "TBD",
-            date: formatDate(departDate),
-            time: formatTime(departDate),
+            title: `Transport: ${transport.type || 'Scheduled'}`,
+            location: transport.status || "TBD",
+            date: formatDate(scheduledDate),
+            time: formatTime(scheduledDate),
             type: "transport"
           });
         }

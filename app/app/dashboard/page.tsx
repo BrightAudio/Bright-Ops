@@ -1,6 +1,7 @@
 import MySchedule from "@/components/MySchedule";
 import Tasks from "@/components/Tasks";
 import OpenInvoices from "@/components/OpenInvoices";
+import GigCalendar from "@/components/GigCalendar";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 export default function DashboardPage() {
@@ -15,6 +16,11 @@ export default function DashboardPage() {
         }}>
           Dashboard
         </h1>
+        
+        {/* Gig Calendar - Full Width */}
+        <div className="mb-6">
+          <GigCalendar />
+        </div>
         
         {/* Dashboard grid with 2-column layout (responsive) */}
         <div className="dashboard-grid">
