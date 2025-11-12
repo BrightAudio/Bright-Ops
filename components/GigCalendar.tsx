@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useGigCalendar, createGigEvent, CalendarEvent } from "@/lib/hooks/useGigCalendar";
+import { useJobs } from "@/lib/hooks/useJobs";
+import { supabase } from "@/lib/supabaseClient";
 
 export default function GigCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -36,6 +38,23 @@ export default function GigCalendar() {
     if (!events) return [];
     const dateStr = new Date(year, month, day).toISOString().split('T')[0];
     return events.filter(event => event.date.startsWith(dateStr));
+  };
+
+  const getStatusColor = (status: string) => {
+    switch (status?.toLowerCase()) {
+      case 'on-the-road':
+      case 'active':
+        return 'bg-green-500 text-white';
+      case 'in-process':
+      case 'scheduled':
+      case 'prep':
+        return 'bg-yellow-500 text-white';
+      case 'completed':
+      case 'returned':
+        return 'bg-gray-400 text-white';
+      default:
+        return 'bg-blue-500 text-white';
+    }
   };
 
   const handleAddEvent = (date?: string) => {
@@ -92,16 +111,16 @@ export default function GigCalendar() {
       {/* Legend */}
       <div className="flex items-center gap-4 mb-4 text-sm">
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-green-500 rounded"></div>
-          <span className="text-zinc-600">Start</span>
+          <div className="w-4 h-4 bg-green-500 rounded"></div>
+          <span className="text-zinc-600">On the Road</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-blue-500 rounded"></div>
-          <span className="text-zinc-600">Active</span>
+          <div className="w-4 h-4 bg-yellow-500 rounded"></div>
+          <span className="text-zinc-600">In Process</span>
         </div>
         <div className="flex items-center gap-2">
-          <div className="w-3 h-3 bg-orange-500 rounded"></div>
-          <span className="text-zinc-600">Return</span>
+          <div className="w-4 h-4 bg-gray-400 rounded"></div>
+          <span className="text-zinc-600">Completed</span>
         </div>
       </div>
 
@@ -156,24 +175,20 @@ export default function GigCalendar() {
                         {day}
                       </div>
                       <div className="space-y-1">
-                        {dayEvents.slice(0, 3).map(event => (
+                        {dayEvents.slice(0, 2).map(event => (
                           <div
                             key={event.id}
-                            className={`text-xs p-1 rounded truncate ${
-                              event.type === 'gig-start'
-                                ? 'bg-green-100 text-green-800 border border-green-300'
-                                : event.type === 'gig-return'
-                                ? 'bg-orange-100 text-orange-800 border border-orange-300'
-                                : 'bg-blue-100 text-blue-800 border border-blue-300'
+                            className={`text-xs px-2 py-1 rounded truncate font-medium ${
+                              getStatusColor(event.notes || '')
                             }`}
-                            title={`${event.title}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}`}
+                            title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}`}
                           >
                             {event.title}
                           </div>
                         ))}
-                        {dayEvents.length > 3 && (
+                        {dayEvents.length > 2 && (
                           <div className="text-xs text-zinc-600 text-center">
-                            +{dayEvents.length - 3} more
+                            +{dayEvents.length - 2} more
                           </div>
                         )}
                       </div>
@@ -210,38 +225,68 @@ interface AddEventModalProps {
 }
 
 function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModalProps) {
+  const [jobs, setJobs] = useState<any[]>([]);
+  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [status, setStatus] = useState<'on-the-road' | 'in-process' | 'completed'>('in-process');
   const [formData, setFormData] = useState({
-    title: '',
     start_date: selectedDate,
     end_date: '',
-    expected_return_date: '',
-    assigned_employees: [] as string[],
-    location: '',
-    notes: ''
+    expected_return_date: ''
   });
   const [saving, setSaving] = useState(false);
 
+  useEffect(() => {
+    async function fetchJobs() {
+      const { data } = await supabase
+        .from('jobs')
+        .select('*')
+        .order('created_at', { ascending: false });
+      setJobs(data || []);
+    }
+    fetchJobs();
+  }, []);
+
+  const selectedJob = jobs.find(j => j.id === selectedJobId);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!selectedJobId) {
+      alert('Please select a job');
+      return;
+    }
+
     setSaving(true);
     try {
-      await createGigEvent(formData);
+      // Update the job with dates and status
+      const { error } = await supabase
+        .from('jobs')
+        .update({
+          start_date: formData.start_date,
+          end_date: formData.end_date || null,
+          expected_return_date: formData.expected_return_date || null,
+          event_date: formData.start_date,
+          status: status,
+          notes: status // Store status in notes for color coding
+        })
+        .eq('id', selectedJobId);
+
+      if (error) throw error;
       onSuccess();
     } catch (error) {
-      console.error('Error creating event:', error);
-      alert('Failed to create event');
+      console.error('Error scheduling job:', error);
+      alert('Failed to schedule job');
     } finally {
       setSaving(false);
     }
   };
 
-  const toggleEmployee = (employeeId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      assigned_employees: prev.assigned_employees.includes(employeeId)
-        ? prev.assigned_employees.filter(id => id !== employeeId)
-        : [...prev.assigned_employees, employeeId]
-    }));
+  const getStatusColor = (s: string) => {
+    switch (s) {
+      case 'on-the-road': return 'bg-green-500';
+      case 'in-process': return 'bg-yellow-500';
+      case 'completed': return 'bg-gray-400';
+      default: return 'bg-blue-500';
+    }
   };
 
   return (
@@ -250,14 +295,14 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
       onClick={onClose}
     >
       <div
-        className="bg-zinc-900 rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto"
+        className="bg-white rounded-lg max-w-2xl w-full max-h-[90vh] overflow-auto"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="sticky top-0 bg-zinc-900 border-b border-zinc-700 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-white">Add Gig Event</h2>
+        <div className="sticky top-0 bg-white border-b border-zinc-300 p-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-zinc-900">Schedule Job on Calendar</h2>
           <button
             onClick={onClose}
-            className="text-zinc-400 hover:text-white transition-colors"
+            className="text-zinc-600 hover:text-zinc-900 transition-colors"
           >
             <i className="fas fa-times text-xl"></i>
           </button>
@@ -265,115 +310,131 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
 
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Event Title *
+            <label className="block text-sm font-medium text-zinc-700 mb-2">
+              Select Job *
             </label>
-            <input
-              type="text"
-              value={formData.title}
-              onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
+            <select
+              value={selectedJobId}
+              onChange={(e) => setSelectedJobId(e.target.value)}
+              className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
               required
-            />
+            >
+              <option value="">-- Select a Job --</option>
+              {jobs.map(job => (
+                <option key={job.id} value={job.id}>
+                  {job.code} - {job.title || 'Untitled'} {job.client ? `(${job.client})` : ''}
+                </option>
+              ))}
+            </select>
+            {selectedJob && (
+              <div className="mt-2 p-3 bg-zinc-50 rounded border border-zinc-200">
+                <p className="text-sm text-zinc-700">
+                  <strong>Client:</strong> {selectedJob.client || 'N/A'}
+                </p>
+                {selectedJob.venue && (
+                  <p className="text-sm text-zinc-700">
+                    <strong>Venue:</strong> {selectedJob.venue}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-zinc-700 mb-2">
+              Job Status (Color) *
+            </label>
+            <div className="grid grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setStatus('on-the-road')}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  status === 'on-the-road'
+                    ? 'border-green-500 bg-green-50'
+                    : 'border-zinc-300 hover:border-green-400'
+                }`}
+              >
+                <div className="w-full h-3 bg-green-500 rounded mb-2"></div>
+                <span className="text-sm font-medium text-zinc-900">On the Road</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('in-process')}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  status === 'in-process'
+                    ? 'border-yellow-500 bg-yellow-50'
+                    : 'border-zinc-300 hover:border-yellow-400'
+                }`}
+              >
+                <div className="w-full h-3 bg-yellow-500 rounded mb-2"></div>
+                <span className="text-sm font-medium text-zinc-900">In Process</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setStatus('completed')}
+                className={`p-3 rounded-lg border-2 transition-all ${
+                  status === 'completed'
+                    ? 'border-gray-400 bg-gray-50'
+                    : 'border-zinc-300 hover:border-gray-400'
+                }`}
+              >
+                <div className="w-full h-3 bg-gray-400 rounded mb-2"></div>
+                <span className="text-sm font-medium text-zinc-900">Completed</span>
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
                 Start Date *
               </label>
               <input
                 type="date"
                 value={formData.start_date}
                 onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
+                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
                 required
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
                 End Date
               </label>
               <input
                 type="date"
                 value={formData.end_date}
                 onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
+                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-zinc-300 mb-2">
+              <label className="block text-sm font-medium text-zinc-700 mb-2">
                 Expected Return
               </label>
               <input
                 type="date"
                 value={formData.expected_return_date}
                 onChange={(e) => setFormData({ ...formData, expected_return_date: e.target.value })}
-                className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
+                className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
               />
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Location/Venue
-            </label>
-            <input
-              type="text"
-              value={formData.location}
-              onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
-            />
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Assigned Crew
-            </label>
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 max-h-48 overflow-y-auto p-2 bg-zinc-800/50 rounded border border-zinc-700">
-              {crew.map(member => (
-                <label
-                  key={member.id}
-                  className="flex items-center gap-2 p-2 hover:bg-zinc-700/50 rounded cursor-pointer"
-                >
-                  <input
-                    type="checkbox"
-                    checked={formData.assigned_employees.includes(member.id)}
-                    onChange={() => toggleEmployee(member.id)}
-                    className="w-4 h-4"
-                  />
-                  <span className="text-sm text-zinc-300">{member.name}</span>
-                </label>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-zinc-300 mb-2">
-              Notes
-            </label>
-            <textarea
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-              className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-md text-white"
-              rows={3}
-            />
-          </div>
-
-          <div className="flex gap-3 pt-4">
+          <div className="flex gap-3 pt-4 border-t border-zinc-200">
             <button
               type="submit"
-              disabled={saving}
-              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-800 text-white rounded-md transition-colors"
+              disabled={saving || !selectedJobId}
+              className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md transition-colors font-medium"
             >
-              {saving ? 'Creating...' : 'Create Event'}
+              {saving ? 'Scheduling...' : 'Schedule Job'}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md transition-colors"
+              className="px-4 py-2 bg-zinc-200 hover:bg-zinc-300 text-zinc-900 rounded-md transition-colors"
             >
               Cancel
             </button>
