@@ -204,20 +204,20 @@ export default function GigCalendar() {
       )}
 
       {/* Add Event Modal */}
-      {showAddModal && (
-        <>
-          {console.log('Rendering modal, showAddModal:', showAddModal)}
-          <AddEventModal
-            selectedDate={selectedDate}
-            crew={availableCrew}
-            onClose={() => setShowAddModal(false)}
-            onSuccess={() => {
-              setShowAddModal(false);
-              reload();
-            }}
-          />
-        </>
-      )}
+      {showAddModal ? (
+        <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-white rounded-lg p-6 max-w-md">
+            <h2 className="text-xl font-bold text-zinc-900 mb-4">Test Modal</h2>
+            <p className="text-zinc-700">Modal is showing! Selected date: {selectedDate}</p>
+            <button
+              onClick={() => setShowAddModal(false)}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded"
+            >
+              Close
+            </button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
