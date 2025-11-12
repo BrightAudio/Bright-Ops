@@ -82,17 +82,15 @@ export function useNotifications() {
 
   const markAsRead = (id: string) => {
     setNotifications((prev) => 
-      prev.map((n) => (n.id === id ? { ...n, read: true } : n))
+      prev.filter((n) => n.id !== id) // Remove the notification when marked as read
     );
   };
 
   const markAllAsRead = () => {
-    setNotifications((prev) => 
-      prev.map((n) => ({ ...n, read: true }))
-    );
+    setNotifications([]); // Clear all notifications when marking all as read
   };
 
-  const hasUnread = notifications.some((n) => !n.read);
+  const hasUnread = notifications.length > 0;
 
   return {
     notifications,
