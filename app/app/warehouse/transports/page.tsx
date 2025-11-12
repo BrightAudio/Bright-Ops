@@ -57,6 +57,7 @@ export default function Transports() {
   const [transports, setTransports] = useState<Tables<"transports">[]>([]);
   const [vehicles, setVehicles] = useState<string[]>([]);
   const [customVehicle, setCustomVehicle] = useState("");
+  const [showCustomInput, setShowCustomInput] = useState(false);
 
   useEffect(() => {
     loadTransports();
@@ -88,6 +89,7 @@ export default function Transports() {
   function openModal(transport?: Tables<"transports">) {
     setEditing(transport ?? null);
     setCustomVehicle("");
+    setShowCustomInput(false);
     setForm(
       transport
         ? { 
@@ -366,17 +368,19 @@ export default function Transports() {
               <label className="text-sm text-gray-400 mb-1">Vehicle</label>
               <select
                 className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
-                value={customVehicle ? "__custom__" : (form.vehicle ?? "")}
+                value={showCustomInput ? "__custom__" : (form.vehicle ?? "")}
                 onChange={e => {
                   if (e.target.value === "__custom__") {
-                    setCustomVehicle(" "); // Set to space to trigger input display
+                    setShowCustomInput(true);
+                    setCustomVehicle("");
                     setForm((f: TransportForm) => ({ ...f, vehicle: "" }));
                   } else {
+                    setShowCustomInput(false);
                     setCustomVehicle("");
                     setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
                   }
                 }}
-                required={!customVehicle}
+                required={!showCustomInput}
               >
                 <option value="">Select a vehicle</option>
                 {vehicles.map(v => (
@@ -384,14 +388,14 @@ export default function Transports() {
                 ))}
                 <option value="__custom__">+ Add New Vehicle</option>
               </select>
-              {customVehicle && (
+              {showCustomInput && (
                 <input
                   type="text"
                   className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg mt-2"
                   placeholder="Enter new vehicle name"
-                  value={customVehicle.trim()}
+                  value={customVehicle}
                   onChange={e => {
-                    setCustomVehicle(e.target.value || " ");
+                    setCustomVehicle(e.target.value);
                     setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
                   }}
                   required
