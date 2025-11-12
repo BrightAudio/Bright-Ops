@@ -205,15 +205,18 @@ export default function GigCalendar() {
 
       {/* Add Event Modal */}
       {showAddModal && (
-        <AddEventModal
-          selectedDate={selectedDate}
-          crew={availableCrew}
-          onClose={() => setShowAddModal(false)}
-          onSuccess={() => {
-            setShowAddModal(false);
-            reload();
-          }}
-        />
+        <>
+          {console.log('Rendering modal, showAddModal:', showAddModal)}
+          <AddEventModal
+            selectedDate={selectedDate}
+            crew={availableCrew}
+            onClose={() => setShowAddModal(false)}
+            onSuccess={() => {
+              setShowAddModal(false);
+              reload();
+            }}
+          />
+        </>
       )}
     </div>
   );
@@ -237,12 +240,15 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
   });
   const [saving, setSaving] = useState(false);
 
+  console.log('AddEventModal rendered with selectedDate:', selectedDate);
+
   useEffect(() => {
     async function fetchJobs() {
       const { data } = await supabase
         .from('jobs')
         .select('*')
         .order('created_at', { ascending: false });
+      console.log('Fetched jobs:', data);
       setJobs(data || []);
     }
     fetchJobs();
