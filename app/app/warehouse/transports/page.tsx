@@ -366,10 +366,11 @@ export default function Transports() {
               <label className="text-sm text-gray-400 mb-1">Vehicle</label>
               <select
                 className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
-                value={form.vehicle === customVehicle && customVehicle ? "__custom__" : form.vehicle ?? ""}
+                value={customVehicle ? "__custom__" : (form.vehicle ?? "")}
                 onChange={e => {
                   if (e.target.value === "__custom__") {
-                    setCustomVehicle("");
+                    setCustomVehicle(" "); // Set to space to trigger input display
+                    setForm((f: TransportForm) => ({ ...f, vehicle: "" }));
                   } else {
                     setCustomVehicle("");
                     setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
@@ -383,14 +384,14 @@ export default function Transports() {
                 ))}
                 <option value="__custom__">+ Add New Vehicle</option>
               </select>
-              {(form.vehicle === "__custom__" || customVehicle !== "") && (
+              {customVehicle && (
                 <input
                   type="text"
                   className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg mt-2"
                   placeholder="Enter new vehicle name"
-                  value={customVehicle}
+                  value={customVehicle.trim()}
                   onChange={e => {
-                    setCustomVehicle(e.target.value);
+                    setCustomVehicle(e.target.value || " ");
                     setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
                   }}
                   required
