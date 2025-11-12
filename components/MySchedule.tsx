@@ -38,20 +38,27 @@ export default function MySchedule() {
       dayAfterTomorrow.setDate(dayAfterTomorrow.getDate() + 2);
 
       // Fetch jobs for today and tomorrow only
-      const { data: jobsData } = await supabase
+      const { data: jobsData, error: jobsError } = await supabase
         .from("jobs")
         .select("*")
         .or(`start_at.gte.${today.toISOString()},end_at.gte.${today.toISOString()}`)
-        .lte("start_at", dayAfterTomorrow.toISOString())
         .order("start_at", { ascending: true });
 
+      if (jobsError) {
+        console.error('Error fetching jobs for schedule:', jobsError);
+      }
+
       // Fetch transports for today and tomorrow
-      const { data: transportsData } = await supabase
+      const { data: transportsData, error: transportsError } = await supabase
         .from("transports")
         .select("id, scheduled_at, type, status")
         .gte("scheduled_at", today.toISOString())
         .lte("scheduled_at", dayAfterTomorrow.toISOString())
         .order("scheduled_at", { ascending: true });
+
+      if (transportsError) {
+        console.error('Error fetching transports for schedule:', transportsError);
+      }
 
       setJobs(jobsData || []);
       setTransports(transportsData || []);
