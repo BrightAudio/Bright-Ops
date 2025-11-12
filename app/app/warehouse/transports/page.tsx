@@ -73,6 +73,7 @@ export default function Transports() {
   }
 
   function openModal(transport?: Tables<"transports">) {
+    console.log('Opening modal with transport:', transport);
     setEditing(transport ?? null);
     setForm(
       transport
