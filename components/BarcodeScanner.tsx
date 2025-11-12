@@ -1,0 +1,261 @@
+"use client";
+
+import { useState, useRef, useEffect } from "react";
+import { supabase } from "@/lib/supabaseClient";
+import { Barcode, Package, Undo2, CheckCircle, X } from "lucide-react";
+
+type ScannerProps = {
+  pullSheetId: string;
+  onScan?: (scan: any) => void;
+};
+
+type ScanResult = {
+  success: boolean;
+  message: string;
+  item?: any;
+  scan?: any;
+};
+
+export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
+  const [barcode, setBarcode] = useState("");
+  const [scanning, setScanning] = useState(false);
+  const [scanType, setScanType] = useState<'pull' | 'return' | 'verify'>('pull');
+  const [lastScan, setLastScan] = useState<ScanResult | null>(null);
+  const [showResult, setShowResult] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // Auto-focus input on mount and when scan completes
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, [scanning]);
+
+  async function handleScan(e: React.FormEvent) {
+    e.preventDefault();
+    
+    if (!barcode.trim() || scanning) return;
+    
+    setScanning(true);
+    setShowResult(false);
+
+    try {
+      // 1. Find inventory item by barcode
+      const { data: inventoryItem, error: invError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('barcode', barcode.trim())
+        .maybeSingle();
+
+      if (invError) throw invError;
+
+      if (!inventoryItem) {
+        setLastScan({
+          success: false,
+          message: `Barcode ${barcode} not found in inventory`,
+        });
+        setShowResult(true);
+        setBarcode("");
+        setScanning(false);
+        return;
+      }
+
+      // 2. Find matching pull sheet item
+      const { data: pullSheetItem, error: itemError } = await supabase
+        .from('pull_sheet_items')
+        .select('*')
+        .eq('pull_sheet_id', pullSheetId)
+        .eq('inventory_item_id', (inventoryItem as any).id)
+        .maybeSingle();
+
+      // 3. Record the scan
+      const scanData = {
+        pull_sheet_id: pullSheetId,
+        pull_sheet_item_id: (pullSheetItem as any)?.id || null,
+        inventory_item_id: (inventoryItem as any).id,
+        barcode: barcode.trim(),
+        scan_type: scanType,
+        scanned_by: 'Current User', // TODO: Get from auth context
+        notes: null,
+      };
+
+      const { data: scanRecord, error: scanError } = await (supabase
+        .from('pull_sheet_scans') as any)
+        .insert([scanData])
+        .select()
+        .single();
+
+      if (scanError) throw scanError;
+
+      // 4. Update pull sheet item qty_pulled if it's a pull scan
+      if (pullSheetItem && scanType === 'pull') {
+        const newQtyPulled = ((pullSheetItem as any).qty_pulled || 0) + 1;
+        await (supabase
+          .from('pull_sheet_items') as any)
+          .update({ qty_pulled: newQtyPulled })
+          .eq('id', (pullSheetItem as any).id);
+      }
+
+      // 5. Show success
+      setLastScan({
+        success: true,
+        message: `${(inventoryItem as any).name} scanned successfully`,
+        item: inventoryItem,
+        scan: scanRecord,
+      });
+      setShowResult(true);
+
+      // Call callback if provided
+      if (onScan) {
+        onScan(scanRecord);
+      }
+
+      // Clear barcode and refocus
+      setBarcode("");
+      setTimeout(() => {
+        setShowResult(false);
+      }, 3000);
+
+    } catch (err: any) {
+      console.error('Scan error:', err);
+      setLastScan({
+        success: false,
+        message: err.message || 'Error processing scan',
+      });
+      setShowResult(true);
+    } finally {
+      setScanning(false);
+      inputRef.current?.focus();
+    }
+  }
+
+  function getScanTypeIcon() {
+    switch (scanType) {
+      case 'pull':
+        return <Package size={20} />;
+      case 'return':
+        return <Undo2 size={20} />;
+      case 'verify':
+        return <CheckCircle size={20} />;
+    }
+  }
+
+  function getScanTypeColor() {
+    switch (scanType) {
+      case 'pull':
+        return 'bg-blue-600 hover:bg-blue-500 border-blue-500';
+      case 'return':
+        return 'bg-green-600 hover:bg-green-500 border-green-500';
+      case 'verify':
+        return 'bg-purple-600 hover:bg-purple-500 border-purple-500';
+    }
+  }
+
+  return (
+    <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Barcode size={24} className="text-amber-400" />
+        <h3 className="font-semibold text-lg text-white">Quick Scan</h3>
+      </div>
+
+      <form onSubmit={handleScan} className="space-y-3">
+        {/* Scan Type Selector */}
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setScanType('pull')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
+              scanType === 'pull' 
+                ? 'bg-blue-600 text-white border-blue-500' 
+                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-blue-500'
+            }`}
+          >
+            <Package size={16} className="inline mr-1" />
+            Pull
+          </button>
+          <button
+            type="button"
+            onClick={() => setScanType('return')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
+              scanType === 'return' 
+                ? 'bg-green-600 text-white border-green-500' 
+                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-green-500'
+            }`}
+          >
+            <Undo2 size={16} className="inline mr-1" />
+            Return
+          </button>
+          <button
+            type="button"
+            onClick={() => setScanType('verify')}
+            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
+              scanType === 'verify' 
+                ? 'bg-purple-600 text-white border-purple-500' 
+                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-purple-500'
+            }`}
+          >
+            <CheckCircle size={16} className="inline mr-1" />
+            Verify
+          </button>
+        </div>
+
+        {/* Barcode Input */}
+        <div className="flex gap-2">
+          <input
+            ref={inputRef}
+            type="text"
+            value={barcode}
+            onChange={(e) => setBarcode(e.target.value)}
+            placeholder="Scan or enter barcode..."
+            className="flex-1 bg-zinc-900 border border-zinc-700 rounded px-4 py-2 text-white placeholder-zinc-500 focus:border-amber-400 focus:outline-none"
+            disabled={scanning}
+            autoFocus
+          />
+          <button
+            type="submit"
+            disabled={!barcode.trim() || scanning}
+            className={`px-6 py-2 rounded font-medium text-white border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${getScanTypeColor()}`}
+          >
+            {scanning ? (
+              <span>Scanning...</span>
+            ) : (
+              <span className="flex items-center gap-2">
+                {getScanTypeIcon()}
+                Scan
+              </span>
+            )}
+          </button>
+        </div>
+      </form>
+
+      {/* Scan Result Notification */}
+      {showResult && lastScan && (
+        <div className={`mt-3 p-3 rounded border ${
+          lastScan.success 
+            ? 'bg-green-900/20 border-green-500/50 text-green-200' 
+            : 'bg-red-900/20 border-red-500/50 text-red-200'
+        }`}>
+          <div className="flex items-start justify-between">
+            <div className="flex-1">
+              <div className="font-medium">{lastScan.message}</div>
+              {lastScan.item && (
+                <div className="text-sm mt-1 opacity-80">
+                  Category: {lastScan.item.category || 'N/A'} • 
+                  Location: {lastScan.item.location || 'N/A'}
+                </div>
+              )}
+            </div>
+            <button
+              onClick={() => setShowResult(false)}
+              className="text-current opacity-70 hover:opacity-100"
+            >
+              <X size={18} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-3 text-xs text-zinc-500">
+        Tip: Use a barcode scanner for fastest operation
+      </div>
+    </div>
+  );
+}
