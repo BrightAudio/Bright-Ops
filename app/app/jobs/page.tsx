@@ -21,11 +21,16 @@ export default function JobsPage() {
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [showArchived, setShowArchived] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [form, setForm] = useState({ code: "", title: "", client: "" });
   const [creating, setCreating] = useState(false);
   const [creatingPullSheet, setCreatingPullSheet] = useState<string | null>(null);
-  const { data: jobs, loading, reload } = useJobs({ search, status });
+  const [archiving, setArchiving] = useState<string | null>(null);
+  const { data: allJobs, loading, reload } = useJobs({ search, status });
+  
+  // Filter jobs by archived status
+  const jobs = allJobs?.filter(job => showArchived ? (job as any).archived === true : !(job as any).archived);
 
   // Calculate summary stats
   const stats = {
@@ -98,6 +103,24 @@ export default function JobsPage() {
     }
   }
 
+  async function handleArchiveToggle(e: React.MouseEvent, jobId: string, currentlyArchived: boolean) {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    setArchiving(jobId);
+    try {
+      await (supabase.from('jobs') as any)
+        .update({ archived: !currentlyArchived })
+        .eq('id', jobId);
+      reload();
+    } catch (err) {
+      console.error('Error toggling archive:', err);
+      alert('Failed to update job archive status');
+    } finally {
+      setArchiving(null);
+    }
+  }
+
   return (
     <DashboardLayout>
       <div className="bg-zinc-900 text-gray-100 p-6">
@@ -127,7 +150,7 @@ export default function JobsPage() {
       </div>
       
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Jobs</h1>
+        <h1 className="text-2xl font-bold">Jobs {showArchived && <span className="text-zinc-500 text-lg ml-2">(Archived)</span>}</h1>
         <div className="flex items-center gap-3">
           {/* View Mode Toggle */}
           <div className="flex border border-zinc-700 rounded overflow-hidden">
@@ -144,6 +167,18 @@ export default function JobsPage() {
               <i className="fas fa-list"></i>
             </button>
           </div>
+          {/* Show Archived Toggle */}
+          <button
+            onClick={() => setShowArchived(!showArchived)}
+            className={`flex items-center gap-2 px-4 py-2 rounded border ${
+              showArchived 
+                ? 'bg-purple-600 text-white border-purple-500' 
+                : 'bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700'
+            }`}
+          >
+            <i className={`fas ${showArchived ? 'fa-box-open' : 'fa-archive'}`}></i>
+            {showArchived ? 'Show Active' : 'Show Archived'}
+          </button>
           <Link
             href="/app/clients"
             className="flex items-center gap-2 bg-zinc-800 text-white px-4 py-2 rounded hover:bg-zinc-700 border border-zinc-700"
@@ -250,20 +285,20 @@ export default function JobsPage() {
                     {job.income !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-zinc-400">Income:</span>
-                        <span className="text-green-400 font-semibold">${parseFloat(job.income || 0).toFixed(2)}</span>
+                        <span className="text-green-400 font-semibold">${(job.income ?? 0).toFixed(2)}</span>
                       </div>
                     )}
                     {job.labor_cost !== undefined && (
                       <div className="flex justify-between">
                         <span className="text-zinc-400">Labor Cost:</span>
-                        <span className="text-red-400">${parseFloat(job.labor_cost || 0).toFixed(2)}</span>
+                        <span className="text-red-400">${(job.labor_cost ?? 0).toFixed(2)}</span>
                       </div>
                     )}
                     {job.profit !== undefined && (
                       <div className="flex justify-between border-t border-zinc-700 pt-1 mt-1">
                         <span className="text-zinc-300 font-semibold">Profit:</span>
-                        <span className={`font-bold ${parseFloat(job.profit || 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
-                          ${parseFloat(job.profit || 0).toFixed(2)}
+                        <span className={`font-bold ${(job.profit ?? 0) >= 0 ? 'text-green-400' : 'text-red-400'}`}>
+                          ${(job.profit ?? 0).toFixed(2)}
                         </span>
                       </div>
                     )}
@@ -300,6 +335,18 @@ export default function JobsPage() {
                   <Truck size={14} />
                   <span>Transport</span>
                 </Link>
+                <button
+                  onClick={(e) => handleArchiveToggle(e, job.id, (job as any).archived)}
+                  disabled={archiving === job.id}
+                  className={`flex items-center gap-1 transition-colors disabled:opacity-50 ${
+                    (job as any).archived 
+                      ? 'hover:text-green-400' 
+                      : 'hover:text-purple-400'
+                  }`}
+                >
+                  <i className={`fas ${(job as any).archived ? 'fa-box-open' : 'fa-archive'}`} style={{ fontSize: '14px' }}></i>
+                  <span>{archiving === job.id ? 'Updating...' : (job as any).archived ? 'Unarchive' : 'Archive'}</span>
+                </button>
               </div>
             </div>
           ))}
