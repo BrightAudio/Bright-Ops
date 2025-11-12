@@ -175,20 +175,42 @@ export default function GigCalendar() {
                         {day}
                       </div>
                       <div className="space-y-1">
-                        {dayEvents.slice(0, 2).map(event => (
-                          <div
-                            key={event.id}
-                            className={`text-xs px-2 py-1 rounded truncate font-medium ${
-                              getStatusColor(event.status || '')
-                            }`}
-                            title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}`}
-                          >
-                            {event.title}
-                          </div>
-                        ))}
-                        {dayEvents.length > 2 && (
+                        {dayEvents.slice(0, 3).map(event => {
+                          const colorMap: Record<string, string> = {
+                            'on-the-road': '#22c55e',
+                            'active': '#22c55e',
+                            'in-process': '#eab308',
+                            'scheduled': '#eab308',
+                            'prep': '#eab308',
+                            'completed': '#9ca3af',
+                            'returned': '#9ca3af'
+                          };
+                          const bgColor = colorMap[event.status?.toLowerCase() || ''] || '#3b82f6';
+                          
+                          return (
+                            <div
+                              key={event.id}
+                              style={{
+                                backgroundColor: bgColor,
+                                color: 'white',
+                                padding: '6px 8px',
+                                borderRadius: '4px',
+                                fontSize: '11px',
+                                fontWeight: 600,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                                cursor: 'pointer'
+                              }}
+                              title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}\nStatus: ${event.status || 'Unknown'}`}
+                            >
+                              {event.title}
+                            </div>
+                          );
+                        })}
+                        {dayEvents.length > 3 && (
                           <div className="text-xs text-zinc-600 text-center">
-                            +{dayEvents.length - 2} more
+                            +{dayEvents.length - 3} more
                           </div>
                         )}
                       </div>
@@ -362,42 +384,51 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
             <label className="block text-sm font-medium text-zinc-700 mb-2">
               Job Status (Color) *
             </label>
-            <div className="grid grid-cols-3 gap-3">
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px' }}>
               <button
                 type="button"
                 onClick={() => setStatus('on-the-road')}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  status === 'on-the-road'
-                    ? 'border-green-500 bg-green-50'
-                    : 'border-zinc-300 hover:border-green-400'
-                }`}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: status === 'on-the-road' ? '2px solid #22c55e' : '2px solid #d4d4d8',
+                  backgroundColor: status === 'on-the-road' ? '#f0fdf4' : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
               >
-                <div className="w-full h-3 bg-green-500 rounded mb-2"></div>
-                <span className="text-sm font-medium text-zinc-900">On the Road</span>
+                <div style={{ width: '100%', height: '12px', backgroundColor: '#22c55e', borderRadius: '4px', marginBottom: '8px' }}></div>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#18181b' }}>On the Road</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatus('in-process')}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  status === 'in-process'
-                    ? 'border-yellow-500 bg-yellow-50'
-                    : 'border-zinc-300 hover:border-yellow-400'
-                }`}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: status === 'in-process' ? '2px solid #eab308' : '2px solid #d4d4d8',
+                  backgroundColor: status === 'in-process' ? '#fefce8' : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
               >
-                <div className="w-full h-3 bg-yellow-500 rounded mb-2"></div>
-                <span className="text-sm font-medium text-zinc-900">In Process</span>
+                <div style={{ width: '100%', height: '12px', backgroundColor: '#eab308', borderRadius: '4px', marginBottom: '8px' }}></div>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#18181b' }}>In Process</span>
               </button>
               <button
                 type="button"
                 onClick={() => setStatus('completed')}
-                className={`p-3 rounded-lg border-2 transition-all ${
-                  status === 'completed'
-                    ? 'border-gray-400 bg-gray-50'
-                    : 'border-zinc-300 hover:border-gray-400'
-                }`}
+                style={{
+                  padding: '12px',
+                  borderRadius: '8px',
+                  border: status === 'completed' ? '2px solid #9ca3af' : '2px solid #d4d4d8',
+                  backgroundColor: status === 'completed' ? '#f4f4f5' : 'white',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s'
+                }}
               >
-                <div className="w-full h-3 bg-gray-400 rounded mb-2"></div>
-                <span className="text-sm font-medium text-zinc-900">Completed</span>
+                <div style={{ width: '100%', height: '12px', backgroundColor: '#9ca3af', borderRadius: '4px', marginBottom: '8px' }}></div>
+                <span style={{ fontSize: '14px', fontWeight: 500, color: '#18181b' }}>Completed</span>
               </button>
             </div>
           </div>
