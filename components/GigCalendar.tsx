@@ -58,8 +58,10 @@ export default function GigCalendar() {
   };
 
   const handleAddEvent = (date?: string) => {
+    console.log('Add event clicked, date:', date);
     setSelectedDate(date || new Date().toISOString().split('T')[0]);
     setShowAddModal(true);
+    console.log('Modal should show now');
   };
 
   // Generate calendar grid
