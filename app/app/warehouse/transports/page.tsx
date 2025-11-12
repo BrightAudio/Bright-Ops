@@ -56,6 +56,7 @@ export default function Transports() {
   const [error, setError] = useState<string | null>(null);
   const [transports, setTransports] = useState<Tables<"transports">[]>([]);
   const [vehicles, setVehicles] = useState<string[]>([]);
+  const [customVehicle, setCustomVehicle] = useState("");
 
   useEffect(() => {
     loadTransports();
@@ -78,7 +79,7 @@ export default function Transports() {
     // Extract unique vehicles for autocomplete
     const uniqueVehicles = [...new Set(
       (data ?? [])
-        .map(t => t.vehicle)
+        .map((t: any) => t.vehicle)
         .filter((v): v is string => !!v)
     )];
     setVehicles(uniqueVehicles);
@@ -86,6 +87,7 @@ export default function Transports() {
 
   function openModal(transport?: Tables<"transports">) {
     setEditing(transport ?? null);
+    setCustomVehicle("");
     setForm(
       transport
         ? { 
@@ -364,9 +366,16 @@ export default function Transports() {
               <label className="text-sm text-gray-400 mb-1">Vehicle</label>
               <select
                 className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg"
-                value={form.vehicle ?? ""}
-                onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
-                required
+                value={form.vehicle === customVehicle && customVehicle ? "__custom__" : form.vehicle ?? ""}
+                onChange={e => {
+                  if (e.target.value === "__custom__") {
+                    setCustomVehicle("");
+                  } else {
+                    setCustomVehicle("");
+                    setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
+                  }
+                }}
+                required={!customVehicle}
               >
                 <option value="">Select a vehicle</option>
                 {vehicles.map(v => (
@@ -374,12 +383,17 @@ export default function Transports() {
                 ))}
                 <option value="__custom__">+ Add New Vehicle</option>
               </select>
-              {form.vehicle === "__custom__" && (
+              {(form.vehicle === "__custom__" || customVehicle !== "") && (
                 <input
                   type="text"
                   className="px-4 py-2 rounded bg-zinc-900 border border-zinc-700 text-white text-lg mt-2"
                   placeholder="Enter new vehicle name"
-                  onChange={e => setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }))}
+                  value={customVehicle}
+                  onChange={e => {
+                    setCustomVehicle(e.target.value);
+                    setForm((f: TransportForm) => ({ ...f, vehicle: e.target.value }));
+                  }}
+                  required
                   autoFocus
                 />
               )}
