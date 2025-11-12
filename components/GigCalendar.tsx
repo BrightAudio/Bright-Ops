@@ -304,14 +304,14 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
       console.log('Loading job data for editing:', job);
       if (job) {
         setFormData({
-          start_date: job.start_date || selectedDate,
-          end_date: job.end_date || '',
-          expected_return_date: job.expected_return_date || ''
+          start_date: job.start_at || selectedDate,
+          end_date: job.end_at || '',
+          expected_return_date: ''
         });
         if (job.status) {
           setStatus(job.status as 'on-the-road' | 'in-process' | 'completed');
         }
-        console.log('Loaded formData:', { start_date: job.start_date, end_date: job.end_date, return: job.expected_return_date, status: job.status });
+        console.log('Loaded formData:', { start_at: job.start_at, end_at: job.end_at, status: job.status });
       }
     }
   }, [initialJobId, jobs, selectedDate]);
@@ -331,10 +331,8 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
       const { error } = await supabase
         .from('jobs')
         .update({
-          start_date: formData.start_date,
-          end_date: formData.end_date || null,
-          expected_return_date: formData.expected_return_date || null,
-          event_date: formData.start_date,
+          start_at: formData.start_date,
+          end_at: formData.end_date || null,
           status: status
         })
         .eq('id', selectedJobId);
@@ -364,10 +362,8 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
       const { error } = await supabase
         .from('jobs')
         .update({
-          start_date: null,
-          end_date: null,
-          expected_return_date: null,
-          event_date: null,
+          start_at: null,
+          end_at: null,
           status: null
         })
         .eq('id', selectedJobId);

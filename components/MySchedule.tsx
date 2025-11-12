@@ -41,9 +41,9 @@ export default function MySchedule() {
       const { data: jobsData } = await supabase
         .from("jobs")
         .select("*")
-        .or(`event_date.gte.${today.toISOString()},load_in_date.gte.${today.toISOString()},load_out_date.gte.${today.toISOString()},prep_start_date.gte.${today.toISOString()}`)
-        .lte("event_date", dayAfterTomorrow.toISOString())
-        .order("event_date", { ascending: true });
+        .or(`start_at.gte.${today.toISOString()},end_at.gte.${today.toISOString()}`)
+        .lte("start_at", dayAfterTomorrow.toISOString())
+        .order("start_at", { ascending: true });
 
       // Fetch transports for today and tomorrow
       const { data: transportsData } = await supabase
@@ -71,60 +71,32 @@ export default function MySchedule() {
     const nextDay = new Date(targetDate.getTime() + 24 * 60 * 60 * 1000);
 
     // Add job-related events
-    jobs.forEach(job => {
+    jobs.forEach((job: any) => {
       const jobTitle = job.title || job.code || "Untitled Job";
 
-      // Check prep start date
-      if (job.prep_start_date) {
-        const prepDate = new Date(job.prep_start_date);
-        if (prepDate >= targetDate && prepDate < nextDay) {
+      // Check start date (event/job start)
+      if (job.start_at) {
+        const startDate = new Date(job.start_at);
+        if (startDate >= targetDate && startDate < nextDay) {
           items.push({
-            title: `Prep: ${jobTitle}`,
-            location: "Warehouse",
-            date: formatDate(prepDate),
-            time: formatTime(prepDate),
-            type: "prep"
-          });
-        }
-      }
-
-      // Check load-in date
-      if (job.load_in_date) {
-        const loadInDate = new Date(job.load_in_date);
-        if (loadInDate >= targetDate && loadInDate < nextDay) {
-          items.push({
-            title: `Load In: ${jobTitle}`,
-            location: job.client || "TBD",
-            date: formatDate(loadInDate),
-            time: formatTime(loadInDate),
-            type: "load-in"
-          });
-        }
-      }
-
-      // Check event date
-      if (job.event_date) {
-        const eventDate = new Date(job.event_date);
-        if (eventDate >= targetDate && eventDate < nextDay) {
-          items.push({
-            title: `Event: ${jobTitle}`,
-            location: job.client || "TBD",
-            date: formatDate(eventDate),
-            time: formatTime(eventDate),
+            title: `Start: ${jobTitle}`,
+            location: job.venue || "TBD",
+            date: formatDate(startDate),
+            time: formatTime(startDate),
             type: "event"
           });
         }
       }
 
-      // Check load-out date
-      if (job.load_out_date) {
-        const loadOutDate = new Date(job.load_out_date);
-        if (loadOutDate >= targetDate && loadOutDate < nextDay) {
+      // Check end date (load-out/return)
+      if (job.end_at) {
+        const endDate = new Date(job.end_at);
+        if (endDate >= targetDate && endDate < nextDay) {
           items.push({
-            title: `Load Out: ${jobTitle}`,
-            location: job.client || "TBD",
-            date: formatDate(loadOutDate),
-            time: formatTime(loadOutDate),
+            title: `Return: ${jobTitle}`,
+            location: job.venue || "TBD",
+            date: formatDate(endDate),
+            time: formatTime(endDate),
             type: "load-out"
           });
         }

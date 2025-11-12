@@ -56,13 +56,13 @@ export function useGigCalendar(month?: number, year?: number) {
       const assignedCrew = Array.isArray(job.assigned_crew) ? job.assigned_crew : [];
 
       // Add start date event (gig begins)
-      if (job.start_date) {
-        const startDate = new Date(job.start_date);
+      if (job.start_at) {
+        const startDate = new Date(job.start_at);
         if (startDate >= firstDay && startDate <= lastDay) {
           events.push({
-            id: `${job.id}-start`,
+            id: `${job.id}-start-early`,
             title: jobTitle,
-            date: job.start_date,
+            date: job.start_at,
             type: 'gig-start',
             employees: assignedCrew,
             location: job.venue,
@@ -73,14 +73,14 @@ export function useGigCalendar(month?: number, year?: number) {
         }
       }
 
-      // Add event date (main show date)
-      if (job.event_date) {
-        const eventDate = new Date(job.event_date);
-        if (eventDate >= firstDay && eventDate <= lastDay) {
+      // Add start date (main show date)
+      if (job.start_at) {
+        const startDate = new Date(job.start_at);
+        if (startDate >= firstDay && startDate <= lastDay) {
           events.push({
-            id: `${job.id}-event`,
+            id: `${job.id}-start`,
             title: `🎭 ${jobTitle}`,
-            date: job.event_date,
+            date: job.start_at,
             type: 'gig-start',
             employees: assignedCrew,
             location: job.venue,
@@ -109,15 +109,15 @@ export function useGigCalendar(month?: number, year?: number) {
         }
       }
 
-      // Add active days between start and return
-      if (job.start_date && job.expected_return_date) {
-        const start = new Date(job.start_date);
-        const end = new Date(job.expected_return_date);
+      // Add active days between start and end
+      if (job.start_at && job.end_at) {
+        const start = new Date(job.start_at);
+        const end = new Date(job.end_at);
         start.setHours(0, 0, 0, 0);
         end.setHours(0, 0, 0, 0);
         
         const current = new Date(start);
-        current.setDate(current.getDate() + 1); // Start from day after start_date
+        current.setDate(current.getDate() + 1); // Start from day after start_at
 
         while (current < end) {
           if (current >= firstDay && current <= lastDay) {
@@ -150,8 +150,8 @@ export function useUpcomingGigs() {
     const { data, error } = await supabase
       .from('jobs')
       .select('*')
-      .or(`start_date.gte.${today.toISOString()},event_date.gte.${today.toISOString()}`)
-      .order('start_date', { ascending: true })
+      .gte('start_at', today.toISOString())
+      .order('start_at', { ascending: true })
       .limit(10);
 
     if (error) {
@@ -196,12 +196,9 @@ export async function createGigEvent(input: {
   const jobData: any = {
     title: input.title,
     code: `GIG-${Date.now()}`,
-    start_date: input.start_date,
-    end_date: input.end_date || null,
-    event_date: input.start_date, // Use start date as event date by default
-    expected_return_date: input.expected_return_date || null,
+    start_at: input.start_date,
+    end_at: input.end_date || null,
     venue: input.location || null,
-    assigned_crew: input.assigned_employees || [],
     notes: input.notes || null,
     status: 'scheduled'
   };
