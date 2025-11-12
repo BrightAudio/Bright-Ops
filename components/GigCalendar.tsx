@@ -57,24 +57,24 @@ export default function GigCalendar() {
   }
 
   return (
-    <div className="bg-zinc-800/30 rounded-lg border border-zinc-700 p-4">
+    <div className="bg-white rounded-lg border border-zinc-300 p-4 shadow-lg">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-4">
-          <h2 className="text-xl font-bold text-white">Gig Calendar</h2>
+          <h2 className="text-xl font-bold text-zinc-900">Gig Calendar</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={prevMonth}
-              className="p-2 hover:bg-zinc-700 rounded transition-colors text-zinc-400 hover:text-white"
+              className="p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
             >
               <i className="fas fa-chevron-left"></i>
             </button>
-            <span className="text-white font-semibold min-w-[180px] text-center">
+            <span className="text-zinc-900 font-semibold min-w-[180px] text-center">
               {monthNames[month]} {year}
             </span>
             <button
               onClick={nextMonth}
-              className="p-2 hover:bg-zinc-700 rounded transition-colors text-zinc-400 hover:text-white"
+              className="p-2 hover:bg-zinc-100 rounded transition-colors text-zinc-600 hover:text-zinc-900"
             >
               <i className="fas fa-chevron-right"></i>
             </button>
@@ -93,26 +93,26 @@ export default function GigCalendar() {
       <div className="flex items-center gap-4 mb-4 text-sm">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-green-500 rounded"></div>
-          <span className="text-zinc-400">Start</span>
+          <span className="text-zinc-600">Start</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-blue-500 rounded"></div>
-          <span className="text-zinc-400">Active</span>
+          <span className="text-zinc-600">Active</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-orange-500 rounded"></div>
-          <span className="text-zinc-400">Return</span>
+          <span className="text-zinc-600">Return</span>
         </div>
       </div>
 
       {loading && (
-        <div className="text-center py-8 text-zinc-400">
+        <div className="text-center py-8 text-zinc-600">
           <i className="fas fa-spinner fa-spin text-2xl"></i>
         </div>
       )}
 
       {errorMessage && (
-        <div className="text-center py-8 text-red-400">
+        <div className="text-center py-8 text-red-600">
           Error loading calendar: {errorMessage}
         </div>
       )}
@@ -122,7 +122,7 @@ export default function GigCalendar() {
           {/* Day headers */}
           <div className="grid grid-cols-7 gap-1 mb-1">
             {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => (
-              <div key={day} className="text-center text-xs font-semibold text-zinc-400 py-2">
+              <div key={day} className="text-center text-xs font-semibold text-zinc-700 py-2">
                 {day}
               </div>
             ))}
@@ -142,8 +142,8 @@ export default function GigCalendar() {
                   className={`min-h-[100px] p-2 rounded border ${
                     day
                       ? isToday
-                        ? 'bg-blue-900/20 border-blue-500'
-                        : 'bg-zinc-900/30 border-zinc-700 hover:border-zinc-600'
+                        ? 'bg-blue-50 border-blue-400'
+                        : 'bg-zinc-50 border-zinc-300 hover:border-zinc-400 hover:bg-zinc-100'
                       : 'bg-transparent border-transparent'
                   } transition-colors cursor-pointer`}
                   onClick={() => day && handleAddEvent(new Date(year, month, day).toISOString().split('T')[0])}
@@ -151,7 +151,7 @@ export default function GigCalendar() {
                   {day && (
                     <>
                       <div className={`text-sm font-semibold mb-1 ${
-                        isToday ? 'text-blue-400' : 'text-zinc-300'
+                        isToday ? 'text-blue-600' : 'text-zinc-700'
                       }`}>
                         {day}
                       </div>
@@ -161,10 +161,10 @@ export default function GigCalendar() {
                             key={event.id}
                             className={`text-xs p-1 rounded truncate ${
                               event.type === 'gig-start'
-                                ? 'bg-green-500/20 text-green-300 border border-green-500/30'
+                                ? 'bg-green-100 text-green-800 border border-green-300'
                                 : event.type === 'gig-return'
-                                ? 'bg-orange-500/20 text-orange-300 border border-orange-500/30'
-                                : 'bg-blue-500/20 text-blue-300 border border-blue-500/30'
+                                ? 'bg-orange-100 text-orange-800 border border-orange-300'
+                                : 'bg-blue-100 text-blue-800 border border-blue-300'
                             }`}
                             title={`${event.title}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}`}
                           >
@@ -172,7 +172,7 @@ export default function GigCalendar() {
                           </div>
                         ))}
                         {dayEvents.length > 3 && (
-                          <div className="text-xs text-zinc-500 text-center">
+                          <div className="text-xs text-zinc-600 text-center">
                             +{dayEvents.length - 3} more
                           </div>
                         )}
