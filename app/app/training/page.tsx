@@ -30,9 +30,9 @@ export default function TrainingVideosPage() {
             </button>
           </div>
 
-          <div className="max-w-7xl mx-auto">
+          <div className="max-w-[1400px] mx-auto">
             {/* Large Video Player */}
-            <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6">
+            <div className="aspect-video bg-black rounded-lg overflow-hidden mb-6" style={{ height: '80vh' }}>
               <iframe
                 src={`https://www.youtube.com/embed/${selectedVideo.youtube_video_id}?autoplay=1`}
                 title={selectedVideo.title}
