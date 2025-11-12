@@ -9,6 +9,7 @@ export default function GigCalendar() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [showAddModal, setShowAddModal] = useState(false);
   const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [availableCrew, setAvailableCrew] = useState<any[]>([]);
   
   const month = currentDate.getMonth();
@@ -59,6 +60,14 @@ export default function GigCalendar() {
 
   const handleAddEvent = (date?: string) => {
     setSelectedDate(date || new Date().toISOString().split('T')[0]);
+    setSelectedJobId(null); // Clear selected job for new event
+    setShowAddModal(true);
+  };
+
+  const handleEditEvent = (event: CalendarEvent, e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent day cell click
+    setSelectedJobId(event.job_id);
+    setSelectedDate(event.date);
     setShowAddModal(true);
   };
 
@@ -190,6 +199,7 @@ export default function GigCalendar() {
                           return (
                             <div
                               key={event.id}
+                              onClick={(e) => handleEditEvent(event, e)}
                               style={{
                                 backgroundColor: bgColor,
                                 color: 'white',
@@ -200,9 +210,12 @@ export default function GigCalendar() {
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap',
-                                cursor: 'pointer'
+                                cursor: 'pointer',
+                                transition: 'opacity 0.2s'
                               }}
-                              title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}\nStatus: ${event.status || 'Unknown'}`}
+                              onMouseEnter={(e) => e.currentTarget.style.opacity = '0.8'}
+                              onMouseLeave={(e) => e.currentTarget.style.opacity = '1'}
+                              title={`${event.title}${event.location ? ` - ${event.location}` : ''}${event.employees.length > 0 ? ` (${event.employees.length} crew)` : ''}\nStatus: ${event.status || 'Unknown'}\n\nClick to edit`}
                             >
                               {event.title}
                             </div>
@@ -227,10 +240,15 @@ export default function GigCalendar() {
       {showAddModal && (
         <AddEventModal
           selectedDate={selectedDate}
+          selectedJobId={selectedJobId}
           crew={availableCrew}
-          onClose={() => setShowAddModal(false)}
+          onClose={() => {
+            setShowAddModal(false);
+            setSelectedJobId(null);
+          }}
           onSuccess={() => {
             setShowAddModal(false);
+            setSelectedJobId(null);
             reload();
           }}
         />
@@ -241,14 +259,15 @@ export default function GigCalendar() {
 
 interface AddEventModalProps {
   selectedDate: string;
+  selectedJobId: string | null;
   crew: any[];
   onClose: () => void;
   onSuccess: () => void;
 }
 
-function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModalProps) {
+function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClose, onSuccess }: AddEventModalProps) {
   const [jobs, setJobs] = useState<any[]>([]);
-  const [selectedJobId, setSelectedJobId] = useState<string>('');
+  const [selectedJobId, setSelectedJobId] = useState<string>(initialJobId || '');
   const [status, setStatus] = useState<'on-the-road' | 'in-process' | 'completed'>('in-process');
   const [formData, setFormData] = useState({
     start_date: selectedDate,
@@ -257,6 +276,7 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
   });
   const [saving, setSaving] = useState(false);
 
+  // Fetch jobs
   useEffect(() => {
     async function fetchJobs() {
       const { data } = await supabase
@@ -267,6 +287,23 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
     }
     fetchJobs();
   }, []);
+
+  // Load existing job data if editing
+  useEffect(() => {
+    if (initialJobId && jobs.length > 0) {
+      const job = jobs.find(j => j.id === initialJobId);
+      if (job) {
+        setFormData({
+          start_date: job.start_date || selectedDate,
+          end_date: job.end_date || '',
+          expected_return_date: job.expected_return_date || ''
+        });
+        if (job.status) {
+          setStatus(job.status as 'on-the-road' | 'in-process' | 'completed');
+        }
+      }
+    }
+  }, [initialJobId, jobs, selectedDate]);
 
   const selectedJob = jobs.find(j => j.id === selectedJobId);
 
@@ -339,7 +376,9 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
         onClick={(e) => e.stopPropagation()}
       >
         <div className="sticky top-0 bg-white border-b border-zinc-300 p-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-zinc-900">Schedule Job on Calendar</h2>
+          <h2 className="text-xl font-bold text-zinc-900">
+            {initialJobId ? 'Edit Job Schedule' : 'Schedule Job on Calendar'}
+          </h2>
           <button
             onClick={onClose}
             className="text-zinc-600 hover:text-zinc-900 transition-colors"
@@ -357,6 +396,7 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
               value={selectedJobId}
               onChange={(e) => setSelectedJobId(e.target.value)}
               className="w-full px-3 py-2 bg-white border border-zinc-300 rounded-md text-zinc-900"
+              disabled={!!initialJobId}
               required
             >
               <option value="">-- Select a Job --</option>
@@ -366,6 +406,9 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
                 </option>
               ))}
             </select>
+            {initialJobId && (
+              <p className="mt-1 text-xs text-zinc-500">Job selection is locked when editing</p>
+            )}
             {selectedJob && (
               <div className="mt-2 p-3 bg-zinc-50 rounded border border-zinc-200">
                 <p className="text-sm text-zinc-700">
@@ -478,7 +521,7 @@ function AddEventModal({ selectedDate, crew, onClose, onSuccess }: AddEventModal
               disabled={saving || !selectedJobId}
               className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-md transition-colors font-medium"
             >
-              {saving ? 'Scheduling...' : 'Schedule Job'}
+              {saving ? (initialJobId ? 'Updating...' : 'Scheduling...') : (initialJobId ? 'Update Schedule' : 'Schedule Job')}
             </button>
             <button
               type="button"
