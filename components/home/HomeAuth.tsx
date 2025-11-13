@@ -75,8 +75,8 @@ export default function HomeAuth() {
   }
 
   return (
-    <div className="bg-white border border-slate-200 shadow-lg rounded-xl p-6 w-full max-w-md">
-      <div className="flex gap-6 mb-4">
+    <div className="bg-zinc-800 border border-zinc-700 shadow-xl rounded-xl p-8 w-full max-w-md">
+      <div className="flex gap-6 mb-6">
         <button
           type="button"
           onClick={() => {
@@ -84,10 +84,10 @@ export default function HomeAuth() {
             setError(null);
             setMessage(null);
           }}
-          className={`pb-1 text-sm font-semibold border-b-2 ${
+          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             mode === "signup"
-              ? "border-rentman-blue text-rentman-blue"
-              : "border-transparent text-slate-500 hover:text-rentman-dark"
+              ? "border-amber-500 text-amber-500"
+              : "border-transparent text-gray-400 hover:text-white"
           }`}
           disabled={status === "loading"}
         >
@@ -100,10 +100,10 @@ export default function HomeAuth() {
             setError(null);
             setMessage(null);
           }}
-          className={`pb-1 text-sm font-semibold border-b-2 ${
+          className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             mode === "login"
-              ? "border-rentman-blue text-rentman-blue"
-              : "border-transparent text-slate-500 hover:text-rentman-dark"
+              ? "border-amber-500 text-amber-500"
+              : "border-transparent text-gray-400 hover:text-white"
           }`}
           disabled={status === "loading"}
         >
@@ -111,26 +111,26 @@ export default function HomeAuth() {
         </button>
       </div>
 
-      <div className="space-y-2">
-        <h2 className="text-xl font-semibold text-rentman-dark">
-          {mode === "signup" ? "Create your Bright Ops account" : "Welcome back"}
+      <div className="space-y-2 mb-6">
+        <h2 className="text-2xl font-bold text-white">
+          {mode === "signup" ? "Create your account" : "Welcome back"}
         </h2>
-        <p className="text-sm text-slate-600">
+        <p className="text-sm text-gray-400">
           {mode === "signup"
             ? "Get started with your Bright Ops workspace"
             : "Log in to your account"}
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="mt-6 space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         {mode === "signup" && (
           <>
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-gray-300">
               Full Name
               <input
                 type="text"
                 placeholder="John Smith"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-rentman-dark focus:outline-none focus:ring-2 focus:ring-rentman-blue disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 disabled={status === "loading" || status === "success"}
@@ -138,12 +138,12 @@ export default function HomeAuth() {
               />
             </label>
 
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-gray-300">
               Industry (Optional)
               <input
                 type="text"
                 placeholder="e.g., Audio Production, Event Production"
-                className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-rentman-dark focus:outline-none focus:ring-2 focus:ring-rentman-blue disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
                 value={industry}
                 onChange={(event) => setIndustry(event.target.value)}
                 disabled={status === "loading" || status === "success"}
@@ -152,12 +152,12 @@ export default function HomeAuth() {
           </>
         )}
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-gray-300">
           Email
           <input
             type="email"
             placeholder="you@company.com"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-rentman-dark focus:outline-none focus:ring-2 focus:ring-rentman-blue disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={status === "loading" || status === "success"}
@@ -165,12 +165,12 @@ export default function HomeAuth() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-slate-700">
+        <label className="block text-sm font-medium text-gray-300">
           Password
           <input
             type="password"
             placeholder="••••••••"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm text-rentman-dark focus:outline-none focus:ring-2 focus:ring-rentman-blue disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={status === "loading" || status === "success"}
@@ -178,14 +178,14 @@ export default function HomeAuth() {
             minLength={8}
           />
           {mode === "signup" && (
-            <p className="mt-1 text-xs text-slate-500">Must be at least 8 characters</p>
+            <p className="mt-2 text-xs text-gray-500">Must be at least 8 characters</p>
           )}
         </label>
 
         <button
           type="submit"
           disabled={status === "loading" || status === "success"}
-          className="w-full py-2.5 mt-2 rounded-md bg-rentman-blue text-white text-sm font-semibold hover:bg-blue-700 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full py-3 mt-2 rounded-lg bg-amber-500 text-black text-sm font-bold hover:bg-amber-400 transition disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {status === "loading"
             ? mode === "signup"
@@ -202,13 +202,13 @@ export default function HomeAuth() {
       </form>
 
       {message && (
-        <div className="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700">
+        <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
           {message}
         </div>
       )}
 
       {error && (
-        <div className="mt-4 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+        <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
           {error}
         </div>
       )}
