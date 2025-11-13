@@ -12,51 +12,93 @@ export interface Database {
       jobs: {
         Row: {
           id: string
-          job_id: string
-          name: string
-          client_id: string | null
-          status: string
+          code: string
+          title: string
+          status: string | null
+          client: string | null
+          created_at: string
+          cost_estimate_amount: number
+          labor_cost: number
+          event_date: string | null
+          load_in_date: string | null
+          load_out_date: string | null
+          prep_start_date: string | null
+          suggested_invoice_amount: number
+          final_invoice_amount: number | null
+          invoice_status: string
+          total_amortization: number
+          start_date: string | null
+          end_date: string | null
+          expected_return_date: string | null
+          venue: string | null
+          assigned_crew: Json
+          notes: string | null
           start_at: string | null
           end_at: string | null
-          venue: string | null
-          notes: string | null
-          income: number | null
-          labor_cost: number | null
-          profit: number | null
-          created_at: string
-          updated_at: string
+          income: number
+          client_id: string | null
+          profit: number
+          archived: boolean
         }
         Insert: {
           id?: string
-          job_id?: string
-          name: string
-          client_id?: string | null
-          status?: string
+          code: string
+          title: string
+          status?: string | null
+          client?: string | null
+          created_at?: string
+          cost_estimate_amount?: number
+          labor_cost?: number
+          event_date?: string | null
+          load_in_date?: string | null
+          load_out_date?: string | null
+          prep_start_date?: string | null
+          suggested_invoice_amount?: number
+          final_invoice_amount?: number | null
+          invoice_status?: string
+          total_amortization?: number
+          start_date?: string | null
+          end_date?: string | null
+          expected_return_date?: string | null
+          venue?: string | null
+          assigned_crew?: Json
+          notes?: string | null
           start_at?: string | null
           end_at?: string | null
-          venue?: string | null
-          notes?: string | null
-          income?: number | null
-          labor_cost?: number | null
-          profit?: number | null
-          created_at?: string
-          updated_at?: string
+          income?: number
+          client_id?: string | null
+          profit?: number
+          archived?: boolean
         }
         Update: {
           id?: string
-          job_id?: string
-          name?: string
-          client_id?: string | null
-          status?: string
+          code?: string
+          title?: string
+          status?: string | null
+          client?: string | null
+          created_at?: string
+          cost_estimate_amount?: number
+          labor_cost?: number
+          event_date?: string | null
+          load_in_date?: string | null
+          load_out_date?: string | null
+          prep_start_date?: string | null
+          suggested_invoice_amount?: number
+          final_invoice_amount?: number | null
+          invoice_status?: string
+          total_amortization?: number
+          start_date?: string | null
+          end_date?: string | null
+          expected_return_date?: string | null
+          venue?: string | null
+          assigned_crew?: Json
+          notes?: string | null
           start_at?: string | null
           end_at?: string | null
-          venue?: string | null
-          notes?: string | null
-          income?: number | null
-          labor_cost?: number | null
-          profit?: number | null
-          created_at?: string
-          updated_at?: string
+          income?: number
+          client_id?: string | null
+          profit?: number
+          archived?: boolean
         }
       }
       clients: {

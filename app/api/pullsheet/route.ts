@@ -8,8 +8,8 @@ import { supabaseServer } from '@/lib/supabaseServer';
 
 type JobRow = {
   id: string;
-  job_id: string;
-  name?: string | null;
+  code: string;
+  title?: string | null;
   venue?: string | null;
   start_at?: string | null;
   end_at?: string | null;
@@ -74,7 +74,7 @@ export async function GET(req: Request) {
     if (ps.job_id) {
       const jobRes = await supabase
         .from("jobs")
-        .select("id, job_id, name, venue, start_at, end_at")
+        .select("id, code, title, venue, start_at, end_at")
         .eq("id", ps.job_id)
         .maybeSingle();
       if (!jobRes.error && jobRes.data) {
@@ -84,13 +84,30 @@ export async function GET(req: Request) {
   } else if (jobCode) {
     const jobRes = await supabase
       .from("jobs")
-      .select("id, job_id, name, venue, start_at, end_at")
-      .eq("job_id", jobCode)
+      .select("id, code, title, venue, start_at, end_at")
+      .eq("code", jobCode)
       .limit(1);
     const jobRows = jobRes.data as JobRow[] | null;
     const jobErr = jobRes.error;
+    
+    console.log("Job query error:", jobErr);
+    console.log("Job query data:", jobRows);
+    
     if (jobErr || !jobRows || jobRows.length === 0) {
-      return NextResponse.json({ error: jobErr?.message || "Job not found" }, { status: 404 });
+      // Debug: Get first few jobs to see what's available
+      const debugRes = await supabase
+        .from("jobs")
+        .select("*")
+        .limit(5);
+      
+      console.log("Debug jobs query:", debugRes);
+      
+      return NextResponse.json({ 
+        error: jobErr?.message || "Job not found",
+        requestedJobCode: jobCode,
+        availableJobs: debugRes.data || [],
+        hint: "Try using the job code from the availableJobs list"
+      }, { status: 404 });
     }
     job = jobRows[0];
 
@@ -118,7 +135,7 @@ export async function GET(req: Request) {
   }
 
   // job fallback for metadata
-  const jobMeta = job ?? ({ id: "", job_id: "—", name: null, venue: null, start_at: null, end_at: null } as JobRow);
+  const jobMeta = job ?? ({ id: "", code: "—", title: null, venue: null, start_at: null, end_at: null } as JobRow);
 
   // items
   const itemRes = await supabase
@@ -173,7 +190,7 @@ export async function GET(req: Request) {
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Pull Sheet – ${escapeHtml(jobMeta.job_id ?? "")}</title>
+  <title>Pull Sheet – ${escapeHtml(jobMeta.code ?? "")}</title>
   <style>
     @page {
       size: letter portrait;
@@ -456,7 +473,7 @@ export async function GET(req: Request) {
     <div class="meta-panel">
       <div class="row">
         <div class="label">Job Code:</div>
-        <div class="value">${escapeHtml(jobMeta.job_id ?? "—")}</div>
+        <div class="value">${escapeHtml(jobMeta.code ?? "—")}</div>
       </div>
       <div class="row">
         <div class="label">Venue:</div>
@@ -547,7 +564,7 @@ export async function GET(req: Request) {
     </div>
     <div class="footer-right">
       <div><strong>Pull Sheet:</strong> ${escapeHtml(ps.name ?? ps.code)}</div>
-      <div><strong>Job:</strong> ${escapeHtml(jobMeta.name ?? jobMeta.job_id ?? "—")}</div>
+      <div><strong>Job:</strong> ${escapeHtml(jobMeta.title ?? jobMeta.code ?? "—")}</div>
     </div>
   </div>
 
