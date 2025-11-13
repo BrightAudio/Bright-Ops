@@ -112,7 +112,7 @@ export interface Database {
           image_url: string | null
           repair_cost: number | null
           maintenance_status: string | null
-          speaker_test_data: any | null
+          speaker_test_data: Record<string, unknown> | null
           created_at: string
           updated_at: string
         }
@@ -136,7 +136,7 @@ export interface Database {
           image_url?: string | null
           repair_cost?: number | null
           maintenance_status?: string | null
-          speaker_test_data?: any | null
+          speaker_test_data?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }
@@ -160,7 +160,7 @@ export interface Database {
           image_url?: string | null
           repair_cost?: number | null
           maintenance_status?: string | null
-          speaker_test_data?: any | null
+          speaker_test_data?: Record<string, unknown> | null
           created_at?: string
           updated_at?: string
         }

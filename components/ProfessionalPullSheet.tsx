@@ -5,7 +5,7 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import GearSubstitutionModal from "@/components/GearSubstitutionModal";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Printer, Download, ArrowLeft } from "lucide-react";
+import { Printer, ArrowLeft } from "lucide-react";
 
 type Item = {
   id: string;

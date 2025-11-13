@@ -1,7 +1,6 @@
 "use client";
 
 import WidgetCard from "./WidgetCard";
-import Link from "next/link";
 import { useState, useEffect } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import type { Database } from "@/types/database";
