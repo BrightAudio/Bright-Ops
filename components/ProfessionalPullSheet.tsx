@@ -282,7 +282,7 @@ export default function ProfessionalPullSheet({
                             </button>
                           </td>
                         </tr>
-                        );
+                      );
                       })
                     ) : (
                       // Empty rows for professional look
