@@ -90,23 +90,10 @@ export async function GET(req: Request) {
     const jobRows = jobRes.data as JobRow[] | null;
     const jobErr = jobRes.error;
     
-    console.log("Job query error:", jobErr);
-    console.log("Job query data:", jobRows);
-    
     if (jobErr || !jobRows || jobRows.length === 0) {
-      // Debug: Get first few jobs to see what's available
-      const debugRes = await supabase
-        .from("jobs")
-        .select("*")
-        .limit(5);
-      
-      console.log("Debug jobs query:", debugRes);
-      
       return NextResponse.json({ 
         error: jobErr?.message || "Job not found",
-        requestedJobCode: jobCode,
-        availableJobs: debugRes.data || [],
-        hint: "Try using the job code from the availableJobs list"
+        requestedJobCode: jobCode
       }, { status: 404 });
     }
     job = jobRows[0];

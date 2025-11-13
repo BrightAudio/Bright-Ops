@@ -1,4 +1,6 @@
-export type Json =
+const fs = require('fs');
+
+const content = `export type Json =
   | string
   | number
   | boolean
@@ -606,3 +608,7 @@ export interface Database {
     }
   }
 }
+`;
+
+fs.writeFileSync('./types/database.ts', content, 'utf8');
+console.log('✅ Database types file generated successfully!');
