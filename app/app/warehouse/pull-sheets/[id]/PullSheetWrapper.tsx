@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
+import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 import ProfessionalPullSheet from "@/components/ProfessionalPullSheet";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -125,9 +126,9 @@ export default function PullSheetDetailWrapper() {
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
             <div className="text-lg text-red-600 mb-4">{error || 'Pull sheet not found'}</div>
-            <a href="/app/warehouse/pull-sheets" className="text-blue-600 hover:underline">
+            <Link href="/app/warehouse/pull-sheets" className="text-blue-600 hover:underline">
               Back to Pull Sheets
-            </a>
+            </Link>
           </div>
         </div>
       </DashboardLayout>

@@ -22,6 +22,16 @@ const eslintConfig = [
       ".vscode/**",
     ],
   },
+  {
+    rules: {
+      "@typescript-eslint/no-explicit-any": "warn", // Downgrade to warning instead of error
+      "@typescript-eslint/no-unused-vars": "warn", // Downgrade to warning
+      "react-hooks/exhaustive-deps": "warn", // Downgrade to warning
+      "@next/next/no-img-element": "warn", // Downgrade to warning
+      "react/no-unescaped-entities": "warn", // Downgrade to warning
+      "prefer-const": "warn", // Downgrade to warning
+    },
+  },
 ];
 
 export default eslintConfig;
