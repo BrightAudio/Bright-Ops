@@ -158,7 +158,7 @@ export default function InventoryPage() {
 							<div className="px-2 border-r border-zinc-700">Barcode</div>
 							<div className="px-2 border-r border-zinc-700">Name</div>
 							<div className="px-2 border-r border-zinc-700">Location</div>
-							<div className="px-2 border-r border-zinc-700">Qty in Warehouse</div>
+							<div className="px-2 border-r border-zinc-700">On Gig</div>
 							<div className="px-2 border-r border-zinc-700">Qty on Hand</div>
 							<div className="px-2 border-r border-zinc-700 text-right">Unit Value</div>
 							<div className="px-2 border-r border-zinc-700 text-right">Total Value</div>
@@ -173,14 +173,30 @@ export default function InventoryPage() {
 								const itemTotal = qty * unitValue;
 								const qtyInWarehouse = item.qty_in_warehouse ?? 0;
 								
-								// Determine location display
-								let locationDisplay: React.ReactNode;
+								// Format date from ISO string
+								const formatDate = (isoDate: string | null) => {
+									if (!isoDate) return "";
+									const date = new Date(isoDate);
+									return `${date.getMonth() + 1}/${date.getDate()}`;
+								};
+								
+								// Determine location/job display
+								let jobDisplay: React.ReactNode;
 								if (qtyInWarehouse > 0) {
-									locationDisplay = <span className="text-green-400">Warehouse</span>;
+									// Item is in warehouse - show 0
+									jobDisplay = <span className="text-zinc-400">0</span>;
 								} else if (item.currentJob) {
-									locationDisplay = <span className="text-yellow-400">{item.currentJob.name}</span>;
+									// Item is on a job - show job name and date in RED
+									const outDate = formatDate(item.currentJob.scheduled_out_at);
+									jobDisplay = (
+										<span className="text-red-600 font-semibold">
+											{item.currentJob.name}
+											{outDate && ` (Out: ${outDate})`}
+										</span>
+									);
 								} else {
-									locationDisplay = <span className="text-yellow-400">On Job</span>;
+									// Shouldn't happen but fallback
+									jobDisplay = <span className="text-yellow-400">On Job</span>;
 								}
 								
 								return (
@@ -192,9 +208,11 @@ export default function InventoryPage() {
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.barcode}</div>
 										<div className="text-sm font-medium text-white px-2 border-r border-zinc-700/50">{item.name}</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">
-											{locationDisplay}
+											{item.location || "-"}
 										</div>
-										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qtyInWarehouse}</div>
+										<div className="text-sm px-2 border-r border-zinc-700/50">
+											{jobDisplay}
+										</div>
 										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qty}</div>
 										<div className="text-sm text-zinc-300 text-right px-2 border-r border-zinc-700/50">
 											{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}

@@ -22,6 +22,7 @@ export type InventoryItemWithJob = InventoryItem & {
     id: string;
     name: string;
     pull_sheet_id: string;
+    scheduled_out_at: string | null;
   } | null;
 };
 
@@ -124,6 +125,7 @@ export function useInventory(query?: { search?: string }) {
                 name,
                 status,
                 job_id,
+                scheduled_out_at,
                 jobs!inner(
                   id,
                   name
@@ -145,6 +147,7 @@ export function useInventory(query?: { search?: string }) {
                   id: job.id,
                   name: job.name,
                   pull_sheet_id: pullSheet.id,
+                  scheduled_out_at: pullSheet.scheduled_out_at,
                 },
               };
             }
