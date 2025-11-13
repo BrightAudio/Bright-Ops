@@ -102,6 +102,17 @@ export interface Database {
           qty_in_warehouse: number | null
           unit_value: number | null
           notes: string | null
+          purchase_cost: number | null
+          purchase_date: string | null
+          useful_life_years: number | null
+          estimated_jobs_per_year: number | null
+          residual_value: number | null
+          location: string | null
+          tags: string[] | null
+          image_url: string | null
+          repair_cost: number | null
+          maintenance_status: string | null
+          speaker_test_data: any | null
           created_at: string
           updated_at: string
         }
@@ -115,6 +126,17 @@ export interface Database {
           qty_in_warehouse?: number | null
           unit_value?: number | null
           notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          useful_life_years?: number | null
+          estimated_jobs_per_year?: number | null
+          residual_value?: number | null
+          location?: string | null
+          tags?: string[] | null
+          image_url?: string | null
+          repair_cost?: number | null
+          maintenance_status?: string | null
+          speaker_test_data?: any | null
           created_at?: string
           updated_at?: string
         }
@@ -128,6 +150,17 @@ export interface Database {
           qty_in_warehouse?: number | null
           unit_value?: number | null
           notes?: string | null
+          purchase_cost?: number | null
+          purchase_date?: string | null
+          useful_life_years?: number | null
+          estimated_jobs_per_year?: number | null
+          residual_value?: number | null
+          location?: string | null
+          tags?: string[] | null
+          image_url?: string | null
+          repair_cost?: number | null
+          maintenance_status?: string | null
+          speaker_test_data?: any | null
           created_at?: string
           updated_at?: string
         }
