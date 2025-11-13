@@ -2,11 +2,9 @@
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
-import { supabase, Tables, TablesInsert, TablesUpdate } from "@/lib/supabaseClient";
+import { supabase, Tables, TablesInsert } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
-const warehouses = ["Main", "Annex", "Remote"];
-const vehicles = ["Truck 1", "Truck 2", "Van"];
 const statuses = ["Scheduled", "In Transit", "Delivered", "Cancelled"];
 
 function statusColor(status: string) {
@@ -61,6 +59,7 @@ export default function Transports() {
 
   useEffect(() => {
     loadTransports();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function loadTransports() {
@@ -80,7 +79,7 @@ export default function Transports() {
     // Extract unique vehicles for autocomplete
     const uniqueVehicles = [...new Set(
       (data ?? [])
-        .map((t: any) => t.vehicle)
+        .map((t: Tables<"transports">) => t.vehicle)
         .filter((v): v is string => !!v)
     )];
     setVehicles(uniqueVehicles);
@@ -121,8 +120,8 @@ export default function Transports() {
     const err = validateForm();
     if (err) return setError(err);
     if (editing) {
-      await (supabase
-        .from("transports") as any)
+      await supabase
+        .from("transports")
         .update({
           vehicle: form.vehicle,
           driver: form.driver,
@@ -136,7 +135,7 @@ export default function Transports() {
     } else {
       await supabase
         .from("transports")
-        .insert(form as TablesInsert<"transports">);
+        .insert(form);
     }
     closeModal();
     loadTransports();

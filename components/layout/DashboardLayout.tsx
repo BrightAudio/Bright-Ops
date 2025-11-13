@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import ProfileDropdown from "./ProfileDropdown";
 import { logoutAction } from "@/app/actions/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { useLocation } from "@/lib/contexts/LocationContext";
@@ -65,7 +64,13 @@ export default function DashboardLayout({
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searchResults, setSearchResults] = useState<Array<{
+    type: string;
+    id: string;
+    title: string;
+    subtitle?: string;
+    link: string;
+  }>>([]);
   const [searchLoading, setSearchLoading] = useState(false);
   const { notifications, markAsRead, markAllAsRead, hasUnread } = useNotifications();
   const [userProfile, setUserProfile] = useState<{ full_name: string; company_name: string | null; email: string } | null>(null);
@@ -87,8 +92,8 @@ export default function DashboardLayout({
           .single();
         
         setUserProfile({
-          full_name: (profile as any)?.full_name || 'User',
-          company_name: (profile as any)?.company_name || null,
+          full_name: profile?.full_name || 'User',
+          company_name: profile?.company_name || null,
           email: user.email || ''
         });
       }
@@ -568,7 +573,7 @@ export default function DashboardLayout({
           <div style={{ position: 'relative' }} ref={profileRef}>
             <button 
               className="user-menu" 
-              onClick={(e) => {
+              onClick={() => {
                 console.log("Clicking profile! Current state:", profileOpen);
                 setProfileOpen(!profileOpen);
               }}
