@@ -128,11 +128,11 @@ export default function ProfessionalPullSheet({
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-4">
               <button
-                onClick={() => router.push('/app/warehouse/pull-sheets')}
+                onClick={() => router.back()}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft size={20} />
-                <span>Back to Pull Sheets</span>
+                <span>Back</span>
               </button>
               <div className="flex gap-2">
                 <button
