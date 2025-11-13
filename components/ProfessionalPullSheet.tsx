@@ -66,6 +66,11 @@ export default function ProfessionalPullSheet({
     open: boolean;
     item: Item | null;
   }>({ open: false, item: null });
+  const [addItemModal, setAddItemModal] = useState(false);
+  const [newItemName, setNewItemName] = useState("");
+  const [newItemQty, setNewItemQty] = useState(1);
+  const [newItemCategory, setNewItemCategory] = useState("Audio");
+  const [addingItem, setAddingItem] = useState(false);
 
   // Group items by category
   const itemsByCategory = items.reduce((acc, item) => {
@@ -101,6 +106,41 @@ export default function ProfessionalPullSheet({
     window.print();
   }
 
+  async function handleAddItem() {
+    if (!newItemName.trim()) return;
+    
+    setAddingItem(true);
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { error } = await supabase
+        .from("pull_sheet_items")
+        .insert({
+          pull_sheet_id: pullSheet.id,
+          item_name: newItemName,
+          qty_requested: newItemQty,
+          qty_pulled: 0,
+          qty_fulfilled: 0,
+          category: newItemCategory,
+          prep_status: "pending"
+        } as never);
+
+      if (error) throw error;
+
+      // Reset form
+      setNewItemName("");
+      setNewItemQty(1);
+      setNewItemCategory("Audio");
+      setAddItemModal(false);
+      onRefresh();
+    } catch (error) {
+      console.error("Error adding item:", error);
+      alert("Failed to add item");
+    } finally {
+      setAddingItem(false);
+    }
+  }
+
   return (
     <>
       {/* Gear Substitution Modal */}
@@ -122,6 +162,82 @@ export default function ProfessionalPullSheet({
         />
       )}
 
+      {/* Add Item Modal */}
+      {addItemModal && (
+        <div 
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50"
+          onClick={() => setAddItemModal(false)}
+        >
+          <div 
+            className="bg-white rounded-lg p-6 max-w-md w-full mx-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-bold mb-4">Add Item to Pull Sheet</h2>
+            
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Item Name *
+                </label>
+                <input
+                  type="text"
+                  value={newItemName}
+                  onChange={(e) => setNewItemName(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  placeholder="e.g., Shure SM58"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Quantity *
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  value={newItemQty}
+                  onChange={(e) => setNewItemQty(parseInt(e.target.value) || 1)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Category *
+                </label>
+                <select
+                  value={newItemCategory}
+                  onChange={(e) => setNewItemCategory(e.target.value)}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                >
+                  {CATEGORY_ORDER.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleAddItem}
+                disabled={!newItemName.trim() || addingItem}
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {addingItem ? "Adding..." : "Add Item"}
+              </button>
+              <button
+                onClick={() => setAddItemModal(false)}
+                disabled={addingItem}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 disabled:opacity-50"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="min-h-screen bg-gray-50">
         {/* No-print navigation & scanner */}
         <div className="no-print bg-white border-b border-gray-200 p-4">
@@ -135,6 +251,12 @@ export default function ProfessionalPullSheet({
                 <span>Back</span>
               </button>
               <div className="flex gap-2">
+                <button
+                  onClick={() => setAddItemModal(true)}
+                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                >
+                  + Add Item
+                </button>
                 <button
                   onClick={handlePrint}
                   className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
