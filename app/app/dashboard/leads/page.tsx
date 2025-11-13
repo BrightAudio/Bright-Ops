@@ -36,6 +36,15 @@ export default function LeadsPage() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formData, setFormData] = useState({
+    name: "",
+    email: "",
+    org: "",
+    title: "",
+    snippet: "",
+  });
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     loadLeads();
@@ -57,6 +66,37 @@ export default function LeadsPage() {
       console.error("Error loading leads:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function handleAddLead(e: React.FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+
+    try {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny.from("leads").insert([
+        {
+          name: formData.name,
+          email: formData.email,
+          org: formData.org || null,
+          title: formData.title || null,
+          snippet: formData.snippet || null,
+          status: "uncontacted",
+        },
+      ]);
+
+      if (error) throw error;
+
+      setFormData({ name: "", email: "", org: "", title: "", snippet: "" });
+      setShowAddModal(false);
+      loadLeads();
+      alert("Lead added successfully!");
+    } catch (err) {
+      console.error("Error adding lead:", err);
+      alert("Failed to add lead");
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -113,7 +153,7 @@ export default function LeadsPage() {
           </div>
           <div className="flex gap-2">
             <button
-              onClick={() => alert("Coming soon: Manual add lead")}
+              onClick={() => setShowAddModal(true)}
               className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
             >
               <i className="fas fa-plus"></i>
@@ -261,6 +301,99 @@ export default function LeadsPage() {
           </div>
         )}
       </div>
+
+      {/* Add Lead Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">Add New Lead</h2>
+              <button
+                onClick={() => setShowAddModal(false)}
+                className="text-gray-400 hover:text-gray-600"
+              >
+                <i className="fas fa-times"></i>
+              </button>
+            </div>
+
+            <form onSubmit={handleAddLead} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="John Smith"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <input
+                  type="email"
+                  required
+                  value={formData.email}
+                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="john@example.com"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                <input
+                  type="text"
+                  value={formData.org}
+                  onChange={(e) => setFormData({ ...formData, org: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="City Arts Center"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Event Coordinator"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes/Context</label>
+                <textarea
+                  value={formData.snippet}
+                  onChange={(e) => setFormData({ ...formData, snippet: e.target.value })}
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Any additional context about this lead..."
+                />
+              </div>
+
+              <div className="flex gap-2 pt-4">
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                >
+                  {saving ? "Adding..." : "Add Lead"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowAddModal(false)}
+                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </DashboardLayout>
   );
 }
