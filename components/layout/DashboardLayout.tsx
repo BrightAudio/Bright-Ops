@@ -140,8 +140,8 @@ export default function DashboardLayout({
           .or(`name.ilike.%${query}%,job_id.ilike.%${query}%`)
           .limit(5);
         
-        if (jobs) {
-          jobs.forEach(job => {
+        if (jobs && Array.isArray(jobs)) {
+          jobs.forEach((job: any) => {
             results.push({
               type: 'job',
               id: job.id,
@@ -159,8 +159,8 @@ export default function DashboardLayout({
           .or(`name.ilike.%${query}%,barcode.ilike.%${query}%,gear_type.ilike.%${query}%`)
           .limit(5);
         
-        if (inventory) {
-          inventory.forEach(item => {
+        if (inventory && Array.isArray(inventory)) {
+          inventory.forEach((item: any) => {
             results.push({
               type: 'inventory',
               id: item.id,
@@ -178,8 +178,8 @@ export default function DashboardLayout({
           .or(`name.ilike.%${query}%,email.ilike.%${query}%`)
           .limit(5);
         
-        if (clients) {
-          clients.forEach(client => {
+        if (clients && Array.isArray(clients)) {
+          clients.forEach((client: any) => {
             results.push({
               type: 'client',
               id: client.id,
