@@ -447,6 +447,44 @@ export interface Database {
           updated_at?: string
         }
       }
+      transports: {
+        Row: {
+          id: string
+          job_id: string | null
+          vehicle: string | null
+          driver: string | null
+          depart_at: string | null
+          arrive_at: string | null
+          notes: string | null
+          status: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          job_id?: string | null
+          vehicle?: string | null
+          driver?: string | null
+          depart_at?: string | null
+          arrive_at?: string | null
+          notes?: string | null
+          status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          job_id?: string | null
+          vehicle?: string | null
+          driver?: string | null
+          depart_at?: string | null
+          arrive_at?: string | null
+          notes?: string | null
+          status?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
