@@ -10,6 +10,7 @@ import {
   FaHome,
   FaFileInvoiceDollar,
   FaUndoAlt,
+  FaClipboardCheck,
 } from 'react-icons/fa';
 
 type Item = {
