@@ -54,7 +54,8 @@ export default function CrewPage() {
     setSaving(true);
 
     try {
-      const { error } = await supabase.from("employees").insert([
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny.from("employees").insert([
         {
           name: formData.name,
           email: formData.email || null,

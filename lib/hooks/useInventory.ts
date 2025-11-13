@@ -50,21 +50,24 @@ export async function scanIn(
   if (item) {
     ok = true;
     result = "success";
-    itemRow = item;
-    await supabase
+    const itemAny = item as any;
+    itemRow = item as InventoryItem;
+    const supabaseAny = supabase as any;
+    await supabaseAny
       .from("inventory_items")
       .update({
-        qty_in_warehouse: (item.qty_in_warehouse ?? 0) + 1,
-      } as TablesUpdate<"inventory_items">)
-      .eq("id", item.id);
+        qty_in_warehouse: (itemAny.qty_in_warehouse ?? 0) + 1,
+      })
+      .eq("id", itemAny.id);
   }
-  const event: TablesInsert<"scan_events"> = {
+  const event = {
     barcode,
     result,
     job_id: opts?.jobId ?? null,
     created_at: new Date().toISOString(),
   };
-  await supabase.from("scan_events").insert([event]);
+  const supabaseAny2 = supabase as any;
+  await supabaseAny2.from("scan_events").insert([event]);
   return { ok, item: itemRow };
 }
 
@@ -109,7 +112,7 @@ export function useInventory(query?: { search?: string }) {
       
       // Fetch job information for items not in warehouse
       const itemsWithJobs: InventoryItemWithJob[] = await Promise.all(
-        (rows ?? []).map(async (item) => {
+        (rows ?? []).map(async (item: any) => {
           // If item is in warehouse, no need to fetch job
           if ((item.qty_in_warehouse ?? 0) > 0) {
             return { ...item, currentJob: null };
@@ -137,7 +140,7 @@ export function useInventory(query?: { search?: string }) {
           
           if (pullSheetItems && pullSheetItems.length > 0) {
             // Get the first active pull sheet (most recent)
-            const pullSheet = pullSheetItems[0].pull_sheets as any;
+            const pullSheet = (pullSheetItems[0] as any).pull_sheets;
             const job = pullSheet?.jobs;
             
             if (job) {
@@ -191,20 +194,23 @@ export async function freeScanIn(
     opts?.onFailBeep?.();
     throw new Error("Item not found for barcode: " + barcode);
   }
+  const itemTyped = item as any;
   // Insert movement record
-  const movement: TablesInsert<"inventory_movements"> = {
-    item_id: item.id,
-    qty,
+  const movement = {
+    item_id: itemTyped.id,
+    quantity: qty,
+    movement_type: "in",
     created_at: new Date().toISOString(),
   };
-  guard(await supabase.from("inventory_movements").insert([movement]));
+  const supabaseAny = supabase as any;
+  guard(await supabaseAny.from("inventory_movements").insert([movement]));
   // Atomically increment quantity_on_hand
-  const { data: updated, error: updateErr } = await supabase
+  const { data: updated, error: updateErr } = await supabaseAny
     .from("inventory_items")
     .update({
-      quantity_on_hand: (item.quantity_on_hand ?? 0) + qty,
-    } as TablesUpdate<"inventory_items">)
-    .eq("id", item.id)
+      quantity_on_hand: (itemTyped.quantity_on_hand ?? 0) + qty,
+    })
+    .eq("id", itemTyped.id)
     .select()
     .single();
   if (updateErr || !updated) {
@@ -238,20 +244,22 @@ export async function freeScanOut(
     opts?.onFailBeep?.();
     throw new Error("Item not found for barcode: " + barcode);
   }
+  const itemTyped = item as any;
   // Insert movement with direction out
-  const movement: TablesInsert<"inventory_movements"> = {
-    item_id: item.id,
-    direction: "out",
-    qty,
-    note: null,
+  const movement = {
+    item_id: itemTyped.id,
+    movement_type: "out",
+    quantity: qty,
+    notes: null,
   };
-  guard(await supabase.from("inventory_movements").insert([movement]));
+  const supabaseAny = supabase as any;
+  guard(await supabaseAny.from("inventory_movements").insert([movement]));
   // Compute new quantity, floor at 0
-  const newQty = Math.max(0, (item.quantity_on_hand ?? 0) - qty);
-  const { data: updated, error: updateErr } = await supabase
+  const newQty = Math.max(0, (itemTyped.quantity_on_hand ?? 0) - qty);
+  const { data: updated, error: updateErr } = await supabaseAny
     .from("inventory_items")
-    .update({ quantity_on_hand: newQty } as TablesUpdate<"inventory_items">)
-    .eq("id", item.id)
+    .update({ quantity_on_hand: newQty })
+    .eq("id", itemTyped.id)
     .select()
     .single();
   if (updateErr || !updated) {
@@ -278,7 +286,8 @@ export async function freeScanOut(
  * record.
  */
 export async function createInventoryItem(item: TablesInsert<"inventory_items">): Promise<InventoryItem> {
-  const { data, error } = await supabase
+  const supabaseAny = supabase as any;
+  const { data, error } = await supabaseAny
     .from("inventory_items")
     .insert([item])
     .select()
@@ -300,7 +309,8 @@ export async function updateInventoryItem(
   id: string,
   updates: TablesUpdate<"inventory_items">
 ): Promise<InventoryItem> {
-  const { data, error } = await supabase
+  const supabaseAny = supabase as any;
+  const { data, error } = await supabaseAny
     .from("inventory_items")
     .update(updates)
     .eq("id", id)
