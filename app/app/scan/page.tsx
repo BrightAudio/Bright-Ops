@@ -31,6 +31,16 @@ export default function ScanConsole() {
   const [loading, setLoading] = useState<boolean>(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // CSV Upload
+  const [uploading, setUploading] = useState(false);
+  const [uploadResults, setUploadResults] = useState<string | null>(null);
+  
+  // Manual Add
+  const [showManualAdd, setShowManualAdd] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
 
   async function handleViewPullSheet() {
     try {
@@ -171,6 +181,211 @@ export default function ScanConsole() {
     }
   }
 
+  async function handleCSVUpload(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setUploadResults(null);
+    setError(null);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      // Skip header if exists
+      const startIndex = lines[0].toLowerCase().includes('barcode') ? 1 : 0;
+      const barcodes = lines.slice(startIndex).map(line => {
+        // Handle CSV with commas or just plain list
+        const parts = line.split(',');
+        return parts[0].trim();
+      }).filter(b => b);
+
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      // Get job and pull sheet
+      const { data: job } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("code", jobCode)
+        .maybeSingle();
+      
+      if (!job) throw new Error(`Job ${jobCode} not found`);
+      
+      let { data: pullSheet } = await supabase
+        .from("pull_sheets")
+        .select("id")
+        .eq("job_id", (job as any).id)
+        .maybeSingle();
+      
+      if (!pullSheet) {
+        const { data: newPs } = await supabase
+          .from("pull_sheets")
+          .insert({
+            job_id: (job as any).id,
+            name: `Pull Sheet for ${jobCode}`,
+            status: "pending"
+          } as never)
+          .select()
+          .single();
+        pullSheet = newPs;
+      }
+
+      let added = 0;
+      let updated = 0;
+      let notFound = 0;
+
+      for (const barcode of barcodes) {
+        const { data: inventoryItem } = await supabase
+          .from("inventory_items")
+          .select("id, name, barcode, category")
+          .eq("barcode", barcode)
+          .maybeSingle();
+        
+        if (!inventoryItem) {
+          notFound++;
+          continue;
+        }
+
+        const { data: existingItem } = await supabase
+          .from("pull_sheet_items")
+          .select("id, qty_requested")
+          .eq("pull_sheet_id", (pullSheet as any).id)
+          .eq("inventory_item_id", (inventoryItem as any).id)
+          .maybeSingle();
+        
+        if (existingItem) {
+          await supabase
+            .from("pull_sheet_items")
+            .update({
+              qty_requested: (existingItem as any).qty_requested + 1
+            } as never)
+            .eq("id", (existingItem as any).id);
+          updated++;
+        } else {
+          await supabase
+            .from("pull_sheet_items")
+            .insert({
+              pull_sheet_id: (pullSheet as any).id,
+              inventory_item_id: (inventoryItem as any).id,
+              item_name: (inventoryItem as any).name,
+              barcode: (inventoryItem as any).barcode,
+              category: (inventoryItem as any).category,
+              qty_requested: 1,
+              qty_pulled: 0,
+              qty_fulfilled: 0,
+              prep_status: "pending"
+            } as never);
+          added++;
+        }
+      }
+
+      setUploadResults(`✅ CSV Upload Complete!\nAdded: ${added} new items\nUpdated: ${updated} existing items\nNot found: ${notFound}`);
+      playSafe(okBeep);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "CSV upload failed");
+      playSafe(errBeep);
+    } finally {
+      setUploading(false);
+      event.target.value = ''; // Reset file input
+    }
+  }
+
+  async function searchInventory() {
+    if (!searchQuery.trim()) return;
+    
+    setSearching(true);
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { data, error } = await supabase
+        .from("inventory_items")
+        .select("id, name, barcode, category")
+        .or(`name.ilike.%${searchQuery}%,barcode.ilike.%${searchQuery}%`)
+        .limit(20);
+      
+      if (error) throw error;
+      setSearchResults(data || []);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Search failed");
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function addManualItem(item: any) {
+    setLoading(true);
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { data: job } = await supabase
+        .from("jobs")
+        .select("id")
+        .eq("code", jobCode)
+        .maybeSingle();
+      
+      if (!job) throw new Error(`Job ${jobCode} not found`);
+      
+      let { data: pullSheet } = await supabase
+        .from("pull_sheets")
+        .select("id")
+        .eq("job_id", (job as any).id)
+        .maybeSingle();
+      
+      if (!pullSheet) {
+        const { data: newPs } = await supabase
+          .from("pull_sheets")
+          .insert({
+            job_id: (job as any).id,
+            name: `Pull Sheet for ${jobCode}`,
+            status: "pending"
+          } as never)
+          .select()
+          .single();
+        pullSheet = newPs;
+      }
+
+      const { data: existingItem } = await supabase
+        .from("pull_sheet_items")
+        .select("id, qty_requested")
+        .eq("pull_sheet_id", (pullSheet as any).id)
+        .eq("inventory_item_id", item.id)
+        .maybeSingle();
+      
+      if (existingItem) {
+        await supabase
+          .from("pull_sheet_items")
+          .update({
+            qty_requested: (existingItem as any).qty_requested + 1
+          } as never)
+          .eq("id", (existingItem as any).id);
+        setMsg(`✅ Added +1 ${item.name} (Total: ${(existingItem as any).qty_requested + 1})`);
+      } else {
+        await supabase
+          .from("pull_sheet_items")
+          .insert({
+            pull_sheet_id: (pullSheet as any).id,
+            inventory_item_id: item.id,
+            item_name: item.name,
+            barcode: item.barcode,
+            category: item.category,
+            qty_requested: 1,
+            qty_pulled: 0,
+            qty_fulfilled: 0,
+            prep_status: "pending"
+          } as never);
+        setMsg(`✅ Added ${item.name} to pull sheet`);
+      }
+      
+      playSafe(okBeep);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to add item");
+      playSafe(errBeep);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="p-6 max-w-xl mx-auto">
       <div className="flex items-center gap-4 mb-4">
@@ -234,6 +449,73 @@ export default function ScanConsole() {
         >
           View Pull Sheet
         </button>
+      </div>
+
+      {/* CSV Upload Section */}
+      <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h3 className="font-semibold mb-2">Bulk Upload</h3>
+        <p className="text-sm text-gray-600 mb-3">Upload a CSV file with barcodes (one per line or comma-separated)</p>
+        <input
+          type="file"
+          accept=".csv,.txt"
+          onChange={handleCSVUpload}
+          disabled={uploading}
+          className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50"
+        />
+        {uploading && <div className="mt-2 text-sm text-blue-600">Uploading...</div>}
+        {uploadResults && (
+          <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-sm text-green-700 whitespace-pre-line">
+            {uploadResults}
+          </div>
+        )}
+      </div>
+
+      {/* Manual Add Section */}
+      <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+        <h3 className="font-semibold mb-2">Manual Add</h3>
+        <p className="text-sm text-gray-600 mb-3">Search and add items from warehouse inventory</p>
+        <div className="flex gap-2 mb-3">
+          <input
+            type="text"
+            className="flex-1 border rounded px-3 py-2 text-sm"
+            placeholder="Search by name or barcode..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") searchInventory(); }}
+          />
+          <button
+            onClick={searchInventory}
+            disabled={searching}
+            className="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 disabled:opacity-50"
+          >
+            {searching ? "Searching..." : "Search"}
+          </button>
+        </div>
+        
+        {searchResults.length > 0 && (
+          <div className="max-h-60 overflow-y-auto border border-gray-200 rounded">
+            {searchResults.map((item) => (
+              <div
+                key={item.id}
+                className="flex items-center justify-between p-3 hover:bg-gray-100 border-b last:border-b-0"
+              >
+                <div className="flex-1">
+                  <div className="font-medium text-sm">{item.name}</div>
+                  <div className="text-xs text-gray-500">
+                    {item.barcode} {item.category && `• ${item.category}`}
+                  </div>
+                </div>
+                <button
+                  onClick={() => addManualItem(item)}
+                  disabled={loading}
+                  className="px-3 py-1 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50"
+                >
+                  Add
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
       
       {msg && <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-green-700">{msg}</div>}
