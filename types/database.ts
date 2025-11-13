@@ -133,6 +133,53 @@ export interface Database {
           updated_at?: string
         }
       }
+      leads: {
+        Row: {
+          id: string
+          name: string
+          email: string
+          org: string | null
+          title: string | null
+          snippet: string | null
+          status: string
+          generated_subject: string | null
+          generated_body: string | null
+          last_contacted: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          name: string
+          email: string
+          org?: string | null
+          title?: string | null
+          snippet?: string | null
+          status?: string
+          generated_subject?: string | null
+          generated_body?: string | null
+          last_contacted?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          name?: string
+          email?: string
+          org?: string | null
+          title?: string | null
+          snippet?: string | null
+          status?: string
+          generated_subject?: string | null
+          generated_body?: string | null
+          last_contacted?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       inventory_items: {
         Row: {
           id: string
