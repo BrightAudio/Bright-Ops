@@ -9,6 +9,7 @@ import {
   FaCalendarAlt,
   FaHome,
   FaFileInvoiceDollar,
+  FaUndoAlt,
 } from 'react-icons/fa';
 
 type Item = {
@@ -23,6 +24,7 @@ const items: Item[] = [
   { label: 'Jobs', href: '/app/jobs', icon: <FaCalendarAlt /> },
   { label: 'Warehouse', href: '/app/warehouse', icon: <FaBoxes /> },
   { label: 'Pull Sheets', href: '/app/warehouse/pull-sheets', icon: <FaClipboardList /> },
+  { label: 'Returns', href: '/app/warehouse/returns', icon: <FaUndoAlt /> },
   { label: 'Invoices', href: '/app/invoices', icon: <FaFileInvoiceDollar /> },
   { label: 'Crew Planner', href: '/app/crew-planner', icon: <FaCalendarAlt /> },
   { label: 'Team', href: '/app/settings/home-base', icon: <FaUsers /> },

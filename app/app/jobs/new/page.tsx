@@ -13,6 +13,8 @@ export default function NewJobPage() {
     venue: '',
     start_at: '',
     end_at: '',
+    load_out_date: '',
+    expected_return_date: '',
     notes: '',
     income: '',
   });
@@ -62,6 +64,26 @@ export default function NewJobPage() {
             value={formData.income}
             onChange={handleInputChange}
             placeholder="Total revenue for this job"
+            className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-amber-300 mb-1">Load Out Date</label>
+          <input
+            name="load_out_date"
+            type="date"
+            value={formData.load_out_date}
+            onChange={handleInputChange}
+            className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-amber-300 mb-1">Expected Return Date</label>
+          <input
+            name="expected_return_date"
+            type="date"
+            value={formData.expected_return_date}
+            onChange={handleInputChange}
             className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700"
           />
         </div>
