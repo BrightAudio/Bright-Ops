@@ -1,5 +1,6 @@
 "use client";
 import { useState, useRef } from "react";
+import { useRouter } from "next/navigation";
 import dynamic from "next/dynamic";
 
 const BarcodeScanner = dynamic(
@@ -24,6 +25,7 @@ const playSafe = (a: HTMLAudioElement | null) => {
 type Direction = "OUT" | "IN";
 
 export default function ScanConsole() {
+  const router = useRouter();
   const inputRef = useRef<HTMLInputElement | null>(null);
   const lastHandledRef = useRef<{ code: string; ts: number } | null>(null);
   const [jobCode, setJobCode] = useState<string>("JOB-1001");
@@ -91,7 +93,15 @@ export default function ScanConsole() {
 
   return (
     <div className="p-6 max-w-xl mx-auto">
-      <h1 className="text-2xl font-bold mb-4">Scan Console</h1>
+      <div className="flex items-center gap-4 mb-4">
+        <button
+          onClick={() => router.back()}
+          className="px-4 py-2 rounded border hover:bg-gray-100"
+        >
+          ← Back
+        </button>
+        <h1 className="text-2xl font-bold">Scan Console</h1>
+      </div>
       <label className="block text-sm font-medium mb-1">Job Code</label>
       <input
         className="w-full border rounded px-3 py-2 mb-4"

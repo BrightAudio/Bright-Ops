@@ -124,29 +124,27 @@ export async function GET(req: Request) {
   // job fallback for metadata
   const jobMeta = job ?? ({ id: "", code: "—", title: null, venue: null, start_at: null, end_at: null } as JobRow);
 
-  // items
+  // items - simplified query without complex joins
   const itemRes = await supabase
     .from("pull_sheet_items")
-    .select(
-      `qty_requested, qty_pulled, item_name, product_id, inventory_item_id,
-       products ( id, sku, name ),
-       inventory_items ( id, name, barcode )`
-    )
+    .select("qty_requested, qty_pulled, item_name, barcode, category")
     .eq("pull_sheet_id", ps.id);
-  const items = itemRes.data as PullSheetItem[] | null;
+  const items = itemRes.data as Array<{
+    qty_requested: number;
+    qty_pulled: number;
+    item_name: string;
+    barcode: string | null;
+    category: string | null;
+  }> | null;
   const itemErr = itemRes.error;
   if (itemErr) return NextResponse.json({ error: itemErr.message }, { status: 400 });
-  const itemList: PullSheetItem[] = items ?? [];
+  const itemList = items ?? [];
 
   // build a typed rows array
   const rows: RowOut[] = itemList.map((r) => {
-    const prod = r.products && r.products[0];
-    const inventory = r.inventory_items && r.inventory_items[0];
-    const sku = prod?.sku ?? inventory?.barcode ?? "";
-    const name = r.item_name ?? prod?.name ?? inventory?.name ?? "";
     return {
-      sku,
-      name,
+      sku: r.barcode ?? "",
+      name: r.item_name ?? "",
       qty_req: r.qty_requested ?? 0,
       qty_pulled: r.qty_pulled ?? 0
     };
@@ -565,7 +563,8 @@ export async function GET(req: Request) {
 }
 
 // small utility to avoid HTML injection in values
-function escapeHtml(str: string) {
+function escapeHtml(str: string | null | undefined) {
+  if (!str) return "";
   return str
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
