@@ -149,6 +149,23 @@ export default function CreatePullSheetPage() {
     setError(null);
     
     try {
+      // Get job dates if job_id is provided
+      let scheduledOut = null;
+      let expectedReturn = null;
+      
+      if (jobId) {
+        const { data: jobData } = await supabase
+          .from('jobs')
+          .select('load_out_date, expected_return_date')
+          .eq('id', jobId)
+          .single();
+        
+        if (jobData) {
+          scheduledOut = (jobData as any).load_out_date;
+          expectedReturn = (jobData as any).expected_return_date;
+        }
+      }
+      
       // Create pull sheet
       const { data: pullSheet, error: sheetError } = await (supabase
         .from('pull_sheets') as any)
@@ -156,8 +173,8 @@ export default function CreatePullSheetPage() {
           name: pullSheetName,
           job_id: jobId || null,
           status: 'draft',
-          scheduled_out_at: null,
-          expected_return_at: null,
+          scheduled_out_at: scheduledOut,
+          expected_return_at: expectedReturn,
           notes: null,
         }])
         .select()

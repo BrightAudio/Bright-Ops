@@ -107,16 +107,23 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
       // Update manifest status to complete
       await supabase
         .from("return_manifest")
-        .update({ status: "complete" })
+        .update({ status: "complete" } as any)
         .eq("id", manifest.id);
+
+      // Update job status to returned
+      await supabase
+        .from("jobs")
+        .update({ status: "returned" } as any)
+        .eq("id", jobId);
 
       // Update inventory quantities for returned items
       for (const item of returnedItems) {
         await supabase
           .from("inventory_items")
           .update({ 
-            quantity_on_hand: (item.quantity_on_hand ?? 0) + item.return_qty 
-          })
+            quantity_on_hand: (item.quantity_on_hand ?? 0) + item.return_qty,
+            qty_in_warehouse: ((item as any).qty_in_warehouse ?? 0) + item.return_qty
+          } as any)
           .eq("id", item.id);
 
         // Record movement
@@ -124,10 +131,12 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
           .from("inventory_movements")
           .insert([{
             item_id: item.id,
-            qty: item.return_qty,
-            direction: "in",
-            note: `Returned from job ${jobId}`,
-          }]);
+            movement_type: "return",
+            quantity: item.return_qty,
+            from_location: `Job ${jobId}`,
+            to_location: "Warehouse",
+            notes: `Returned from job ${jobId}`,
+          }] as any);
       }
 
       setMessage({ type: "success", text: `Saved ${returnedItems.length} items to manifest` });
