@@ -33,6 +33,23 @@ export default function ScanConsole() {
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  async function handleViewPullSheet() {
+    try {
+      // Fetch pull sheet ID by job code
+      const res = await fetch(`/api/pullsheet?jobCode=${encodeURIComponent(jobCode)}&idOnly=true`);
+      const data = await res.json();
+      
+      if (data.pullSheetId) {
+        // Open the professional pull sheet viewer
+        window.open(`/app/warehouse/pull-sheets/${data.pullSheetId}`, "_blank");
+      } else {
+        setError("No pull sheet found for this job");
+      }
+    } catch (e) {
+      setError("Failed to load pull sheet");
+    }
+  }
+
   async function send() {
     const codeToSend = code?.trim();
     if (!codeToSend) return;
@@ -129,9 +146,9 @@ export default function ScanConsole() {
       </button>
       <button
         className="px-4 py-2 rounded border ml-2"
-        onClick={() => window.open(`/api/pullsheet?jobCode=${encodeURIComponent(jobCode)}`, "_blank")}
+        onClick={handleViewPullSheet}
       >
-        View Pull Sheet (Print → PDF)
+        View Pull Sheet
       </button>
       {msg && <div className="mt-4 text-green-700">{msg}</div>}
       {error && <div className="mt-4 text-red-700">❌ {error}</div>}

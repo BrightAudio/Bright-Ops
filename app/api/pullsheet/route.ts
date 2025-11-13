@@ -52,6 +52,7 @@ export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const jobCode = searchParams.get("jobCode");
   const pullSheetId = searchParams.get("pullSheetId");
+  const idOnly = searchParams.get("idOnly") === "true"; // New parameter for just getting the ID
 
   if (!jobCode && !pullSheetId) {
     return NextResponse.json({ error: "Missing pullSheetId or jobCode" }, { status: 400 });
@@ -109,6 +110,11 @@ export async function GET(req: Request) {
 
   if (!ps) {
     return NextResponse.json({ error: "Pull sheet not found" }, { status: 404 });
+  }
+
+  // If only ID is requested, return early
+  if (idOnly) {
+    return NextResponse.json({ pullSheetId: ps.id });
   }
 
   // job fallback for metadata
