@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 
@@ -30,6 +31,7 @@ const STATUS_COLORS = {
 };
 
 export default function LeadsPage() {
+  const router = useRouter();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<string>("all");
@@ -224,7 +226,7 @@ export default function LeadsPage() {
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button
-                        onClick={() => alert(`Coming soon: View/edit lead ${lead.name}`)}
+                        onClick={() => router.push(`/app/dashboard/leads/${lead.id}`)}
                         className="text-blue-600 hover:text-blue-800 font-medium"
                       >
                         View
