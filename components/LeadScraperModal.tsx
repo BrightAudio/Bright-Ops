@@ -253,7 +253,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[60vh]">
+        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
           {/* Success/Error Messages */}
           {success && (
             <div className="mb-4 p-4 bg-green-900/20 border border-green-600 rounded-lg flex items-center gap-3 text-green-400">
@@ -450,7 +450,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                   <h3 className="text-[#e5e5e5] font-semibold mb-3">
                     Found {autoSearchLeads.length} leads:
                   </h3>
-                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                  <div className="space-y-3 max-h-[50vh] overflow-y-auto">
                     {autoSearchLeads.map((lead, i) => (
                       <div key={i} className="p-4 bg-[#2a2a2a] rounded border border-[#333333]">
                         <div className="flex justify-between items-start">
@@ -466,6 +466,16 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {loading && (
+                <div className="mt-6 text-center text-[#9ca3af]">
+                  <div className="inline-block">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500 mx-auto mb-2"></div>
+                  </div>
+                  <p>Searching for leads in {city}, {state}...</p>
+                  <p className="text-xs mt-1">Searching across {radius} miles using event industry job titles</p>
                 </div>
               )}
             </div>

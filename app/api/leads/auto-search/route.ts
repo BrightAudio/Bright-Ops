@@ -6,7 +6,7 @@ import axios from 'axios';
 
 export async function POST(request: NextRequest) {
   try {
-    const { city, state, radius } = await request.json();
+    const { city, state, radius, keywords } = await request.json();
 
     if (!city || !state) {
       return NextResponse.json(
@@ -49,6 +49,27 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Get search keywords if provided
+    const { data: searchKeywords, error: keywordError } = await supabase
+      .from('lead_search_keywords')
+      .select('keyword')
+      .eq('is_active', true);
+
+    const defaultKeywords = [
+      'event booking',
+      'rental coordination',
+      'venue rentals',
+      'facility rentals',
+      'special events',
+      'public programs',
+      'museum events',
+      'arts and culture events',
+      'weddings corporate events',
+      'audio visual services'
+    ];
+
+    const keywordList = searchKeywords?.map(k => k.keyword) || defaultKeywords;
+
     // Get Google API settings
     const { data: settings, error: settingsError } = await supabase
       .from('leads_settings')
@@ -67,7 +88,13 @@ export async function POST(request: NextRequest) {
 
     // Search for each job title
     for (const jobTitle of jobTitles.slice(0, 5)) { // Limit to first 5 to avoid rate limiting
-      const query = `${jobTitle.title} ${city} ${state}`;
+      // Build query with optional keywords
+      let query = `${jobTitle.title} ${city} ${state}`;
+      
+      // If keywords provided, add them to make search more specific
+      if (keywords && keywords.length > 0) {
+        query = `${query} (${keywords.join(' OR ')})`;
+      }
 
       if (searchedQueries.has(query)) continue;
       searchedQueries.add(query);
