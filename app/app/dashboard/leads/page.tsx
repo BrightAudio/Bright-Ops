@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import LeadScraperModal from "@/components/LeadScraperModal";
 
 type Lead = {
   id: string;
@@ -37,6 +38,7 @@ export default function LeadsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showScraperModal, setShowScraperModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -157,7 +159,7 @@ export default function LeadsPage() {
             Add Lead
           </button>
           <button
-            onClick={() => alert("Coming soon: Scrape leads")}
+            onClick={() => setShowScraperModal(true)}
             className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -513,6 +515,17 @@ export default function LeadsPage() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Scraper Modal */}
+      {showScraperModal && (
+        <LeadScraperModal
+          onClose={() => setShowScraperModal(false)}
+          onImportComplete={() => {
+            loadLeads();
+            setShowScraperModal(false);
+          }}
+        />
       )}
     </div>
   );
