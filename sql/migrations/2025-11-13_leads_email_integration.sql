@@ -5,6 +5,8 @@ CREATE TABLE IF NOT EXISTS public.leads_settings (
   -- API Keys
   openai_api_key TEXT,
   sendgrid_api_key TEXT,
+  google_api_key TEXT,
+  google_search_engine_id TEXT,
   
   -- Email Settings
   email_from_name TEXT DEFAULT 'Bright Ops',

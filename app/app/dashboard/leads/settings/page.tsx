@@ -13,6 +13,8 @@ export default function LeadSettingsPage() {
   // Form state
   const [openaiApiKey, setOpenaiApiKey] = useState('');
   const [sendgridApiKey, setSendgridApiKey] = useState('');
+  const [googleApiKey, setGoogleApiKey] = useState('');
+  const [googleSearchEngineId, setGoogleSearchEngineId] = useState('');
   const [emailFromName, setEmailFromName] = useState('');
   const [emailFromAddress, setEmailFromAddress] = useState('');
   const [emailReplyTo, setEmailReplyTo] = useState('');
@@ -40,13 +42,15 @@ export default function LeadSettingsPage() {
       }
 
       if (data) {
-        setOpenaiApiKey(data.openai_api_key || '');
-        setSendgridApiKey(data.sendgrid_api_key || '');
-        setEmailFromName(data.email_from_name || 'Bright Audio');
-        setEmailFromAddress(data.email_from_address || '');
-        setEmailReplyTo(data.email_reply_to || '');
-        setAiTone(data.ai_tone || 'professional');
-        setAiTemplate(data.ai_template || '');
+        setOpenaiApiKey((data as any).openai_api_key || '');
+        setSendgridApiKey((data as any).sendgrid_api_key || '');
+        setGoogleApiKey((data as any).google_api_key || '');
+        setGoogleSearchEngineId((data as any).google_search_engine_id || '');
+        setEmailFromName((data as any).email_from_name || 'Bright Audio');
+        setEmailFromAddress((data as any).email_from_address || '');
+        setEmailReplyTo((data as any).email_reply_to || '');
+        setAiTone((data as any).ai_tone || 'professional');
+        setAiTemplate((data as any).ai_template || '');
       }
     } catch (err: any) {
       console.error('Error loading settings:', err);
@@ -77,6 +81,8 @@ export default function LeadSettingsPage() {
       const settingsData = {
         openai_api_key: openaiApiKey || null,
         sendgrid_api_key: sendgridApiKey || null,
+        google_api_key: googleApiKey || null,
+        google_search_engine_id: googleSearchEngineId || null,
         email_from_name: emailFromName || 'Bright Audio',
         email_from_address: emailFromAddress || null,
         email_reply_to: emailReplyTo || null,
@@ -88,17 +94,18 @@ export default function LeadSettingsPage() {
 
       if (existing) {
         // Update existing settings
-        const { error } = await supabase
+        const { error } = (await supabase
           .from('leads_settings')
-          .update(settingsData)
-          .eq('id', existing.id);
+          // @ts-expect-error - Database type mismatch
+          .update(settingsData as any)
+          .eq('id', (existing as any).id)) as any;
 
         if (error) throw error;
       } else {
         // Insert new settings
-        const { error } = await supabase
+        const { error } = (await supabase
           .from('leads_settings')
-          .insert(settingsData);
+          .insert(settingsData as any)) as any;
 
         if (error) throw error;
       }
@@ -195,6 +202,44 @@ export default function LeadSettingsPage() {
                 Required for sending emails. Get your key from{' '}
                 <a href="https://app.sendgrid.com/settings/api_keys" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
                   SendGrid Dashboard
+                </a>
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
+                Google API Key
+              </label>
+              <input
+                type="password"
+                value={googleApiKey}
+                onChange={(e) => setGoogleApiKey(e.target.value)}
+                className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+                placeholder="AIza..."
+              />
+              <p className="text-xs text-[#9ca3af] mt-1">
+                Required for Google Search. Get your key from{' '}
+                <a href="https://console.cloud.google.com/apis/credentials" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                  Google Cloud Console
+                </a>
+              </p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
+                Google Search Engine ID
+              </label>
+              <input
+                type="text"
+                value={googleSearchEngineId}
+                onChange={(e) => setGoogleSearchEngineId(e.target.value)}
+                className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+                placeholder="0123456789abcdef..."
+              />
+              <p className="text-xs text-[#9ca3af] mt-1">
+                Create a Custom Search Engine at{' '}
+                <a href="https://programmablesearchengine.google.com/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                  Programmable Search Engine
                 </a>
               </p>
             </div>

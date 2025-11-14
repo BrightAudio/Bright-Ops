@@ -20,7 +20,7 @@ type LeadScraperModalProps = {
 };
 
 export default function LeadScraperModal({ onClose, onImportComplete }: LeadScraperModalProps) {
-  const [activeTab, setActiveTab] = useState<'csv' | 'url'>('csv');
+  const [activeTab, setActiveTab] = useState<'csv' | 'url' | 'google'>('csv');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -33,6 +33,10 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
   // URL scraping state
   const [url, setUrl] = useState('');
   const [scrapedLeads, setScrapedLeads] = useState<ScrapedLead[]>([]);
+
+  // Google search state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [googleLeads, setGoogleLeads] = useState<ScrapedLead[]>([]);
 
   // Handle CSV file upload
   function handleCsvUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -108,9 +112,42 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     }
   }
 
+  // Handle Google Search
+  async function handleGoogleSearch() {
+    if (!searchQuery) {
+      setError('Please enter a search query');
+      return;
+    }
+
+    setLoading(true);
+    setError(null);
+    setSuccess(null);
+
+    try {
+      const response = await fetch('/api/leads/search-google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: searchQuery, maxResults: 10 }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to search Google');
+      }
+
+      setGoogleLeads(data.leads || []);
+      setSuccess(data.message);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   // Import leads to database
   async function handleImport() {
-    const leadsToImport = activeTab === 'csv' ? csvLeads : scrapedLeads;
+    const leadsToImport = activeTab === 'csv' ? csvLeads : (activeTab === 'url' ? scrapedLeads : googleLeads);
 
     if (leadsToImport.length === 0) {
       setError('No leads to import');
@@ -145,7 +182,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     }
   }
 
-  const leadsToShow = activeTab === 'csv' ? csvLeads : scrapedLeads;
+  const leadsToShow = activeTab === 'csv' ? csvLeads : (activeTab === 'url' ? scrapedLeads : googleLeads);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -184,6 +221,17 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
           >
             <FaGlobe />
             Web Scraping
+          </button>
+          <button
+            onClick={() => setActiveTab('google')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'google'
+                ? 'bg-[#2a2a2a] text-purple-400 border-b-2 border-purple-500'
+                : 'text-[#9ca3af] hover:text-[#e5e5e5] hover:bg-[#2a2a2a]/50'
+            }`}
+          >
+            <FaGlobe />
+            Google Search
           </button>
         </div>
 
@@ -307,6 +355,57 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                         <div className="text-[#e5e5e5] font-medium">{lead.name}</div>
                         <div className="text-sm text-purple-400">{lead.email}</div>
                         {lead.org && <div className="text-xs text-[#9ca3af]">{lead.org}</div>}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Google Search Tab */}
+          {activeTab === 'google' && (
+            <div className="space-y-4">
+              <div className="text-[#9ca3af] text-sm mb-4">
+                <p>Search for event coordinators, venue managers, and other event professionals.</p>
+                <p className="mt-2 text-xs">Example: "event coordinators in Los Angeles" or "AV managers music venues Seattle"</p>
+              </div>
+
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="event coordinators in Los Angeles"
+                  className="flex-1 px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+                  onKeyDown={(e) => e.key === 'Enter' && handleGoogleSearch()}
+                />
+                <button
+                  onClick={handleGoogleSearch}
+                  disabled={loading || !searchQuery}
+                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all flex items-center gap-2 shadow-lg whitespace-nowrap"
+                >
+                  <FaGlobe />
+                  {loading ? 'Searching...' : 'Search Google'}
+                </button>
+              </div>
+
+              {googleLeads.length > 0 && (
+                <div className="mt-4">
+                  <h3 className="text-[#e5e5e5] font-semibold mb-2">
+                    Found {googleLeads.length} leads with contact info:
+                  </h3>
+                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                    {googleLeads.map((lead, i) => (
+                      <div key={i} className="p-3 bg-[#2a2a2a] rounded border border-[#333333]">
+                        <div className="flex justify-between items-start">
+                          <div className="flex-1">
+                            <div className="text-[#e5e5e5] font-medium">{lead.name || 'Unknown'}</div>
+                            <div className="text-sm text-purple-400">{lead.email}</div>
+                            {lead.org && <div className="text-sm text-[#e5e5e5] mt-1">{lead.org}</div>}
+                            {lead.title && <div className="text-xs text-[#9ca3af]">{lead.title}</div>}
+                          </div>
+                        </div>
                       </div>
                     ))}
                   </div>
