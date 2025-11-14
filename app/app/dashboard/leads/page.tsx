@@ -47,6 +47,10 @@ export default function LeadsPage() {
     snippet: "",
   });
   const [saving, setSaving] = useState(false);
+  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [selectedLeadForCampaign, setSelectedLeadForCampaign] = useState<Lead | null>(null);
+  const [campaigns, setCampaigns] = useState<any[]>([]);
+  const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
 
   useEffect(() => {
     loadLeads();
@@ -68,6 +72,58 @@ export default function LeadsPage() {
       console.error("Error loading leads:", err);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function loadCampaigns() {
+    try {
+      const supabaseAny = supabase as any;
+      const { data, error } = await supabaseAny
+        .from('email_campaigns')
+        .select('id, name')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setCampaigns(data || []);
+    } catch (err) {
+      console.error('Error loading campaigns:', err);
+    }
+  }
+
+  function handleAddToNowCampaign(lead: Lead) {
+    setSelectedLeadForCampaign(lead);
+    loadCampaigns();
+    setShowCampaignModal(true);
+  }
+
+  async function handleConfirmAddToCampaign() {
+    if (!selectedCampaignId || !selectedLeadForCampaign) {
+      alert('Please select a campaign');
+      return;
+    }
+
+    try {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny
+        .from('campaign_recipients')
+        .insert([
+          {
+            campaign_id: selectedCampaignId,
+            lead_id: selectedLeadForCampaign.id,
+            email: selectedLeadForCampaign.email,
+            status: 'pending'
+          }
+        ]);
+
+      if (error) throw error;
+
+      setShowCampaignModal(false);
+      setSelectedLeadForCampaign(null);
+      setSelectedCampaignId('');
+      alert('Lead added to campaign successfully!');
+    } catch (err: any) {
+      console.error('Error adding lead to campaign:', err);
+      alert(err.message || 'Failed to add lead to campaign');
     }
   }
 
@@ -304,32 +360,32 @@ export default function LeadsPage() {
             <table className="w-full">
               <thead style={{ background: '#333333', borderBottom: '1px solid #444444' }}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Organization</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Phone</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Venue / Org</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Last Contact</th>
                   <th className="px-6 py-3 text-right text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Actions</th>
                 </tr>
               </thead>
               <tbody className="divide-y" style={{ borderColor: '#333333' }}>
                 {filteredLeads.map((lead) => (
                   <tr key={lead.id} className="hover:bg-gray-50" style={{ background: '#2a2a2a' }}>
-                    <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium" style={{ color: '#f3f4f6' }}>{lead.name}</div>
-                      {lead.snippet && (
-                        <div className="text-xs truncate max-w-xs" style={{ color: '#9ca3af' }}>{lead.snippet}</div>
-                      )}
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5' }}>
                       {lead.title || "—"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
-                      {lead.org || "—"}
+                    <td className="px-6 py-4 whitespace-nowrap">
+                      <div className="font-medium" style={{ color: '#f3f4f6' }}>{lead.name}</div>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
                       {lead.email}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                      {(lead as any)?.phone || "—"}
+                    </td>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                      {(lead as any)?.venue || lead.org || "—"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
                       <span
@@ -339,11 +395,6 @@ export default function LeadsPage() {
                       >
                         {lead.status}
                       </span>
-                    </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
-                      {lead.last_contacted
-                        ? new Date(lead.last_contacted).toLocaleDateString()
-                        : "Never"}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button
@@ -355,10 +406,25 @@ export default function LeadsPage() {
                           padding: '0.5rem 1rem',
                           borderRadius: '6px',
                           border: 'none',
-                          cursor: 'pointer'
+                          cursor: 'pointer',
+                          marginRight: '0.5rem'
                         }}
                       >
                         View
+                      </button>
+                      <button
+                        onClick={() => handleAddToNowCampaign(lead)}
+                        className="font-medium"
+                        style={{
+                          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                      >
+                        Add to Campaign
                       </button>
                     </td>
                   </tr>
@@ -526,6 +592,57 @@ export default function LeadsPage() {
             setShowScraperModal(false);
           }}
         />
+      )}
+
+      {/* Add to Campaign Modal */}
+      {showCampaignModal && selectedLeadForCampaign && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-md w-full border border-[#333333]">
+            <div className="p-6 border-b border-[#333333]">
+              <h2 className="text-xl font-bold text-[#e5e5e5]">Add to Campaign</h2>
+              <p className="text-[#9ca3af] text-sm mt-2">
+                Adding <strong>{selectedLeadForCampaign.name}</strong> to campaign
+              </p>
+            </div>
+
+            <div className="p-6">
+              {campaigns.length === 0 ? (
+                <p className="text-[#9ca3af]">No campaigns available. <a href="/app/dashboard/leads/campaigns" className="text-purple-400 hover:underline">Create one first</a>.</p>
+              ) : (
+                <select
+                  value={selectedCampaignId}
+                  onChange={(e) => setSelectedCampaignId(e.target.value)}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-purple-500"
+                >
+                  <option value="">Select a campaign...</option>
+                  {campaigns.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              )}
+            </div>
+
+            <div className="p-6 border-t border-[#333333] flex gap-3">
+              <button
+                onClick={() => {
+                  setShowCampaignModal(false);
+                  setSelectedLeadForCampaign(null);
+                  setSelectedCampaignId('');
+                }}
+                className="flex-1 px-4 py-2 bg-[#2a2a2a] text-[#e5e5e5] rounded-lg hover:bg-[#333333]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmAddToCampaign}
+                disabled={campaigns.length === 0}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg disabled:opacity-50 hover:from-purple-700 hover:to-blue-700"
+              >
+                Add to Campaign
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

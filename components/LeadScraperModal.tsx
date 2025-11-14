@@ -1,14 +1,24 @@
 'use client';
 
 import { useState } from 'react';
-import { FaUpload, FaGlobe, FaFileImport, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { FaUpload, FaGlobe, FaFileImport, FaTimes, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import Papa from 'papaparse';
+
+const US_STATES = [
+  'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
+  'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
+  'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
+  'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
+  'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
 
 type ScrapedLead = {
   name: string;
   email: string;
   org: string | null;
   title: string | null;
+  phone: string | null;
+  venue: string | null;
   snippet: string | null;
   status: string;
   source: string;
@@ -20,7 +30,7 @@ type LeadScraperModalProps = {
 };
 
 export default function LeadScraperModal({ onClose, onImportComplete }: LeadScraperModalProps) {
-  const [activeTab, setActiveTab] = useState<'csv' | 'url' | 'google'>('csv');
+  const [activeTab, setActiveTab] = useState<'auto' | 'csv' | 'url'>('auto');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -34,9 +44,11 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
   const [url, setUrl] = useState('');
   const [scrapedLeads, setScrapedLeads] = useState<ScrapedLead[]>([]);
 
-  // Google search state
-  const [searchQuery, setSearchQuery] = useState('');
-  const [googleLeads, setGoogleLeads] = useState<ScrapedLead[]>([]);
+  // Auto-search state
+  const [city, setCity] = useState('');
+  const [state, setState] = useState('');
+  const [radius, setRadius] = useState(25);
+  const [autoSearchLeads, setAutoSearchLeads] = useState<ScrapedLead[]>([]);
 
   // Handle CSV file upload
   function handleCsvUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -57,7 +69,6 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
       complete: (results) => {
         setCsvPreview(results.data.slice(0, 5)); // Show first 5 rows
         
-        // Convert to lead format
         const leads: ScrapedLead[] = results.data
           .filter((row: any) => row.name && row.email)
           .map((row: any) => ({
@@ -65,6 +76,8 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
             email: row.email || row.Email || row.email_address || '',
             org: row.org || row.organization || row.company || row.Company || null,
             title: row.title || row.Title || row.position || row.job_title || null,
+            phone: row.phone || row.Phone || null,
+            venue: row.venue || row.Venue || null,
             snippet: row.snippet || row.notes || row.description || null,
             status: 'uncontacted',
             source: 'csv_import',
@@ -112,10 +125,10 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     }
   }
 
-  // Handle Google Search
-  async function handleGoogleSearch() {
-    if (!searchQuery) {
-      setError('Please enter a search query');
+  // Handle Auto-Search (searches job titles from database)
+  async function handleAutoSearch() {
+    if (!city || !state) {
+      setError('Please enter a city and state');
       return;
     }
 
@@ -124,19 +137,19 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     setSuccess(null);
 
     try {
-      const response = await fetch('/api/leads/search-google', {
+      const response = await fetch('/api/leads/auto-search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: searchQuery, maxResults: 10 }),
+        body: JSON.stringify({ city, state, radius }),
       });
 
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to search Google');
+        throw new Error(data.error || 'Failed to search for leads');
       }
 
-      setGoogleLeads(data.leads || []);
+      setAutoSearchLeads(data.leads || []);
       setSuccess(data.message);
     } catch (err: any) {
       setError(err.message);
@@ -147,7 +160,9 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
 
   // Import leads to database
   async function handleImport() {
-    const leadsToImport = activeTab === 'csv' ? csvLeads : (activeTab === 'url' ? scrapedLeads : googleLeads);
+    const leadsToImport = 
+      activeTab === 'csv' ? csvLeads : 
+      (activeTab === 'url' ? scrapedLeads : autoSearchLeads);
 
     if (leadsToImport.length === 0) {
       setError('No leads to import');
@@ -182,7 +197,9 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     }
   }
 
-  const leadsToShow = activeTab === 'csv' ? csvLeads : (activeTab === 'url' ? scrapedLeads : googleLeads);
+  const leadsToShow = 
+    activeTab === 'csv' ? csvLeads : 
+    (activeTab === 'url' ? scrapedLeads : autoSearchLeads);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -200,6 +217,17 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
 
         {/* Tabs */}
         <div className="flex border-b border-[#333333]">
+          <button
+            onClick={() => setActiveTab('auto')}
+            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
+              activeTab === 'auto'
+                ? 'bg-[#2a2a2a] text-purple-400 border-b-2 border-purple-500'
+                : 'text-[#9ca3af] hover:text-[#e5e5e5] hover:bg-[#2a2a2a]/50'
+            }`}
+          >
+            <FaSearch />
+            Auto Search
+          </button>
           <button
             onClick={() => setActiveTab('csv')}
             className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
@@ -221,17 +249,6 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
           >
             <FaGlobe />
             Web Scraping
-          </button>
-          <button
-            onClick={() => setActiveTab('google')}
-            className={`flex-1 px-6 py-4 text-sm font-medium transition-colors flex items-center justify-center gap-2 ${
-              activeTab === 'google'
-                ? 'bg-[#2a2a2a] text-purple-400 border-b-2 border-purple-500'
-                : 'text-[#9ca3af] hover:text-[#e5e5e5] hover:bg-[#2a2a2a]/50'
-            }`}
-          >
-            <FaGlobe />
-            Google Search
           </button>
         </div>
 
@@ -363,47 +380,87 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
             </div>
           )}
 
-          {/* Google Search Tab */}
-          {activeTab === 'google' && (
+          {/* Auto-Search Tab */}
+          {activeTab === 'auto' && (
             <div className="space-y-4">
               <div className="text-[#9ca3af] text-sm mb-4">
-                <p>Search for event coordinators, venue managers, and other event professionals.</p>
-                <p className="mt-2 text-xs">Example: "event coordinators in Los Angeles" or "AV managers music venues Seattle"</p>
+                <p>Automatically search for event coordinators, venue managers, and other professionals in your area.</p>
               </div>
 
-              <div className="flex gap-2">
+              {/* City Input */}
+              <div>
+                <label className="block text-[#e5e5e5] font-medium mb-2">City</label>
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="event coordinators in Los Angeles"
-                  className="flex-1 px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
-                  onKeyDown={(e) => e.key === 'Enter' && handleGoogleSearch()}
+                  value={city}
+                  onChange={(e) => setCity(e.target.value)}
+                  placeholder="e.g., Los Angeles"
+                  className="w-full px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
                 />
-                <button
-                  onClick={handleGoogleSearch}
-                  disabled={loading || !searchQuery}
-                  className="px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all flex items-center gap-2 shadow-lg whitespace-nowrap"
-                >
-                  <FaGlobe />
-                  {loading ? 'Searching...' : 'Search Google'}
-                </button>
               </div>
 
-              {googleLeads.length > 0 && (
-                <div className="mt-4">
-                  <h3 className="text-[#e5e5e5] font-semibold mb-2">
-                    Found {googleLeads.length} leads with contact info:
+              {/* State Dropdown */}
+              <div>
+                <label className="block text-[#e5e5e5] font-medium mb-2">State</label>
+                <select
+                  value={state}
+                  onChange={(e) => setState(e.target.value)}
+                  className="w-full px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+                >
+                  <option value="">Select a state...</option>
+                  {US_STATES.map((st) => (
+                    <option key={st} value={st}>{st}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Radius Slider */}
+              <div>
+                <label className="block text-[#e5e5e5] font-medium mb-2">
+                  Search Radius: <span className="text-purple-400">{radius} miles</span>
+                </label>
+                <input
+                  type="range"
+                  min="5"
+                  max="100"
+                  step="5"
+                  value={radius}
+                  onChange={(e) => setRadius(parseInt(e.target.value))}
+                  className="w-full h-2 bg-[#2a2a2a] rounded-lg appearance-none cursor-pointer accent-purple-500"
+                />
+                <div className="flex justify-between text-xs text-[#9ca3af] mt-1">
+                  <span>5 mi</span>
+                  <span>100 mi</span>
+                </div>
+              </div>
+
+              {/* Search Button */}
+              <button
+                onClick={handleAutoSearch}
+                disabled={loading || !city || !state}
+                className="w-full px-6 py-3 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg hover:from-purple-700 hover:to-blue-700 disabled:opacity-50 transition-all flex items-center justify-center gap-2 shadow-lg font-medium"
+              >
+                <FaSearch />
+                {loading ? 'Searching...' : 'Search for Leads'}
+              </button>
+
+              {/* Results */}
+              {autoSearchLeads.length > 0 && (
+                <div className="mt-6 pt-6 border-t border-[#333333]">
+                  <h3 className="text-[#e5e5e5] font-semibold mb-3">
+                    Found {autoSearchLeads.length} leads:
                   </h3>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
-                    {googleLeads.map((lead, i) => (
-                      <div key={i} className="p-3 bg-[#2a2a2a] rounded border border-[#333333]">
+                  <div className="space-y-3 max-h-96 overflow-y-auto">
+                    {autoSearchLeads.map((lead, i) => (
+                      <div key={i} className="p-4 bg-[#2a2a2a] rounded border border-[#333333]">
                         <div className="flex justify-between items-start">
                           <div className="flex-1">
-                            <div className="text-[#e5e5e5] font-medium">{lead.name || 'Unknown'}</div>
-                            <div className="text-sm text-purple-400">{lead.email}</div>
-                            {lead.org && <div className="text-sm text-[#e5e5e5] mt-1">{lead.org}</div>}
-                            {lead.title && <div className="text-xs text-[#9ca3af]">{lead.title}</div>}
+                            <div className="text-[#e5e5e5] font-semibold">{lead.name || 'Unknown'}</div>
+                            {lead.title && <div className="text-sm text-purple-400">{lead.title}</div>}
+                            <div className="text-sm text-purple-400 mt-1">{lead.email}</div>
+                            {lead.phone && <div className="text-sm text-[#9ca3af]">{lead.phone}</div>}
+                            {lead.org && <div className="text-sm text-[#e5e5e5] mt-1"><strong>Org:</strong> {lead.org}</div>}
+                            {lead.venue && <div className="text-sm text-[#9ca3af]"><strong>Venue:</strong> {lead.venue}</div>}
                           </div>
                         </div>
                       </div>
