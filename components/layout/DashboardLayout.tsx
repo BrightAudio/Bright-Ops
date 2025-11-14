@@ -7,11 +7,13 @@ import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { useLocation } from "@/lib/contexts/LocationContext";
+import LeadsPasswordPrompt from "@/components/LeadsPasswordPrompt";
 
 interface NavItem {
   href: string;
   icon: string;
   label: string;
+  submenu?: NavItem[];
 }
 
 interface NavSection {
@@ -57,12 +59,17 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Start collapsed
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [showLeadsPassword, setShowLeadsPassword] = useState(false);
+  const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
+    '/app/dashboard/leads': pathname?.includes('/dashboard/leads') || false
+  });
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<Array<{
     type: string;
@@ -77,7 +84,6 @@ export default function DashboardLayout({
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
-  const pathname = usePathname();
   const { currentLocation } = useLocation();
 
   // Fetch user profile
@@ -230,6 +236,17 @@ export default function DashboardLayout({
     setSidebarHovered(false);
   };
 
+  const handleLeadsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    // Check if user already has access in this session
+    const hasAccess = sessionStorage.getItem('leadsAccess');
+    if (hasAccess === 'granted') {
+      window.location.href = '/app/dashboard/leads';
+    } else {
+      setShowLeadsPassword(true);
+    }
+  };
+
   // Sidebar is expanded if manually toggled open OR if being hovered
   const isExpanded = !sidebarCollapsed || sidebarHovered;
 
@@ -258,6 +275,35 @@ export default function DashboardLayout({
         </div>
 
         <div className="right-actions">
+          {/* Leads Portal Link */}
+          <button 
+            onClick={handleLeadsClick}
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '20px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '1px',
+              textDecoration: 'none',
+              padding: '0 1rem',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              border: 'none',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            LEADS
+          </button>
+
           {/* Location Indicator */}
           <Link 
             href="/app/inventory/locations"
@@ -756,12 +802,54 @@ export default function DashboardLayout({
                 <ul className="nav-list">
                   {section.items.map((item) => {
                     const isActive = pathname === item.href || pathname.startsWith(item.href + "/");
+                    const hasSubmenu = item.submenu && item.submenu.length > 0;
+                    const isSubmenuExpanded = expandedMenus[item.href] || false;
+                    
                     return (
-                      <li key={item.href} className={`nav-item ${isActive ? "active" : ""}`}>
-                        <Link href={item.href} className="sidebar-nav-item" onClick={handleNavClick}>
-                          <i className={`fas ${item.icon} nav-icon`}></i>
-                          {isExpanded && <span className="nav-label">{item.label}</span>}
-                        </Link>
+                      <li key={item.href}>
+                        <div className={`nav-item ${isActive ? "active" : ""}`} style={{ display: 'flex', alignItems: 'center' }}>
+                          <Link href={item.href} className="sidebar-nav-item" onClick={handleNavClick} style={{ flex: 1 }}>
+                            <i className={`fas ${item.icon} nav-icon`}></i>
+                            {isExpanded && <span className="nav-label">{item.label}</span>}
+                          </Link>
+                          {hasSubmenu && isExpanded && (
+                            <button
+                              onClick={(e) => {
+                                e.preventDefault();
+                                setExpandedMenus(prev => ({
+                                  ...prev,
+                                  [item.href]: !prev[item.href]
+                                }));
+                              }}
+                              className="submenu-toggle"
+                              style={{
+                                background: 'none',
+                                border: 'none',
+                                color: 'inherit',
+                                cursor: 'pointer',
+                                padding: '0 8px',
+                                marginLeft: 'auto'
+                              }}
+                            >
+                              <i className={`fas fa-chevron-${isSubmenuExpanded ? 'down' : 'right'}`} style={{ fontSize: '10px' }}></i>
+                            </button>
+                          )}
+                        </div>
+                        {hasSubmenu && isExpanded && isSubmenuExpanded && (
+                          <ul className="nav-submenu" style={{ paddingLeft: '2rem', marginTop: '0.25rem' }}>
+                            {item.submenu!.map((subitem) => {
+                              const isSubActive = pathname === subitem.href;
+                              return (
+                                <li key={subitem.href} className={`nav-item ${isSubActive ? "active" : ""}`}>
+                                  <Link href={subitem.href} className="sidebar-nav-item" onClick={handleNavClick}>
+                                    <i className={`fas ${subitem.icon} nav-icon`} style={{ fontSize: '12px' }}></i>
+                                    {isExpanded && <span className="nav-label">{subitem.label}</span>}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        )}
                       </li>
                     );
                   })}
@@ -774,6 +862,11 @@ export default function DashboardLayout({
         {/* Dashboard Content Area */}
         <section className="dashboard-content">{children}</section>
       </div>
+
+      {/* Leads Password Prompt */}
+      {showLeadsPassword && (
+        <LeadsPasswordPrompt onClose={() => setShowLeadsPassword(false)} />
+      )}
     </div>
   );
 }

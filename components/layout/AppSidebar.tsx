@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { useState } from 'react';
 import {
   FaBoxes,
   FaClipboardList,
@@ -10,31 +11,52 @@ import {
   FaHome,
   FaFileInvoiceDollar,
   FaUndoAlt,
-  FaClipboardCheck,
-  FaUserTie,
+  FaChevronDown,
+  FaChevronRight,
+  FaBriefcase,
+  FaEnvelope,
+  FaChartLine,
+  FaCog,
 } from 'react-icons/fa';
 
-type Item = {
+type MenuItem = {
   label: string;
   href: string;
   icon: React.ReactNode;
   badge?: string | number | null;
 };
 
-const items: Item[] = [
+type MenuSection = {
+  label: string;
+  icon: React.ReactNode;
+  items: MenuItem[];
+};
+
+const topItems: MenuItem[] = [
   { label: 'Home Base', href: '/app', icon: <FaHome /> },
   { label: 'Jobs', href: '/app/jobs', icon: <FaCalendarAlt /> },
   { label: 'Warehouse', href: '/app/warehouse', icon: <FaBoxes /> },
   { label: 'Pull Sheets', href: '/app/warehouse/pull-sheets', icon: <FaClipboardList /> },
   { label: 'Returns', href: '/app/warehouse/returns', icon: <FaUndoAlt /> },
   { label: 'Invoices', href: '/app/invoices', icon: <FaFileInvoiceDollar /> },
-  { label: 'Leads', href: '/app/dashboard/leads', icon: <FaUserTie /> },
   { label: 'Crew Planner', href: '/app/crew-planner', icon: <FaCalendarAlt /> },
   { label: 'Team', href: '/app/settings/home-base', icon: <FaUsers /> },
 ];
 
+const workSection: MenuSection = {
+  label: 'Work',
+  icon: <FaBriefcase />,
+  items: [
+    { label: 'Leads Dashboard', href: '/app/dashboard/leads', icon: <FaChartLine /> },
+    { label: 'Email Campaigns', href: '/app/dashboard/leads/campaigns', icon: <FaEnvelope /> },
+    { label: 'Lead Settings', href: '/app/dashboard/leads/settings', icon: <FaCog /> },
+  ],
+};
+
 export default function AppSidebar() {
   const pathname = usePathname() || '';
+  const [workExpanded, setWorkExpanded] = useState(pathname.includes('/dashboard/leads'));
+
   return (
     <aside className="app-sidebar">
       <div className="px-4 pb-3">
@@ -47,8 +69,9 @@ export default function AppSidebar() {
         </div>
 
         <nav>
-          {items.map((it) => {
-            const active = pathname.startsWith(it.href);
+          {/* Top-level items */}
+          {topItems.map((it) => {
+            const active = pathname.startsWith(it.href) && pathname === it.href;
             return (
               <Link key={it.href} href={it.href} className={`sidebar-item ${active ? 'active' : ''}`}>
                 <div className="icon" aria-hidden>
@@ -59,6 +82,39 @@ export default function AppSidebar() {
               </Link>
             );
           })}
+
+          {/* Work Section (Collapsible) */}
+          <div className="mt-2">
+            <button
+              onClick={() => setWorkExpanded(!workExpanded)}
+              className={`sidebar-item w-full ${pathname.includes('/dashboard/leads') ? 'active' : ''}`}
+            >
+              <div className="icon" aria-hidden>
+                {workSection.icon}
+              </div>
+              <span>{workSection.label}</span>
+              <div className="ml-auto">
+                {workExpanded ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+              </div>
+            </button>
+            
+            {workExpanded && (
+              <div className="ml-4">
+                {workSection.items.map((item) => {
+                  const active = pathname === item.href;
+                  return (
+                    <Link key={item.href} href={item.href} className={`sidebar-item ${active ? 'active' : ''}`}>
+                      <div className="icon" aria-hidden>
+                        {item.icon}
+                      </div>
+                      <span>{item.label}</span>
+                      {item.badge ? <div className="ml-auto badge">{item.badge}</div> : null}
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         </nav>
       </div>
     </aside>

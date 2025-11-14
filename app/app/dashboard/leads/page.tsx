@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 type Lead = {
   id: string;
@@ -53,7 +53,7 @@ export default function LeadsPage() {
   async function loadLeads() {
     try {
       const supabaseAny = supabase as any;
-      let query = supabaseAny
+      const query = supabaseAny
         .from("leads")
         .select("*")
         .order("created_at", { ascending: false });
@@ -121,56 +121,127 @@ export default function LeadsPage() {
     archived: leads.filter((l) => l.status === "archived").length,
   };
 
+  // Chart data
+  const chartData = [
+    { name: 'Uncontacted', value: statusCounts.uncontacted, color: '#6b7280' },
+    { name: 'Contacted', value: statusCounts.contacted, color: '#3b82f6' },
+    { name: 'Follow-up', value: statusCounts['follow-up'], color: '#f59e0b' },
+    { name: 'Interested', value: statusCounts.interested, color: '#10b981' },
+    { name: 'Converted', value: statusCounts.converted, color: '#8b5cf6' },
+    { name: 'Archived', value: statusCounts.archived, color: '#ef4444' },
+  ].filter(item => item.value > 0);
+
   return (
-    <DashboardLayout>
-      <div className="p-6">
-        {/* Header */}
-        <div className="flex justify-between items-center mb-6">
-          <div className="flex items-center gap-4">
-            <button
-              onClick={() => window.history.back()}
-              style={{
-                display: "flex",
-                alignItems: "center",
-                gap: "0.5rem",
-                padding: "0.5rem 1rem",
-                backgroundColor: "#fff",
-                color: "#374151",
-                border: "1px solid #d1d5db",
-                borderRadius: "6px",
-                cursor: "pointer",
-                fontSize: "0.875rem",
-                fontWeight: 500,
-              }}
-            >
-              <i className="fas fa-arrow-left"></i>
-              Back
-            </button>
+    <div className="p-6" style={{ 
+      minHeight: '100vh',
+      background: '#1a1a1a',
+      color: '#e5e5e5'
+    }}>
+      {/* Header */}
+      <div className="flex justify-between items-center mb-6">
+        <div>
+          <h1 className="text-2xl font-bold" style={{ color: '#f3f4f6' }}>Bright Leads Portal</h1>
+          <p className="text-sm" style={{ color: '#9ca3af' }}>Automated lead generation and outreach</p>
+        </div>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowAddModal(true)}
+            className="px-4 py-2 border rounded-lg transition-colors flex items-center gap-2"
+            style={{
+              background: '#2a2a2a',
+              borderColor: '#333333',
+              color: '#e5e5e5'
+            }}
+          >
+            <i className="fas fa-plus"></i>
+            Add Lead
+          </button>
+          <button
+            onClick={() => alert("Coming soon: Scrape leads")}
+            className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+            }}
+          >
+            <i className="fas fa-search"></i>
+            Scrape Leads
+          </button>
+        </div>
+      </div>
+
+      {/* Analytics Chart */}
+      {!loading && leads.length > 0 && (
+        <div className="mb-6 p-6 rounded-lg" style={{ background: '#2a2a2a' }}>
+          <h2 className="text-lg font-semibold mb-4" style={{ color: '#f3f4f6' }}>Lead Status Analytics</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Bar Chart */}
             <div>
-              <h1 className="text-2xl font-bold text-gray-800">Bright Leads Portal</h1>
-              <p className="text-sm text-gray-500">Automated lead generation and outreach</p>
+              <h3 className="text-sm font-medium mb-3" style={{ color: '#9ca3af' }}>Status Distribution</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#333333" />
+                  <XAxis 
+                    dataKey="name" 
+                    stroke="#9ca3af"
+                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                  />
+                  <YAxis 
+                    stroke="#9ca3af"
+                    tick={{ fill: '#9ca3af', fontSize: 12 }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: '#1a1a1a', 
+                      border: '1px solid #333333',
+                      borderRadius: '8px',
+                      color: '#f3f4f6'
+                    }}
+                  />
+                  <Bar dataKey="value" radius={[8, 8, 0, 0]}>
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Bar>
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+
+            {/* Pie Chart */}
+            <div>
+              <h3 className="text-sm font-medium mb-3" style={{ color: '#9ca3af' }}>Conversion Funnel</h3>
+              <ResponsiveContainer width="100%" height={250}>
+                <PieChart>
+                  <Pie
+                    data={chartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                    outerRadius={80}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: '#1a1a1a', 
+                      border: '1px solid #333333',
+                      borderRadius: '8px',
+                      color: '#f3f4f6'
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowAddModal(true)}
-              className="px-4 py-2 bg-white border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors flex items-center gap-2"
-            >
-              <i className="fas fa-plus"></i>
-              Add Lead
-            </button>
-            <button
-              onClick={() => alert("Coming soon: Scrape leads")}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
-            >
-              <i className="fas fa-search"></i>
-              Scrape Leads
-            </button>
-          </div>
         </div>
+      )}
 
-        {/* Status Filter Tabs */}
-        <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
+      {/* Status Filter Tabs */}
+      <div className="mb-6 flex gap-2 overflow-x-auto pb-2">
           {[
             { key: "all", label: "All Leads" },
             { key: "uncontacted", label: "Uncontacted" },
@@ -183,11 +254,14 @@ export default function LeadsPage() {
             <button
               key={tab.key}
               onClick={() => setFilter(tab.key)}
-              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap ${
-                filter === tab.key
-                  ? "bg-blue-600 text-white"
-                  : "bg-white text-gray-700 border border-gray-300 hover:bg-gray-50"
-              }`}
+              className="px-4 py-2 rounded-lg text-sm font-medium transition-colors whitespace-nowrap"
+              style={{
+                background: filter === tab.key 
+                  ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' 
+                  : '#2a2a2a',
+                color: 'white',
+                border: filter === tab.key ? 'none' : '1px solid #333333'
+              }}
             >
               {tab.label} ({statusCounts[tab.key as keyof typeof statusCounts]})
             </button>
@@ -201,53 +275,58 @@ export default function LeadsPage() {
             placeholder="Search leads by name, email, organization, or title..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            className="w-full max-w-md px-4 py-2 rounded-lg focus:outline-none focus:ring-2"
+            style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              color: '#e5e5e5'
+            }}
           />
         </div>
 
         {/* Leads Table */}
         {loading ? (
-          <div className="text-center py-12 text-gray-500">
+          <div className="text-center py-12" style={{ color: '#9ca3af' }}>
             <i className="fas fa-spinner fa-spin text-3xl mb-4"></i>
             <p>Loading leads...</p>
           </div>
         ) : filteredLeads.length === 0 ? (
-          <div className="text-center py-12 bg-white rounded-lg shadow">
-            <i className="fas fa-inbox text-4xl text-gray-300 mb-4"></i>
-            <p className="text-gray-500">
+          <div className="text-center py-12 rounded-lg shadow" style={{ background: '#2a2a2a' }}>
+            <i className="fas fa-inbox text-4xl mb-4" style={{ color: '#4b5563' }}></i>
+            <p style={{ color: '#9ca3af' }}>
               {search || filter !== "all" ? "No leads found matching your filters" : "No leads yet. Start by scraping or adding leads manually."}
             </p>
           </div>
         ) : (
-          <div className="bg-white rounded-lg shadow overflow-hidden">
+          <div className="rounded-lg shadow overflow-hidden" style={{ background: '#2a2a2a' }}>
             <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead style={{ background: '#333333', borderBottom: '1px solid #444444' }}>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Title</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Organization</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Contact</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Title</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Organization</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Email</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Last Contact</th>
+                  <th className="px-6 py-3 text-right text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
+              <tbody className="divide-y" style={{ borderColor: '#333333' }}>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50">
+                  <tr key={lead.id} className="hover:bg-gray-50" style={{ background: '#2a2a2a' }}>
                     <td className="px-6 py-4 whitespace-nowrap">
-                      <div className="font-medium text-gray-900">{lead.name}</div>
+                      <div className="font-medium" style={{ color: '#f3f4f6' }}>{lead.name}</div>
                       {lead.snippet && (
-                        <div className="text-xs text-gray-500 truncate max-w-xs">{lead.snippet}</div>
+                        <div className="text-xs truncate max-w-xs" style={{ color: '#9ca3af' }}>{lead.snippet}</div>
                       )}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
                       {lead.title || "—"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
                       {lead.org || "—"}
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
                       {lead.email}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap">
@@ -259,7 +338,7 @@ export default function LeadsPage() {
                         {lead.status}
                       </span>
                     </td>
-                    <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
                       {lead.last_contacted
                         ? new Date(lead.last_contacted).toLocaleDateString()
                         : "Never"}
@@ -267,7 +346,15 @@ export default function LeadsPage() {
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
                       <button
                         onClick={() => router.push(`/app/dashboard/leads/${lead.id}`)}
-                        className="text-blue-600 hover:text-blue-800 font-medium"
+                        className="font-medium"
+                        style={{
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
                       >
                         View
                       </button>
@@ -282,35 +369,35 @@ export default function LeadsPage() {
         {/* Summary Stats */}
         {!loading && leads.length > 0 && (
           <div className="mt-6 grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-2xl font-bold text-gray-900">{leads.length}</div>
-              <div className="text-sm text-gray-500">Total Leads</div>
+            <div className="p-4 rounded-lg shadow" style={{ background: '#2a2a2a' }}>
+              <div className="text-2xl font-bold" style={{ color: '#f3f4f6' }}>{leads.length}</div>
+              <div className="text-sm" style={{ color: '#9ca3af' }}>Total Leads</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-2xl font-bold text-gray-900">{statusCounts.uncontacted}</div>
-              <div className="text-sm text-gray-500">Uncontacted</div>
+            <div className="p-4 rounded-lg shadow" style={{ background: '#2a2a2a' }}>
+              <div className="text-2xl font-bold" style={{ color: '#f3f4f6' }}>{statusCounts.uncontacted}</div>
+              <div className="text-sm" style={{ color: '#9ca3af' }}>Uncontacted</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-2xl font-bold text-green-600">{statusCounts.interested}</div>
-              <div className="text-sm text-gray-500">Interested</div>
+            <div className="p-4 rounded-lg shadow" style={{ background: '#2a2a2a' }}>
+              <div className="text-2xl font-bold" style={{ color: '#10b981' }}>{statusCounts.interested}</div>
+              <div className="text-sm" style={{ color: '#9ca3af' }}>Interested</div>
             </div>
-            <div className="bg-white p-4 rounded-lg shadow">
-              <div className="text-2xl font-bold text-purple-600">{statusCounts.converted}</div>
-              <div className="text-sm text-gray-500">Converted</div>
+            <div className="p-4 rounded-lg shadow" style={{ background: '#2a2a2a' }}>
+              <div className="text-2xl font-bold" style={{ color: '#8b5cf6' }}>{statusCounts.converted}</div>
+              <div className="text-sm" style={{ color: '#9ca3af' }}>Converted</div>
             </div>
           </div>
         )}
-      </div>
 
       {/* Add Lead Modal */}
       {showAddModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg shadow-xl w-full max-w-md p-6">
+          <div className="rounded-lg shadow-xl w-full max-w-md p-6" style={{ background: '#2a2a2a' }}>
             <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-gray-800">Add New Lead</h2>
+              <h2 className="text-xl font-bold" style={{ color: '#f3f4f6' }}>Add New Lead</h2>
               <button
                 onClick={() => setShowAddModal(false)}
-                className="text-gray-400 hover:text-gray-600"
+                className="hover:text-gray-600"
+                style={{ color: '#9ca3af' }}
               >
                 <i className="fas fa-times"></i>
               </button>
@@ -318,58 +405,83 @@ export default function LeadsPage() {
 
             <form onSubmit={handleAddLead} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Name *</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#e5e5e5' }}>Name *</label>
                 <input
                   type="text"
                   required
                   value={formData.name}
                   onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
                   placeholder="John Smith"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email *</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#e5e5e5' }}>Email *</label>
                 <input
                   type="email"
                   required
                   value={formData.email}
                   onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
                   placeholder="john@example.com"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Organization</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#e5e5e5' }}>Organization</label>
                 <input
                   type="text"
                   value={formData.org}
                   onChange={(e) => setFormData({ ...formData, org: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
                   placeholder="City Arts Center"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Title</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#e5e5e5' }}>Title</label>
                 <input
                   type="text"
                   value={formData.title}
                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
                   placeholder="Event Coordinator"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Notes/Context</label>
+                <label className="block text-sm font-medium mb-1" style={{ color: '#e5e5e5' }}>Notes/Context</label>
                 <textarea
                   value={formData.snippet}
                   onChange={(e) => setFormData({ ...formData, snippet: e.target.value })}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  className="w-full px-3 py-2 rounded-lg focus:outline-none focus:ring-2"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
                   placeholder="Any additional context about this lead..."
                 />
               </div>
@@ -378,14 +490,22 @@ export default function LeadsPage() {
                 <button
                   type="submit"
                   disabled={saving}
-                  className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+                  className="flex-1 px-4 py-2 text-white rounded-lg disabled:opacity-50"
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
+                  }}
                 >
                   {saving ? "Adding..." : "Add Lead"}
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddModal(false)}
-                  className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50"
+                  className="px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#333333',
+                    color: '#e5e5e5',
+                    border: '1px solid #444444'
+                  }}
                 >
                   Cancel
                 </button>
@@ -394,6 +514,6 @@ export default function LeadsPage() {
           </div>
         </div>
       )}
-    </DashboardLayout>
+    </div>
   );
 }

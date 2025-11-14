@@ -2,7 +2,6 @@
 
 import { useState, useEffect, use } from "react";
 import { useRouter } from "next/navigation";
-import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
 
 type Lead = {
@@ -131,21 +130,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     if (!confirmed) return;
 
     try {
-      const response = await fetch("/api/leads/send-email", {
+      setSaving(true);
+      
+      const response = await fetch("/api/sendgrid/send", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           leadId: lead.id,
           to: lead.email,
           subject: emailPreview.subject,
-          body: emailPreview.body,
+          htmlContent: emailPreview.body.replace(/\n/g, '<br>'),
         }),
       });
 
       const data = await response.json();
       
       if (data.success) {
-        alert(data.message);
+        alert(`✅ Email sent successfully to ${lead.email}!\n\nMessage ID: ${data.messageId || 'N/A'}`);
         
         // Update lead status
         const supabaseAny = supabase as any;
@@ -159,11 +160,13 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
         loadLead();
       } else {
-        alert(data.message);
+        alert(`❌ Failed to send email:\n\n${data.error}\n${data.details || ''}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Error sending email:", err);
-      alert("Failed to send email");
+      alert(`❌ Failed to send email:\n\n${err.message || 'Unknown error'}`);
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -219,30 +222,25 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="text-center py-12">
-            <i className="fas fa-spinner fa-spin text-3xl text-gray-400 mb-4"></i>
-            <p className="text-gray-500">Loading lead...</p>
-          </div>
+      <div className="p-6">
+        <div className="text-center py-12">
+          <i className="fas fa-spinner fa-spin text-3xl text-gray-400 mb-4"></i>
+          <p className="text-gray-500">Loading lead...</p>
         </div>
-      </DashboardLayout>
+      </div>
     );
   }
 
   if (!lead) {
     return (
-      <DashboardLayout>
-        <div className="p-6">
-          <div className="text-center py-12 text-gray-500">Lead not found</div>
-        </div>
-      </DashboardLayout>
+      <div className="p-6">
+        <div className="text-center py-12 text-gray-500">Lead not found</div>
+      </div>
     );
   }
 
   return (
-    <DashboardLayout>
-      <div className="p-6">
+    <div className="p-6">
         {/* Header */}
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
@@ -386,10 +384,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <div className="flex gap-2">
                     <button
                       onClick={handleSendEmail}
-                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center justify-center gap-2"
+                      disabled={saving}
+                      className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                      <i className="fas fa-paper-plane"></i>
-                      Send Email
+                      <i className={`fas ${saving ? "fa-spinner fa-spin" : "fa-paper-plane"}`}></i>
+                      {saving ? "Sending..." : "Send Email"}
                     </button>
                     <button
                       onClick={() => {
@@ -413,6 +412,5 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
       </div>
-    </DashboardLayout>
   );
 }
