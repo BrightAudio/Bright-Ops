@@ -210,46 +210,6 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
       </div>
 
       <form onSubmit={handleScan} className="space-y-3">
-        {/* Scan Type Selector */}
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={() => setScanType('pull')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
-              scanType === 'pull' 
-                ? 'bg-blue-600 text-white border-blue-500' 
-                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-blue-500'
-            }`}
-          >
-            <Package size={16} className="inline mr-1" />
-            Pull
-          </button>
-          <button
-            type="button"
-            onClick={() => setScanType('return')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
-              scanType === 'return' 
-                ? 'bg-green-600 text-white border-green-500' 
-                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-green-500'
-            }`}
-          >
-            <Undo2 size={16} className="inline mr-1" />
-            Return
-          </button>
-          <button
-            type="button"
-            onClick={() => setScanType('verify')}
-            className={`flex-1 px-3 py-2 rounded text-sm font-medium border transition-colors ${
-              scanType === 'verify' 
-                ? 'bg-purple-600 text-white border-purple-500' 
-                : 'bg-zinc-900 text-zinc-400 border-zinc-700 hover:border-purple-500'
-            }`}
-          >
-            <CheckCircle size={16} className="inline mr-1" />
-            Verify
-          </button>
-        </div>
-
         {/* Barcode Input */}
         <div className="flex gap-2">
           <input
