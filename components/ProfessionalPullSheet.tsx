@@ -394,8 +394,8 @@ export default function ProfessionalPullSheet({
 
       {/* Edit Item Modal */}
       {editingItemId && editingItem && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
-          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] no-print">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-2xl">
             <h2 className="text-lg font-bold mb-4 text-gray-900">Edit Item</h2>
             
             <div className="space-y-3">
@@ -611,6 +611,13 @@ export default function ProfessionalPullSheet({
                 >
                   {loadingScanHistory ? "Loading..." : "Scan History"}
                 </button>
+                <button
+                  onClick={handleCommitPullSheet}
+                  disabled={committing}
+                  className="btn-primary flex items-center gap-2"
+                >
+                  {committing ? "Finalizing..." : "Finalize to Pull Sheets"}
+                </button>
               </div>
             </div>
             <BarcodeScanner 
@@ -768,20 +775,7 @@ export default function ProfessionalPullSheet({
                         </tr>
                       );
                       })
-                    ) : (
-                      // Empty rows for professional look
-                      <>
-                        {[...Array(3)].map((_, idx) => (
-                          <tr key={`empty-${category}-${idx}`} className="border-b border-gray-200">
-                            <td className="py-3 px-2 border-r border-gray-200 text-gray-300">—</td>
-                            <td className="py-3 px-2 border-r border-gray-200 text-gray-400 italic">No items in this category</td>
-                            <td className="py-3 px-2 border-r border-gray-200 text-gray-300">—</td>
-                            <td className="py-3 px-2 border-r border-gray-200 text-gray-300">—</td>
-                            <td className="no-print py-3 px-2"></td>
-                          </tr>
-                        ))}
-                      </>
-                    )}
+                    ) : null}
                   </tbody>
                 </table>
               </div>
