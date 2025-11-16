@@ -21,6 +21,13 @@ type Job = {
   expected_return_date: string | null;
 };
 
+type ScanRecord = {
+  id: string;
+  item_name: string;
+  barcode: string;
+  scanned_at: string;
+};
+
 const CATEGORY_ORDER = [
   'Audio',
   'Lighting',
@@ -64,6 +71,10 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
   const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [scanError, setScanError] = useState<string | null>(null);
+  const [pullSheetId, setPullSheetId] = useState<string | null>(null);
+  const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
+  const [showScanHistory, setShowScanHistory] = useState(false);
+  const [loadingScanHistory, setLoadingScanHistory] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -84,11 +95,29 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         setJob(jobData as any);
       }
 
-      // Load pull sheet items for this job
+      // Load pull sheets for this job
+      const { data: pullSheets } = await supabase
+        .from("pull_sheets")
+        .select("id")
+        .eq("job_id", jobId);
+
+      if (!pullSheets || pullSheets.length === 0) {
+        setReturnItems([]);
+        setLoading(false);
+        return;
+      }
+
+      // Store first pull sheet id for scan history
+      if (pullSheets.length > 0) {
+        setPullSheetId((pullSheets[0] as any).id);
+      }
+
+      // Load pull sheet items with their details
+      const pullSheetIds = (pullSheets as any[]).map(ps => ps.id);
       const { data: itemsData } = await supabase
         .from("pull_sheet_items")
         .select("id, item_name, qty_requested, category")
-        .eq("job_id", jobId);
+        .in("pull_sheet_id", pullSheetIds);
 
       if (itemsData) {
         const items: ReturnItem[] = itemsData.map((item: any) => ({
@@ -165,12 +194,48 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
 
       if (!error) {
         playBeep('success');
+        
+        // Track to scan history if we have pull sheet id
+        if (pullSheetId) {
+          await supabase
+            .from('pull_sheet_scans')
+            .insert({
+              pull_sheet_id: pullSheetId,
+              pull_sheet_item_id: matchingItem.id,
+              barcode: scan.barcode.trim(),
+              item_name: matchingItem.item_name
+            } as any);
+        }
       }
     } catch (err) {
       setScanError(err instanceof Error ? err.message : 'Scan failed');
       playBeep('error');
     }
   };
+
+  async function loadScanHistory() {
+    if (!pullSheetId) return;
+    
+    setLoadingScanHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("pull_sheet_scans")
+        .select("id, item_name, barcode, scanned_at")
+        .eq("pull_sheet_id", pullSheetId)
+        .order("scanned_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      setScanHistory((data as any[]) || []);
+      setShowScanHistory(true);
+    } catch (error) {
+      console.error("Error loading scan history:", error);
+      alert("Failed to load scan history");
+    } finally {
+      setLoadingScanHistory(false);
+    }
+  }
 
   const handlePrint = () => {
     window.print();
@@ -215,6 +280,13 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
             >
               <Printer size={18} />
               Print
+            </button>
+            <button
+              onClick={loadScanHistory}
+              disabled={loadingScanHistory}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold disabled:opacity-50"
+            >
+              {loadingScanHistory ? "Loading..." : "Scan History"}
             </button>
           </div>
 
@@ -308,6 +380,53 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
           </div>
         </div>
       </div>
+
+      {/* Scan History Modal */}
+      {showScanHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-lg max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Return Scan History</h2>
+            
+            {scanHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No scans recorded for this return yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Item Name</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Barcode</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Scanned At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scanHistory.map((scan: any) => (
+                      <tr key={scan.id} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="px-4 py-2 text-gray-900">{scan.item_name}</td>
+                        <td className="px-4 py-2 text-gray-600 font-mono text-xs">{scan.barcode}</td>
+                        <td className="px-4 py-2 text-gray-600 text-xs">
+                          {new Date(scan.scanned_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setShowScanHistory(false)}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

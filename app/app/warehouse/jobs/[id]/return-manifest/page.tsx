@@ -2,6 +2,7 @@
 export const dynamic = "force-dynamic";
 import ReturnManifestClient from "./ReturnManifestClient";
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <ReturnManifestClient jobId={params.id} />;
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <ReturnManifestClient jobId={id} />;
 }
