@@ -10,6 +10,7 @@ const actions = [
   { label: "Pull Sheets", href: "/app/warehouse/pull-sheets" },
   { label: "Transports", href: "/app/warehouse/transports" },
   { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew" },
+  { label: "Archived Jobs", href: "/app/archive/jobs" },
 ];
 
 export default function WarehouseIndex() {
