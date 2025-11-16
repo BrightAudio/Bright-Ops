@@ -33,7 +33,18 @@ const config = {
       },
     },
   },
-  plugins: [],
+  plugins: [
+    function({ addComponents, theme }) {
+      addComponents({
+        '.btn-primary': {
+          '@apply': 'bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 transition-colors font-medium',
+        },
+        '.btn-secondary': {
+          '@apply': 'bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 transition-colors font-medium',
+        },
+      });
+    },
+  ],
 };
 
 export default config;
