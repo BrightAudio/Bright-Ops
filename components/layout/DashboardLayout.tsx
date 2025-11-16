@@ -611,7 +611,11 @@ export default function DashboardLayout({
             )}
           </div>
 
-          <button className="icon-btn" aria-label="Help">
+          <button 
+            className="icon-btn" 
+            aria-label="Help"
+            onClick={() => window.location.href = '/app/help'}
+          >
             <i className="fas fa-question-circle"></i>
           </button>
           
