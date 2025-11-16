@@ -409,7 +409,7 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
                 border: 'none',
                 borderRadius: '6px',
                 cursor: 'pointer',
-                fontWeight: 600',
+                fontWeight: '600',
               }}
             >
               Back to Job
