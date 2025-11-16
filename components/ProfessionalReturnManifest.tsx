@@ -107,7 +107,7 @@ export default function ProfessionalReturnManifest({ jobId, job }: { jobId: stri
 
     try {
       // Find item by barcode in inventory
-      const { data: inventoryItem, error: invError } = await supabase
+      const { data: inventoryItem, error: invError } = await (supabase as any)
         .from('inventory_items')
         .select('id, name, qty_in_warehouse')
         .eq('barcode', scan.barcode.trim())
@@ -146,7 +146,7 @@ export default function ProfessionalReturnManifest({ jobId, job }: { jobId: stri
 
       // Update warehouse inventory immediately
       const newQty = (inventoryItem.qty_in_warehouse || 0) + 1;
-      await supabase
+      await (supabase as any)
         .from('inventory_items')
         .update({
           qty_in_warehouse: newQty,

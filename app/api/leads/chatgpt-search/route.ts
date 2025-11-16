@@ -238,7 +238,7 @@ Use real venue types and realistic contact patterns. Include actual venue email 
 
     return parseLeadsFromResponse(response.data.choices[0].message.content);
   } catch (error) {
-    console.error('Venue search error:', error.message);
+    console.error('Venue search error:', (error as any).message);
     return [];
   }
 }
@@ -292,7 +292,7 @@ Make the information realistic and plausible. Use professional email patterns.`;
 
     return parseLeadsFromResponse(response.data.choices[0].message.content);
   } catch (error) {
-    console.error('LinkedIn search error:', error.message);
+    console.error('LinkedIn search error:', (error as any).message);
     return [];
   }
 }

@@ -328,13 +328,13 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
     setSaving(true);
     try {
       // Update the job with dates and status
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('jobs')
         .update({
           start_at: formData.start_date,
           end_at: formData.end_date || null,
           status: status
-        } as any)
+        })
         .eq('id', selectedJobId);
 
       if (error) throw error;
@@ -359,13 +359,13 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
     setSaving(true);
     try {
       // Clear the scheduling dates from the job
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('jobs')
         .update({
           start_at: null,
           end_at: null,
           status: null
-        } as any)
+        })
         .eq('id', selectedJobId);
 
       if (error) throw error;

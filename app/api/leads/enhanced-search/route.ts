@@ -140,7 +140,7 @@ export async function POST(request: NextRequest) {
                 }
               }
             } catch (pageError) {
-              console.error(`Failed to scrape ${item.link}:`, pageError.message);
+              console.error(`Failed to scrape ${item.link}:`, (pageError as any).message);
             }
           }
         }
@@ -180,7 +180,7 @@ async function extractEnhancedContacts(url: string, searchItem: any) {
 
   try {
     const { default: axios } = await import('axios');
-    const { default: cheerio } = await import('cheerio');
+    const cheerio = await import('cheerio');
 
     const response = await axios.get(url, {
       timeout: 5000,
@@ -215,7 +215,7 @@ async function extractEnhancedContacts(url: string, searchItem: any) {
     const emailPattern = /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g;
     const emails = response.data.match(emailPattern) || [];
 
-    const validEmails = emails.filter(email => 
+    const validEmails = emails.filter((email: string) => 
       !email.includes('noreply') && 
       !email.includes('no-reply') &&
       !email.includes('support') &&
@@ -236,7 +236,7 @@ async function extractEnhancedContacts(url: string, searchItem: any) {
     }
 
   } catch (error) {
-    console.error('Contact extraction error:', error.message);
+    console.error('Contact extraction error:', (error as any).message);
   }
 
   return {

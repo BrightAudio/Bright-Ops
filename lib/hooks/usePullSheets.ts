@@ -160,9 +160,9 @@ export async function createPullSheet(payload: PullSheetInsert) {
 }
 
 export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
-  const { data, error } = await (supabase
+  const { data, error } = await (supabase as any)
     .from("pull_sheets")
-    .update(updates as TablesUpdate<"pull_sheets">) as any)
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
@@ -197,9 +197,9 @@ export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
       
       // Only update if there are changes
       if (Object.keys(jobUpdates).length > 0) {
-        await supabase
+        await (supabase as any)
           .from("jobs")
-          .update(jobUpdates as any)
+          .update(jobUpdates)
           .eq("id", pullSheet.job_id);
       }
     }
@@ -214,9 +214,9 @@ export async function deletePullSheet(id: string) {
 }
 
 export async function addPullSheetItem(payload: PullSheetItemInsert & { sort_index?: number }) {
-  const { data, error } = await (supabase
+  const { data, error } = await (supabase as any)
     .from("pull_sheet_items")
-    .insert([payload as TablesInsert<"pull_sheet_items">]) as any)
+    .insert([payload])
     .select()
     .single();
   if (error || !data) {
@@ -226,9 +226,9 @@ export async function addPullSheetItem(payload: PullSheetItemInsert & { sort_ind
 }
 
 export async function updatePullSheetItem(id: string, updates: PullSheetItemUpdate) {
-  const { data, error } = await (supabase
+  const { data, error } = await (supabase as any)
     .from("pull_sheet_items")
-    .update(updates as TablesUpdate<"pull_sheet_items">) as any)
+    .update(updates)
     .eq("id", id)
     .select()
     .single();
@@ -249,9 +249,9 @@ export async function reorderPullSheetItems(
 ) {
   await Promise.all(
     orderedIds.map((id, index) =>
-      supabase
+      (supabase as any)
         .from("pull_sheet_items")
-        .update({ sort_index: index * 100 } as TablesUpdate<"pull_sheet_items"> as any)
+        .update({ sort_index: index * 100 })
         .eq("id", id)
     )
   );

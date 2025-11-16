@@ -15,7 +15,7 @@ export default function ShortagesPage() {
     const fetchData = async () => {
       try {
         // Fetch all items with negative or zero stock
-        const { data: shortageData } = await supabase
+        const { data: shortageData } = await (supabase as any)
           .from("inventory_items")
           .select("*")
           .lte("qty_in_warehouse", 0)
@@ -26,7 +26,7 @@ export default function ShortagesPage() {
           
           // Extract unique categories
           const uniqueCategories = Array.from(
-            new Set(shortageData.map((item) => item.category).filter(Boolean))
+            new Set(shortageData.map((item: any) => item.gear_type).filter(Boolean))
           ) as string[];
           setCategories(uniqueCategories.sort());
         }
@@ -41,11 +41,11 @@ export default function ShortagesPage() {
   }, []);
 
   const filteredShortages = filterCategory
-    ? shortages.filter((item) => item.category === filterCategory)
+    ? shortages.filter((item) => item.gear_type === filterCategory)
     : shortages;
 
   const totalValue = filteredShortages.reduce(
-    (sum, item) => sum + Math.abs(item.qty_in_warehouse) * (item.unit_cost || 0),
+    (sum, item) => sum + Math.abs((item as any).qty_in_warehouse) * ((item as any).unit_value || 0),
     0
   );
 
@@ -331,7 +331,7 @@ export default function ShortagesPage() {
                         fontSize: "0.875rem",
                       }}
                     >
-                      ${(item.unit_cost || 0).toFixed(2)}
+                      ${((item as any).unit_value || 0).toFixed(2)}
                     </td>
                     <td
                       style={{
@@ -342,7 +342,7 @@ export default function ShortagesPage() {
                         fontSize: "0.875rem",
                       }}
                     >
-                      ${(Math.abs(item.qty_in_warehouse) * (item.unit_cost || 0)).toFixed(2)}
+                      ${(Math.abs((item as any).qty_in_warehouse) * ((item as any).unit_value || 0)).toFixed(2)}
                     </td>
                   </tr>
                 ))}

@@ -38,17 +38,17 @@ export default function FinancialPage() {
     const fetchFinancialData = async () => {
       try {
         // Fetch inventory data
-        const { data: inventoryData } = await supabase
+        const { data: inventoryData } = await (supabase as any)
           .from("inventory_items")
-          .select("qty_in_warehouse, unit_cost, repair_cost, maintenance_status");
+          .select("qty_in_warehouse, unit_value, repair_cost, maintenance_status");
 
         // Fetch jobs data
-        const { data: jobsData } = await supabase
+        const { data: jobsData } = await (supabase as any)
           .from("jobs")
           .select("income, labor_cost, status, created_at");
 
         // Fetch campaigns data
-        const { data: campaignsData } = await supabase
+        const { data: campaignsData } = await (supabase as any)
           .from("email_campaigns")
           .select("*");
 
@@ -58,14 +58,14 @@ export default function FinancialPage() {
         let shortageValue = 0;
 
         if (inventoryData) {
-          inventoryData.forEach((item) => {
+          inventoryData.forEach((item: any) => {
             // Total inventory value (positive stock only)
             if (item.qty_in_warehouse > 0) {
-              totalInventoryValue += item.qty_in_warehouse * (item.unit_cost || 0);
+              totalInventoryValue += item.qty_in_warehouse * (item.unit_value || 0);
             }
             // Shortage value (negative stock)
             if (item.qty_in_warehouse < 0) {
-              shortageValue += Math.abs(item.qty_in_warehouse) * (item.unit_cost || 0);
+              shortageValue += Math.abs(item.qty_in_warehouse) * (item.unit_value || 0);
             }
             // Repair costs
             totalRepairCosts += item.repair_cost || 0;
@@ -85,7 +85,7 @@ export default function FinancialPage() {
         let activeJobs = 0;
 
         if (jobsData) {
-          jobsData.forEach((job) => {
+          jobsData.forEach((job: any) => {
             jobsIncome += job.income || 0;
             jobsLaborCost += job.labor_cost || 0;
             
@@ -103,7 +103,7 @@ export default function FinancialPage() {
         let campaignsCost = 0;
 
         if (campaignsData) {
-          campaignsSent = campaignsData.reduce((sum, c) => sum + (c.recipient_count || 0), 0);
+          campaignsSent = campaignsData.reduce((sum: number, c: any) => sum + (c.recipient_count || 0), 0);
           // Estimate cost at $0.10 per email
           campaignsCost = campaignsSent * 0.1;
         }

@@ -97,24 +97,24 @@ export default function ClientsPage() {
     try {
       if (clientId) {
         // Update existing client
-        const { error } = await (supabase
+        const { error } = await (supabase as any)
           .from('clients')
           .update({
             email: editForm.email || null,
             phone: editForm.phone || null
           })
-          .eq('id', clientId) as any);
+          .eq('id', clientId);
         
         if (error) throw error;
       } else {
         // Create new client record
-        const { error } = await (supabase
+        const { error } = await (supabase as any)
           .from('clients')
           .insert([{
             name: clientName,
             email: editForm.email || null,
             phone: editForm.phone || null
-          }]) as any);
+          }]);
         
         if (error) throw error;
       }

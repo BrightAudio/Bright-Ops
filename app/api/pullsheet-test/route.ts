@@ -15,7 +15,7 @@ export async function GET(req: Request) {
 
   try {
     // Get job
-    const { data: job, error: jobError } = await supabase
+    const { data: job, error: jobError } = await (supabase as any)
       .from("jobs")
       .select("id, code, title")
       .eq("code", jobCode)
@@ -26,7 +26,7 @@ export async function GET(req: Request) {
     }
 
     // Get pull sheet
-    const { data: ps, error: psError } = await supabase
+    const { data: ps, error: psError } = await (supabase as any)
       .from("pull_sheets")
       .select("id, name, status")
       .eq("job_id", job.id)
@@ -38,7 +38,7 @@ export async function GET(req: Request) {
     }
 
     // Get items
-    const { data: items } = await supabase
+    const { data: items } = await (supabase as any)
       .from("pull_sheet_items")
       .select("qty_requested, qty_pulled, item_name, barcode")
       .eq("pull_sheet_id", ps.id);
@@ -62,7 +62,7 @@ export async function GET(req: Request) {
       <th>Qty Requested</th>
       <th>Qty Pulled</th>
     </tr>
-    ${itemList.map(item => `
+    ${itemList.map((item: any) => `
     <tr>
       <td>${item.item_name}</td>
       <td>${item.barcode || '-'}</td>

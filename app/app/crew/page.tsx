@@ -35,7 +35,7 @@ export default function CrewPage() {
 
   async function loadEmployees() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("employees")
         .select("*")
         .order("name");

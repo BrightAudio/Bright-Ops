@@ -36,7 +36,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
 
   async function loadEmployee() {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from("employees")
         .select("*")
         .eq("id", unwrappedParams.id)
@@ -98,7 +98,7 @@ export default function EditEmployeePage({ params }: { params: Promise<{ id: str
     setDeleting(true);
 
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("employees")
         .delete()
         .eq("id", unwrappedParams.id);
