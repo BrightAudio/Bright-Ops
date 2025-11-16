@@ -37,6 +37,10 @@ export default function CreatePullSheetPage() {
   const [searching, setSearching] = useState(false);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
   
+  // Edit mode
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<Partial<SelectedItem> | null>(null);
+  
   // Form state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -133,6 +137,34 @@ export default function CreatePullSheetPage() {
     setSelectedItems(items => items.filter(item => item.tempId !== tempId));
   }
 
+  // Start editing an item
+  function startEditItem(item: SelectedItem) {
+    setEditingItemId(item.tempId);
+    setEditingItem({ ...item });
+  }
+
+  // Save edited item
+  function saveEditItem() {
+    if (!editingItemId || !editingItem) return;
+
+    setSelectedItems(items =>
+      items.map(item =>
+        item.tempId === editingItemId
+          ? { ...item, ...editingItem }
+          : item
+      )
+    );
+
+    setEditingItemId(null);
+    setEditingItem(null);
+  }
+
+  // Cancel editing
+  function cancelEditItem() {
+    setEditingItemId(null);
+    setEditingItem(null);
+  }
+
   // Create the pull sheet
   async function handleCreate() {
     if (!pullSheetName.trim()) {
@@ -216,6 +248,65 @@ export default function CreatePullSheetPage() {
     <DashboardLayout>
       <div className="bg-zinc-900 text-gray-100 p-6 min-h-screen">
         <div className="max-w-5xl mx-auto">
+          {/* Edit Item Modal */}
+          {editingItemId && editingItem && (
+            <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+              <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+                <h2 className="text-lg font-bold mb-4 text-white">Edit Item</h2>
+                
+                <div className="space-y-3">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">Item Name</label>
+                    <input
+                      type="text"
+                      value={editingItem.item_name || ''}
+                      onChange={(e) => setEditingItem({ ...editingItem, item_name: e.target.value })}
+                      className="w-full border border-zinc-700 rounded px-3 py-2 text-sm bg-zinc-700 text-white"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">Quantity</label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={editingItem.qty_requested || 1}
+                      onChange={(e) => setEditingItem({ ...editingItem, qty_requested: parseInt(e.target.value) || 1 })}
+                      className="w-full border border-zinc-700 rounded px-3 py-2 text-sm bg-zinc-700 text-white"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">Category</label>
+                    <input
+                      type="text"
+                      value={editingItem.category || ''}
+                      onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                      className="w-full border border-zinc-700 rounded px-3 py-2 text-sm bg-zinc-700 text-white"
+                      placeholder="e.g., Audio, Lighting"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex gap-2 mt-6">
+                  <button
+                    onClick={saveEditItem}
+                    className="flex-1 bg-amber-600 text-white px-4 py-2 rounded hover:bg-amber-500 font-medium"
+                  >
+                    Save
+                  </button>
+                  <button
+                    onClick={cancelEditItem}
+                    className="flex-1 bg-zinc-700 text-white px-4 py-2 rounded hover:bg-zinc-600 font-medium"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -356,7 +447,8 @@ export default function CreatePullSheetPage() {
                 {selectedItems.map(item => (
                   <div
                     key={item.tempId}
-                    className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-700 rounded"
+                    onClick={() => startEditItem(item)}
+                    className="flex items-center gap-4 p-4 bg-zinc-900 border border-zinc-700 rounded cursor-pointer hover:border-amber-500 hover:bg-zinc-800 transition-colors"
                   >
                     <div className="flex-1">
                       <div className="font-medium text-white">{item.item_name}</div>

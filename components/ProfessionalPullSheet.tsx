@@ -85,7 +85,7 @@ export default function ProfessionalPullSheet({
   const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
   const [committing, setCommitting] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
-  const [openSubstituteMenu, setOpenSubstituteMenu] = useState<string | null>(null);
+  const [substitutionModeId, setSubstitutionModeId] = useState<string | null>(null);
   const [showScanHistory, setShowScanHistory] = useState(false);
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
   const [loadingScanHistory, setLoadingScanHistory] = useState(false);
@@ -268,6 +268,45 @@ export default function ProfessionalPullSheet({
       alert("Failed to load scan history");
     } finally {
       setLoadingScanHistory(false);
+    }
+  }
+
+  async function handleScanForSubstitution(scannedBarcode: string) {
+    if (!substitutionModeId) return;
+
+    try {
+      // Find the scanned item by barcode
+      const { data: inventoryItem, error: invError } = await supabase
+        .from('inventory_items')
+        .select('*')
+        .eq('barcode', scannedBarcode.trim())
+        .maybeSingle();
+
+      if (invError) throw invError;
+      if (!inventoryItem) {
+        alert(`No item found with barcode: ${scannedBarcode}`);
+        return;
+      }
+
+      // Update the item in substitution mode with the new inventory item
+      const { error: updateError } = await supabase
+        .from('pull_sheet_items')
+        .update({
+          inventory_item_id: inventoryItem.id,
+          item_name: inventoryItem.name,
+          category: inventoryItem.gear_type || 'Other'
+        })
+        .eq('id', substitutionModeId);
+
+      if (updateError) throw updateError;
+
+      // Exit substitution mode
+      setSubstitutionModeId(null);
+      alert(`Item substituted with: ${inventoryItem.name}`);
+      onRefresh();
+    } catch (error) {
+      console.error("Error substituting item:", error);
+      alert("Failed to substitute item");
     }
   }
 
@@ -574,7 +613,21 @@ export default function ProfessionalPullSheet({
                 </button>
               </div>
             </div>
-            <BarcodeScanner pullSheetId={pullSheet.id} onScan={onRefresh} />
+            <BarcodeScanner 
+              pullSheetId={pullSheet.id} 
+              onScan={(scan) => {
+                if (substitutionModeId) {
+                  handleScanForSubstitution(scan?.barcode || '');
+                } else {
+                  onRefresh();
+                }
+              }}
+            />
+            {substitutionModeId && (
+              <div className="mt-2 p-3 bg-yellow-50 border border-yellow-300 rounded text-sm text-yellow-800">
+                <strong>Substitution Mode Active:</strong> Scan or type a barcode to substitute the selected item.
+              </div>
+            )}
           </div>
         </div>
 
@@ -701,37 +754,16 @@ export default function ProfessionalPullSheet({
                             </div>
                           </td>
                           <td className="no-print py-2 px-2 relative" onClick={(e) => e.stopPropagation()}>
-                            <div className="relative">
-                              <button
-                                onClick={() => setOpenSubstituteMenu(openSubstituteMenu === item.id ? null : item.id)}
-                                className="flex items-center gap-1 text-purple-600 hover:text-purple-800 text-[10px] font-medium"
-                              >
-                                Substitute
-                                <ChevronDown size={12} />
-                              </button>
-                              {openSubstituteMenu === item.id && (
-                                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-max">
-                                  <button
-                                    onClick={() => {
-                                      setSubstitutionModal({ open: true, item });
-                                      setOpenSubstituteMenu(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
-                                  >
-                                    Find Substitute
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      handleDeleteItem(item.id);
-                                      setOpenSubstituteMenu(null);
-                                    }}
-                                    className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
-                                  >
-                                    Remove Item
-                                  </button>
-                                </div>
-                              )}
-                            </div>
+                            <button
+                              onClick={() => setSubstitutionModeId(substitutionModeId === item.id ? null : item.id)}
+                              className={`px-3 py-1 rounded text-[10px] font-medium transition-colors ${
+                                substitutionModeId === item.id
+                                  ? 'bg-blue-600 text-white'
+                                  : 'text-purple-600 hover:text-purple-800'
+                              }`}
+                            >
+                              Substitute
+                            </button>
                           </td>
                         </tr>
                       );
