@@ -291,8 +291,8 @@ Make the information realistic and plausible. Use professional email patterns.`;
     );
 
     return parseLeadsFromResponse(response.data.choices[0].message.content);
-  } catch (error) {
-    console.error('LinkedIn search error:', (error as any).message);
+  } catch (error: any) {
+    console.error('LinkedIn search error:', error?.message);
     return [];
   }
 }

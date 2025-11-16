@@ -1,7 +1,6 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import styles from '@/app/globals.css';
 
 export default function HelpPage() {
   const router = useRouter();

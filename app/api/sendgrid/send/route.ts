@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get SendGrid configuration from settings table
-    const { data: settings, error: settingsError } = await supabase
+    const { data: settings, error: settingsError } = await (supabase as any)
       .from('leads_settings')
       .select('sendgrid_api_key, email_from_name, email_from_address, email_reply_to')
       .single();
@@ -55,7 +55,7 @@ export async function POST(request: NextRequest) {
     const [response] = await sgMail.send(msg);
 
     // Log the sent email to database
-    const { error: logError } = await supabase
+    const { error: logError } = await (supabase as any)
       .from('leads_emails')
       .insert({
         lead_id: leadId || null,

@@ -181,14 +181,14 @@ export default function ProfessionalPullSheet({
     try {
       const { supabase } = await import("@/lib/supabaseClient");
       
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("pull_sheet_items")
         .update({
           item_name: editingItem.item_name,
           qty_requested: editingItem.qty_requested,
           category: editingItem.category,
           notes: editingItem.notes
-        } as any)
+        })
         .eq("id", editingItemId);
 
       if (error) throw error;
@@ -218,9 +218,9 @@ export default function ProfessionalPullSheet({
         updateData.prep_status = value;
       }
 
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from("pull_sheet_items")
-        .update(updateData as any)
+        .update(updateData)
         .eq("id", itemId);
 
       if (error) throw error;
@@ -266,9 +266,9 @@ export default function ProfessionalPullSheet({
       );
 
       // Update pull sheet status to picking
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from("pull_sheets")
-        .update({ status: "picking" } as any)
+        .update({ status: "picking" })
         .eq("id", pullSheet.id);
 
       if (updateError) throw updateError;
@@ -337,7 +337,7 @@ export default function ProfessionalPullSheet({
       }
 
       // Update the item in substitution mode with the new inventory item
-      const { error: updateError } = await supabase
+      const { error: updateError } = await (supabase as any)
         .from('pull_sheet_items')
         .update({
           inventory_item_id: inventoryItem.id,

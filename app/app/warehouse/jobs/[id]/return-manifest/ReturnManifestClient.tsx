@@ -188,12 +188,12 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
       );
 
       // Update warehouse inventory
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('inventory_items')
         .update({
           qty_in_warehouse: (invItem.qty_in_warehouse || 0) + 1,
           location: 'Warehouse'
-        } as any)
+        })
         .eq('id', invItem.id);
 
       if (!error) {
@@ -201,7 +201,7 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         
         // Track to scan history if we have pull sheet id
         if (pullSheetId) {
-          await supabase
+          await (supabase as any)
             .from('pull_sheet_scans')
             .insert({
               pull_sheet_id: pullSheetId,
@@ -253,18 +253,18 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
       const signature = canvasRef.current?.toDataURL() || '';
 
       // Archive the job
-      const { error: jobError } = await supabase
+      const { error: jobError } = await (supabase as any)
         .from('jobs')
         .update({
           archived: true,
           status: 'completed'
-        } as any)
+        })
         .eq('id', jobId);
 
       if (jobError) throw jobError;
 
       // Store finalization record
-      const { error: finalizeError } = await supabase
+      const { error: finalizeError } = await (supabase as any)
         .from('return_manifests')
         .insert({
           job_id: jobId,

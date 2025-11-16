@@ -77,7 +77,7 @@ export default function ReturnsClient() {
       setLoading(true);
       const today = new Date().toISOString().split('T')[0];
 
-      const { data: jobsData, error: jobsError } = await supabase
+      const { data: jobsData, error: jobsError } = await (supabase as any)
         .from('jobs')
         .select('id, code, title, expected_return_date')
         .lt('expected_return_date', today)
@@ -94,7 +94,7 @@ export default function ReturnsClient() {
       const returnsWithItems: Return[] = [];
 
       for (const job of jobsData) {
-        const { data: itemsData, error: itemsError } = await supabase
+        const { data: itemsData, error: itemsError } = await (supabase as any)
           .from('pull_sheet_items')
           .select('id, equipment_id, quantity')
           .eq('job_id', job.id);
@@ -103,7 +103,7 @@ export default function ReturnsClient() {
 
         const itemsWithDetails: ReturnItem[] = [];
         for (const item of itemsData || []) {
-          const { data: equipmentData } = await supabase
+          const { data: equipmentData } = await (supabase as any)
             .from('equipment')
             .select('name')
             .eq('id', item.equipment_id)
