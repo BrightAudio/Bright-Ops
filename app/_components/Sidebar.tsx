@@ -143,6 +143,24 @@ export default function Sidebar() {
             })}
           </ul>
         </div>
+        {/* Archive */}
+        <div className="mb-6">
+          <div className="text-xs font-bold uppercase text-white/40 px-3 mb-2 tracking-wider">Archive</div>
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/app/archive/jobs"
+                className={classNames(
+                  "block px-4 py-2 rounded-lg font-medium transition-all border-l-4 border-transparent",
+                  pathname.startsWith("/app/archive") &&
+                    "bg-amber-400/20 text-amber-200 border-amber-400"
+                )}
+              >
+                <Package className="w-4 h-4 mr-2 inline" /> Completed Jobs
+              </Link>
+            </li>
+          </ul>
+        </div>
         {/* Equipment */}
         <div className="mb-6">
           <div className="text-xs font-bold uppercase text-white/40 px-3 mb-2 tracking-wider">Equipment</div>

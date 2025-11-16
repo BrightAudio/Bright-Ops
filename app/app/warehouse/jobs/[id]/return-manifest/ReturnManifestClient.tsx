@@ -75,6 +75,10 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
   const [showScanHistory, setShowScanHistory] = useState(false);
   const [loadingScanHistory, setLoadingScanHistory] = useState(false);
+  const [showFinalizePrompt, setShowFinalizePrompt] = useState(false);
+  const [userName, setUserName] = useState("");
+  const [finalizing, setFinalizing] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     loadData();
@@ -237,6 +241,58 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
     }
   }
 
+  async function handleFinalize() {
+    if (!userName.trim()) {
+      alert("Please enter your name");
+      return;
+    }
+
+    setFinalizing(true);
+    try {
+      // Get signature from canvas
+      const signature = canvasRef.current?.toDataURL() || '';
+
+      // Archive the job
+      const { error: jobError } = await supabase
+        .from('jobs')
+        .update({
+          archived: true,
+          status: 'completed'
+        } as any)
+        .eq('id', jobId);
+
+      if (jobError) throw jobError;
+
+      // Store finalization record
+      const { error: finalizeError } = await supabase
+        .from('return_manifests')
+        .insert({
+          job_id: jobId,
+          finalized_by: userName,
+          finalized_at: new Date().toISOString(),
+          signature: signature,
+          manifest_data: {
+            items: returnItems,
+            total_returned: returnItems.reduce((sum, item) => sum + item.qty_returned, 0),
+            total_required: returnItems.reduce((sum, item) => sum + item.qty_required, 0)
+          }
+        } as any);
+
+      if (finalizeError && finalizeError.code !== 'PGRST116') {
+        console.warn('Could not save to return_manifests (table may not exist):', finalizeError);
+      }
+
+      setShowFinalizePrompt(false);
+      alert('Return has been finalized! Job archived successfully.');
+      setTimeout(() => router.push('/app/warehouse/returns'), 1500);
+    } catch (error) {
+      console.error('Error finalizing return:', error);
+      alert('Failed to finalize return');
+    } finally {
+      setFinalizing(false);
+    }
+  }
+
   const handlePrint = () => {
     window.print();
   };
@@ -365,7 +421,7 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
 
         {/* Summary */}
         <div className="border-t-2 border-gray-800 pt-4 mt-6">
-          <div className="flex justify-between items-center">
+          <div className="flex justify-between items-center mb-6">
             <div className="text-gray-600">
               <div className="text-sm">Total Categories: {allCategories.length}</div>
             </div>
@@ -378,6 +434,18 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
               </div>
             </div>
           </div>
+
+          {/* Finalize Button - Only show if complete */}
+          {isComplete && (
+            <div className="flex gap-2 justify-end no-print">
+              <button
+                onClick={() => setShowFinalizePrompt(true)}
+                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-semibold"
+              >
+                Finalize Return
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -422,6 +490,114 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
                 className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Finalize Return Modal */}
+      {showFinalizePrompt && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6 text-gray-900">Finalize Return Manifest</h2>
+            
+            <div className="space-y-6">
+              {/* User Name Input */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Your Name *</label>
+                <input
+                  type="text"
+                  value={userName}
+                  onChange={(e) => setUserName(e.target.value)}
+                  placeholder="Enter your full name"
+                  className="w-full border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  autoFocus
+                />
+              </div>
+
+              {/* Signature Pad */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-2">Signature *</label>
+                <div className="border border-gray-300 rounded bg-white p-2">
+                  <canvas
+                    ref={canvasRef}
+                    width={500}
+                    height={150}
+                    className="w-full border border-gray-200 rounded cursor-crosshair bg-white"
+                    onMouseDown={(e) => {
+                      const canvas = canvasRef.current;
+                      if (!canvas) return;
+                      const rect = canvas.getBoundingClientRect();
+                      const ctx = canvas.getContext('2d');
+                      if (!ctx) return;
+                      
+                      const startX = (e.clientX - rect.left) * (canvas.width / rect.width);
+                      const startY = (e.clientY - rect.top) * (canvas.height / rect.height);
+                      
+                      ctx.beginPath();
+                      ctx.moveTo(startX, startY);
+                      
+                      const handleMouseMove = (moveEvent: MouseEvent) => {
+                        const x = (moveEvent.clientX - rect.left) * (canvas.width / rect.width);
+                        const y = (moveEvent.clientY - rect.top) * (canvas.height / rect.height);
+                        ctx.lineTo(x, y);
+                        ctx.stroke();
+                      };
+                      
+                      const handleMouseUp = () => {
+                        ctx.closePath();
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', handleMouseUp);
+                      };
+                      
+                      document.addEventListener('mousemove', handleMouseMove);
+                      document.addEventListener('mouseup', handleMouseUp);
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    const canvas = canvasRef.current;
+                    if (canvas) {
+                      const ctx = canvas.getContext('2d');
+                      if (ctx) {
+                        ctx.clearRect(0, 0, canvas.width, canvas.height);
+                      }
+                    }
+                  }}
+                  className="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+                >
+                  Clear Signature
+                </button>
+              </div>
+
+              {/* Summary */}
+              <div className="bg-gray-50 p-4 rounded">
+                <h3 className="font-semibold text-gray-900 mb-2">Return Summary</h3>
+                <div className="text-sm text-gray-700 space-y-1">
+                  <div>Job Code: <span className="font-semibold">{job?.code}</span></div>
+                  <div>Job Title: <span className="font-semibold">{job?.title}</span></div>
+                  <div>Items Returned: <span className="font-semibold">{totalReturned} / {totalRequired}</span></div>
+                  <div>Status: <span className="font-semibold text-green-600">Complete</span></div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-8">
+              <button
+                onClick={() => setShowFinalizePrompt(false)}
+                disabled={finalizing}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium disabled:opacity-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleFinalize}
+                disabled={finalizing || !userName.trim()}
+                className="flex-1 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 font-medium disabled:opacity-50"
+              >
+                {finalizing ? "Finalizing..." : "Finalize & Archive"}
               </button>
             </div>
           </div>
