@@ -324,7 +324,7 @@ export default function ProfessionalPullSheet({
 
     try {
       // Find the scanned item by barcode
-      const { data: inventoryItem, error: invError } = await supabase
+      const { data: inventoryItem, error: invError } = await (supabase as any)
         .from('inventory_items')
         .select('*')
         .eq('barcode', scannedBarcode.trim())

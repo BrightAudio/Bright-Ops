@@ -93,7 +93,7 @@ export default function ReturnsClient() {
 
       const returnsWithItems: Return[] = [];
 
-      for (const job of jobsData) {
+      for (const job of jobsData as any[]) {
         const { data: itemsData, error: itemsError } = await (supabase as any)
           .from('pull_sheet_items')
           .select('id, equipment_id, quantity')
@@ -106,25 +106,25 @@ export default function ReturnsClient() {
           const { data: equipmentData } = await (supabase as any)
             .from('equipment')
             .select('name')
-            .eq('id', item.equipment_id)
+            .eq('id', (item as any).equipment_id)
             .single();
 
           itemsWithDetails.push({
-            id: item.id,
-            equipment_id: item.equipment_id,
+            id: (item as any).id,
+            equipment_id: (item as any).equipment_id,
             equipment_name: equipmentData?.name || 'Unknown',
-            quantity: item.quantity,
+            quantity: (item as any).quantity,
             status: 'pending',
             created_at: new Date().toISOString(),
           });
         }
 
         returnsWithItems.push({
-          id: job.id,
-          job_id: job.id,
-          job_code: job.code,
-          job_title: job.title,
-          expected_return_date: job.expected_return_date,
+          id: (job as any).id,
+          job_id: (job as any).id,
+          job_code: (job as any).code,
+          job_title: (job as any).title,
+          expected_return_date: (job as any).expected_return_date,
           items: itemsWithDetails,
           status: 'pending',
           created_at: new Date().toISOString(),

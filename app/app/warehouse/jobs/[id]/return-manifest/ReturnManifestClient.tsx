@@ -253,12 +253,12 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
       const signature = canvasRef.current?.toDataURL() || '';
 
       // Archive the job
-      const { error: jobError } = await (supabase as any)
+      const { error: jobError } = await ((supabase as any)
         .from('jobs')
         .update({
           archived: true,
           status: 'completed'
-        })
+        }) as any)
         .eq('id', jobId);
 
       if (jobError) throw jobError;
