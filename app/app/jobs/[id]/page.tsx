@@ -211,7 +211,7 @@ export default function JobDetailPage() {
         <div className="flex gap-1">
           {[
             { id: 'overview' as const, label: 'Overview', icon: 'fa-info-circle' },
-            { id: 'pullsheet' as const, label: 'Pull Sheet', icon: 'fa-clipboard-list' },
+            { id: 'pullsheet' as const, label: 'Create Pull Sheet', icon: 'fa-clipboard-list' },
             { id: 'crew' as const, label: 'Crew', icon: 'fa-users' },
             { id: 'financial' as const, label: 'Financial', icon: 'fa-dollar-sign' },
             { id: 'timeline' as const, label: 'Timeline', icon: 'fa-history' },

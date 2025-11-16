@@ -56,6 +56,7 @@ export function usePullSheets() {
           jobs ( id, code, title )
         `
         )
+        .not("job_id", "is", null)
         .order("created_at", { ascending: false });
 
       if (cancelled) return;
