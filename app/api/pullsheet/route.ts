@@ -58,6 +58,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "Missing pullSheetId or jobCode" }, { status: 400 });
   }
 
+  // Get the current user's company name
+  let companyName = "Bright Audio"; // Default fallback
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("company_name")
+        .eq("id", user.id)
+        .single();
+      if ((profile as any)?.company_name) {
+        companyName = (profile as any).company_name;
+      }
+    }
+  } catch (err) {
+    // Continue with default company name if profile fetch fails
+  }
+
   let job: JobRow | null = null;
   let ps: PullSheetRow | null = null;
 
@@ -458,7 +476,7 @@ export async function GET(req: Request) {
   </div>
   <div class="page-header">
     <div class="logo-section">
-      <h1>BRIGHT AUDIO</h1>
+      <h1>${escapeHtml(companyName.toUpperCase())}</h1>
       <div class="tagline">Professional Audio Solutions</div>
     </div>
 
@@ -549,7 +567,7 @@ export async function GET(req: Request) {
 
   <div class="page-footer">
     <div class="footer-left">
-      <div><strong>Bright Audio</strong></div>
+      <div><strong>${escapeHtml(companyName)}</strong></div>
       <div>Generated: ${new Date().toLocaleString("en-US", { 
         month: "short", 
         day: "numeric", 
