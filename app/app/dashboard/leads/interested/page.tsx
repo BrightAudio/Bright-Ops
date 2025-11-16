@@ -39,7 +39,7 @@ export default function InterestedLeadsPage() {
   // Modal states
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [showScheduleModal, setShowScheduleModal] = useState(false);
-  const [showCampaignModal, setShowCampaignModal] = useState(false);
+  const [showCampaignSection, setShowCampaignSection] = useState(false);
   const [selectedLeadForAction, setSelectedLeadForAction] = useState<ImportedLead | null>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
@@ -47,6 +47,7 @@ export default function InterestedLeadsPage() {
   // Form data
   const [emailData, setEmailData] = useState({ subject: '', body: '' });
   const [scheduleData, setScheduleData] = useState({ date: '', time: '', type: 'call', notes: '' });
+  const [campaignData, setCampaignData] = useState({ name: '', subject: '', body_template: '', target_status: 'interested' });
 
   useEffect(() => {
     loadLeads();
@@ -127,11 +128,7 @@ export default function InterestedLeadsPage() {
 
   function handleAddToCampaign() {
     if (selectedLeads.size === 0) return;
-    const lead = leads.find(l => selectedLeads.has(l.id));
-    if (lead) {
-      setSelectedLeadForAction(lead);
-      setShowCampaignModal(true);
-    }
+    setShowCampaignSection(true);
   }
 
   async function handleSendEmail() {
@@ -208,33 +205,56 @@ export default function InterestedLeadsPage() {
   }
 
   async function handleAddToCampaignSubmit() {
-    if (!selectedLeadForAction || !selectedCampaignId) {
-      alert('Please select a campaign');
+    if (!selectedCampaignId && !campaignData.name) {
+      alert('Please either select a campaign or create a new one');
       return;
     }
 
     try {
-      const response = await fetch('/api/campaigns/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          campaignId: selectedCampaignId,
-          leadId: selectedLeadForAction.id,
-          email: selectedLeadForAction.email
-        })
-      });
-
-      if (response.ok) {
-        alert('Lead added to campaign!');
-        setShowCampaignModal(false);
-        setSelectedCampaignId('');
-        setSelectedLeads(new Set());
-      } else {
-        alert('Failed to add lead to campaign');
+      let campaignId = selectedCampaignId;
+      
+      // If creating new campaign
+      if (!campaignId && campaignData.name) {
+        const supabaseAny = supabase as any;
+        const { data: newCampaign, error: createError } = await supabaseAny
+          .from('email_campaigns')
+          .insert([{ 
+            name: campaignData.name, 
+            subject: campaignData.subject,
+            body_template: campaignData.body_template,
+            status: 'draft',
+            target_status: campaignData.target_status
+          }])
+          .select();
+        
+        if (createError) throw createError;
+        campaignId = newCampaign[0].id;
       }
+
+      // Add all selected leads to campaign
+      for (const leadId of selectedLeads) {
+        const lead = leads.find(l => l.id === leadId);
+        if (lead) {
+          await fetch('/api/campaigns/send', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              campaignId,
+              leadId,
+              email: lead.email
+            })
+          });
+        }
+      }
+
+      alert(`All selected leads added to campaign!`);
+      setShowCampaignSection(false);
+      setSelectedCampaignId('');
+      setCampaignData({ name: '', subject: '', body_template: '', target_status: 'interested' });
+      setSelectedLeads(new Set());
     } catch (err) {
       console.error('Error adding to campaign:', err);
-      alert('Error adding to campaign');
+      alert('Error adding leads to campaign');
     }
   }
 
@@ -526,6 +546,7 @@ export default function InterestedLeadsPage() {
               ))}
             </tbody>
           </table>
+          </div>
         </div>
       )}
 
@@ -663,47 +684,85 @@ export default function InterestedLeadsPage() {
         </div>
       )}
 
-      {/* Add to Campaign Modal */}
-      {showCampaignModal && selectedLeadForAction && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-2xl w-full border border-[#333333]">
-            <div className="p-6 border-b border-[#333333]">
-              <h2 className="text-xl font-bold text-[#e5e5e5]">Add to Campaign</h2>
-              <p className="text-[#9ca3af] text-sm mt-2">
-                For: <strong>{selectedLeadForAction.name}</strong> ({selectedLeadForAction.email})
-              </p>
+      {/* Add to Campaign Section */}
+      {showCampaignSection && (
+        <div className="mb-8 p-6 bg-[#2a2a2a] rounded-lg border border-[#333333]">
+          <h2 className="text-2xl font-bold text-[#e5e5e5] mb-6">Add {selectedLeads.size} Lead{selectedLeads.size !== 1 ? 's' : ''} to Campaign</h2>
+          
+          <div className="space-y-6">
+            {/* Existing Campaign */}
+            <div>
+              <label className="block text-sm font-medium text-[#e5e5e5] mb-3">Select Existing Campaign</label>
+              <select
+                value={selectedCampaignId}
+                onChange={(e) => setSelectedCampaignId(e.target.value)}
+                className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg text-[#e5e5e5]"
+              >
+                <option value="">Choose a campaign...</option>
+                {campaigns.map(campaign => (
+                  <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
+                ))}
+              </select>
+              <p className="text-[#9ca3af] text-sm mt-2">Or create a new campaign below</p>
             </div>
 
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Select Campaign</label>
-                <select
-                  value={selectedCampaignId}
-                  onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5]"
-                >
-                  <option value="">Choose a campaign...</option>
-                  {campaigns.map(campaign => (
-                    <option key={campaign.id} value={campaign.id}>{campaign.name}</option>
-                  ))}
-                </select>
+            {/* Create New Campaign */}
+            <div className="border-t border-[#333333] pt-6">
+              <h3 className="text-lg font-semibold text-[#e5e5e5] mb-4">Create New Campaign</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Campaign Name</label>
+                  <input
+                    type="text"
+                    value={campaignData.name}
+                    onChange={(e) => setCampaignData({ ...campaignData, name: e.target.value })}
+                    placeholder="e.g., Q4 Lead Outreach"
+                    className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg text-[#e5e5e5] placeholder-[#666666]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Email Subject (use {'{{name}}'}, {'{{org}}'})</label>
+                  <input
+                    type="text"
+                    value={campaignData.subject}
+                    onChange={(e) => setCampaignData({ ...campaignData, subject: e.target.value })}
+                    placeholder="Hi {{name}}, Partnership Opportunity"
+                    className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg text-[#e5e5e5] placeholder-[#666666]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Email Body (use {'{{name}}'}, {'{{org}}'}, {'{{title}}'}, {'{{email}}'})</label>
+                  <textarea
+                    value={campaignData.body_template}
+                    onChange={(e) => setCampaignData({ ...campaignData, body_template: e.target.value })}
+                    placeholder="Hi {{name}},&#10;&#10;I noticed {{org}} and wanted to reach out...&#10;&#10;Best regards"
+                    rows={5}
+                    className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg text-[#e5e5e5] placeholder-[#666666]"
+                  />
+                  <p className="text-xs text-[#9ca3af] mt-1">Merge fields will be replaced with actual lead data</p>
+                </div>
               </div>
             </div>
 
-            <div className="p-6 border-t border-[#333333] flex gap-3 justify-end">
+            {/* Action Buttons */}
+            <div className="border-t border-[#333333] pt-6 flex gap-3">
               <button
-                onClick={() => setShowCampaignModal(false)}
-                className="px-4 py-2 rounded-lg"
+                onClick={() => {
+                  setShowCampaignSection(false);
+                  setSelectedCampaignId('');
+                  setCampaignData({ name: '', subject: '', body_template: '', target_status: 'interested' });
+                }}
+                className="px-6 py-2 rounded-lg"
                 style={{ background: '#2a2a2a', border: '1px solid #333333', color: '#e5e5e5', cursor: 'pointer' }}
               >
                 Cancel
               </button>
               <button
                 onClick={handleAddToCampaignSubmit}
-                className="px-4 py-2 rounded-lg"
+                className="px-6 py-2 rounded-lg"
                 style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)', color: 'white', border: 'none', cursor: 'pointer' }}
               >
-                Add to Campaign
+                Add Leads to Campaign
               </button>
             </div>
           </div>

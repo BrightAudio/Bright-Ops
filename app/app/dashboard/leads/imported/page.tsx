@@ -527,10 +527,10 @@ export default function ImportedLeadsPage() {
             }
           `}</style>
           <div className="table-scroll-wrapper">
-            <table className="w-full" style={{ minWidth: '1000px' }}>
+            <table className="w-full" style={{ minWidth: '800px' }}>
             <thead style={{ background: '#333333', borderBottom: '1px solid #444444' }}>
               <tr>
-                <th className="px-6 py-3 text-left">
+                <th className="py-3 text-left" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                   <input
                     type="checkbox"
                     checked={selectAll}
@@ -539,19 +539,19 @@ export default function ImportedLeadsPage() {
                     title="Select all leads"
                   />
                 </th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Title</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Name</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Email</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Phone</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Venue / Org</th>
-                <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Status</th>
-                <th className="px-6 py-3 text-right text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Actions</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Title</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Name</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Email</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Phone</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Venue / Org</th>
+                <th className="py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Status</th>
+                <th className="py-3 text-right text-xs font-medium uppercase" style={{ color: '#9ca3af', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: '#333333' }}>
               {filteredLeads.map((lead) => (
                 <tr key={lead.id} style={{ background: '#2a2a2a' }}>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="py-4 whitespace-nowrap" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <input
                       type="checkbox"
                       checked={selectedLeads.has(lead.id)}
@@ -559,22 +559,22 @@ export default function ImportedLeadsPage() {
                       style={{ cursor: 'pointer', width: '18px', height: '18px' }}
                     />
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5' }}>
+                  <td className="py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     {lead.title || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="py-4 whitespace-nowrap" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <div className="font-medium" style={{ color: '#f3f4f6' }}>{lead.name}</div>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                  <td className="py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     {lead.email}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                  <td className="py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     {lead.phone || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5' }}>
+                  <td className="py-4 whitespace-nowrap text-sm" style={{ color: '#e5e5e5', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     {lead.venue || lead.org || "—"}
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap">
+                  <td className="py-4 whitespace-nowrap" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <span
                       className={`px-2 py-1 text-xs font-medium rounded-full ${
                         STATUS_COLORS[lead.status as keyof typeof STATUS_COLORS] || "bg-gray-100 text-gray-800"
@@ -583,7 +583,7 @@ export default function ImportedLeadsPage() {
                       {lead.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
+                  <td className="py-4 whitespace-nowrap text-right text-sm" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <div className="flex gap-2 justify-end">
                       <button
                         onClick={() => {
@@ -593,11 +593,14 @@ export default function ImportedLeadsPage() {
                         style={{
                           background: '#667eea',
                           color: 'white',
-                          padding: '0.5rem 1rem',
+                          padding: '0.5rem 0.75rem',
                           borderRadius: '6px',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '0.85rem'
+                          fontSize: '0.75rem',
+                          whiteSpace: 'nowrap',
+                          minWidth: '70px',
+                          textAlign: 'center'
                         }}
                       >
                         Select
@@ -607,31 +610,36 @@ export default function ImportedLeadsPage() {
                         style={{
                           background: lead.status === 'interested' ? '#22c55e' : '#4facfe',
                           color: 'white',
-                          padding: '0.5rem 1rem',
+                          padding: '0.5rem 0.75rem',
                           borderRadius: '6px',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '0.85rem'
+                          fontSize: '0.75rem',
+                          whiteSpace: 'nowrap',
+                          minWidth: '70px',
+                          textAlign: 'center'
                         }}
                         title={lead.status === 'interested' ? 'Remove from interested' : 'Mark as interested'}
                       >
-                        {lead.status === 'interested' ? '✓ Interested' : '💚 Interested'}
+                        {lead.status === 'interested' ? '✓' : '💚'}
                       </button>
                       <button
                         onClick={() => handleArchiveLead(lead.id)}
                         style={{
                           background: '#ef4444',
                           color: 'white',
-                          padding: '0.5rem 1rem',
+                          padding: '0.5rem 0.75rem',
                           borderRadius: '6px',
                           border: 'none',
                           cursor: 'pointer',
-                          fontSize: '0.85rem',
-                          marginLeft: '0.5rem'
+                          fontSize: '0.75rem',
+                          whiteSpace: 'nowrap',
+                          minWidth: '70px',
+                          textAlign: 'center'
                         }}
                         title="Archive this lead"
                       >
-                        📦 Archive
+                        📦
                       </button>
                     </div>
                   </td>

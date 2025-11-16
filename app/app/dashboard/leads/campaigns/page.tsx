@@ -22,7 +22,7 @@ type Campaign = {
 export default function EmailCampaignsPage() {
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [loading, setLoading] = useState(true);
-  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showCreateSection, setShowCreateSection] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     subject: '',
@@ -113,7 +113,7 @@ export default function EmailCampaignsPage() {
 
       alert(`Campaign created with ${leads?.length || 0} recipients!`);
       setFormData({ name: '', subject: '', body_template: '', target_status: 'uncontacted' });
-      setShowCreateModal(false);
+      setShowCreateSection(false);
       loadCampaigns();
     } catch (err: any) {
       console.error('Error creating campaign:', err);
@@ -193,7 +193,7 @@ export default function EmailCampaignsPage() {
             <p className="text-sm mt-1" style={{ color: '#9ca3af' }}>Manage and track your email outreach campaigns</p>
           </div>
           <button
-            onClick={() => setShowCreateModal(true)}
+            onClick={() => setShowCreateSection(true)}
             className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2 hover:opacity-90"
             style={{
               background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -220,7 +220,7 @@ export default function EmailCampaignsPage() {
               Create your first campaign to send bulk emails to your leads.
             </p>
             <button
-              onClick={() => setShowCreateModal(true)}
+              onClick={() => setShowCreateSection(true)}
               className="px-6 py-3 text-white rounded-lg transition-all flex items-center gap-2 mx-auto hover:opacity-90"
               style={{
                 background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
@@ -327,124 +327,120 @@ export default function EmailCampaignsPage() {
           </div>
         )}
 
-        {/* Create Campaign Modal */}
-        {showCreateModal && (
-          <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.5)' }}>
-            <div className="rounded-lg shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto m-4" style={{ 
-              background: '#1a1a1a',
-              border: '1px solid #333333'
-            }}>
-              <div className="p-6 border-b" style={{ borderColor: '#333333' }}>
-                <h2 className="text-xl font-bold" style={{ color: '#f3f4f6' }}>Create Email Campaign</h2>
+        {/* Create Campaign Section */}
+        {showCreateSection && (
+          <div className="mb-8 p-6 rounded-lg" style={{ 
+            background: '#2a2a2a',
+            border: '1px solid #333333'
+          }}>
+            <h2 className="text-2xl font-bold mb-6" style={{ color: '#f3f4f6' }}>Create Email Campaign</h2>
+            <form onSubmit={handleCreateCampaign} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
+                  Campaign Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
+                  placeholder="e.g., Q4 Outreach"
+                />
               </div>
-              <form onSubmit={handleCreateCampaign} className="p-6 space-y-4">
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
-                    Campaign Name
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 rounded-lg"
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #333333',
-                      color: '#e5e5e5'
-                    }}
-                    placeholder="e.g., Q4 Outreach"
-                  />
-                </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
-                    Email Subject (use {'{{name}}'}, {'{{org}}'})
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.subject}
-                    onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
-                    required
-                    className="w-full px-4 py-2 rounded-lg"
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #333333',
-                      color: '#e5e5e5'
-                    }}
-                    placeholder="Hi {{name}}, Partnership Opportunity"
-                  />
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
+                  Email Subject (use {'{{name}}'}, {'{{org}}'})
+                </label>
+                <input
+                  type="text"
+                  value={formData.subject}
+                  onChange={(e) => setFormData({ ...formData, subject: e.target.value })}
+                  required
+                  className="w-full px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
+                  placeholder="Hi {{name}}, Partnership Opportunity"
+                />
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
-                    Email Body (use {'{{name}}'}, {'{{org}}'}, {'{{title}}'}, {'{{email}}'})
-                  </label>
-                  <textarea
-                    value={formData.body_template}
-                    onChange={(e) => setFormData({ ...formData, body_template: e.target.value })}
-                    required
-                    rows={10}
-                    className="w-full px-4 py-2 rounded-lg"
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #333333',
-                      color: '#e5e5e5'
-                    }}
-                    placeholder="Hi {{name}},&#10;&#10;I noticed {{org}} and wanted to reach out...&#10;&#10;Best regards"
-                  />
-                  <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
-                    Merge fields will be replaced with actual lead data
-                  </p>
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
+                  Email Body (use {'{{name}}'}, {'{{org}}'}, {'{{title}}'}, {'{{email}}'})
+                </label>
+                <textarea
+                  value={formData.body_template}
+                  onChange={(e) => setFormData({ ...formData, body_template: e.target.value })}
+                  required
+                  rows={10}
+                  className="w-full px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
+                  placeholder="Hi {{name}},&#10;&#10;I noticed {{org}} and wanted to reach out...&#10;&#10;Best regards"
+                />
+                <p className="text-xs mt-1" style={{ color: '#9ca3af' }}>
+                  Merge fields will be replaced with actual lead data
+                </p>
+              </div>
 
-                <div>
-                  <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
-                    Target Audience
-                  </label>
-                  <select
-                    value={formData.target_status}
-                    onChange={(e) => setFormData({ ...formData, target_status: e.target.value })}
-                    className="w-full px-4 py-2 rounded-lg"
-                    style={{
-                      background: '#2a2a2a',
-                      border: '1px solid #333333',
-                      color: '#e5e5e5'
-                    }}
-                  >
-                    <option value="uncontacted">Uncontacted Leads</option>
-                    <option value="contacted">Contacted Leads</option>
-                    <option value="follow-up">Follow-up Leads</option>
-                    <option value="interested">Interested Leads</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block text-sm font-medium mb-2" style={{ color: '#e5e5e5' }}>
+                  Target Audience
+                </label>
+                <select
+                  value={formData.target_status}
+                  onChange={(e) => setFormData({ ...formData, target_status: e.target.value })}
+                  className="w-full px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#1a1a1a',
+                    border: '1px solid #333333',
+                    color: '#e5e5e5'
+                  }}
+                >
+                  <option value="uncontacted">Uncontacted Leads</option>
+                  <option value="contacted">Contacted Leads</option>
+                  <option value="follow-up">Follow-up Leads</option>
+                  <option value="interested">Interested Leads</option>
+                </select>
+              </div>
 
-                <div className="flex gap-3 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => setShowCreateModal(false)}
-                    className="flex-1 px-4 py-2 rounded-lg"
-                    style={{
-                      background: '#333333',
-                      color: '#e5e5e5'
-                    }}
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="flex-1 px-4 py-2 rounded-lg transition-all"
-                    style={{
-                      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                      color: 'white',
-                    }}
-                  >
-                    {saving ? 'Creating...' : 'Create Campaign'}
-                  </button>
-                </div>
-              </form>
-            </div>
+              <div className="flex gap-3 pt-4" style={{ borderTop: '1px solid #333333', marginTop: '2rem' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowCreateSection(false)}
+                  className="flex-1 px-4 py-2 rounded-lg"
+                  style={{
+                    background: '#333333',
+                    color: '#e5e5e5'
+                  }}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={saving}
+                  className="flex-1 px-4 py-2 rounded-lg transition-all"
+                  style={{
+                    background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                    color: 'white',
+                  }}
+                >
+                  {saving ? 'Creating...' : 'Create Campaign'}
+                </button>
+              </div>
+            </form>
           </div>
         )}
       </div>

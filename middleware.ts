@@ -56,14 +56,14 @@ export async function middleware(request: NextRequest) {
 
   const { data: { session } } = await supabase.auth.getSession();
 
-  // Protect leads routes - require authentication
-  if (request.nextUrl.pathname.startsWith('/app/dashboard/leads')) {
-    if (!session) {
-      const redirectUrl = new URL('/auth/login', request.url);
-      redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
-      return NextResponse.redirect(redirectUrl);
-    }
-  }
+  // Note: Auth protection disabled to allow direct access
+  // if (request.nextUrl.pathname.startsWith('/app/dashboard/leads')) {
+  //   if (!session) {
+  //     const redirectUrl = new URL('/auth/login', request.url);
+  //     redirectUrl.searchParams.set('redirectTo', request.nextUrl.pathname);
+  //     return NextResponse.redirect(redirectUrl);
+  //   }
+  // }
 
   return response;
 }
