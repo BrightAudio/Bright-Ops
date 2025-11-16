@@ -425,6 +425,10 @@ export async function GET(req: Request) {
         -webkit-print-color-adjust: exact;
       }
 
+      div[style*="border-bottom: 1px solid #ddd"] {
+        display: none !important;
+      }
+
       .group-header {
         page-break-after: avoid;
       }
@@ -444,6 +448,14 @@ export async function GET(req: Request) {
   </style>
 </head>
 <body>
+  <div style="padding: 10px 20px; border-bottom: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
+    <button onclick="window.history.back()" style="padding: 8px 16px; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+      ← Back
+    </button>
+    <button onclick="window.print()" style="padding: 8px 16px; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+      🖨️ Print
+    </button>
+  </div>
   <div class="page-header">
     <div class="logo-section">
       <h1>BRIGHT AUDIO</h1>
