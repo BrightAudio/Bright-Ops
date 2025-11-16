@@ -887,7 +887,7 @@ export default function ProfessionalPullSheet({
 
           {/* Signature Section */}
           <div className="border-t border-gray-800 pt-6 mt-8">
-            <div className="grid grid-cols-2 gap-8 mb-6">
+            <div className="grid grid-cols-2 gap-8">
               <div>
                 <div className="font-semibold text-gray-700 mb-4">PULLED BY:</div>
                 <div className="border-b-2 border-gray-400 pb-1 mb-2 min-h-[40px]"></div>
@@ -897,23 +897,6 @@ export default function ProfessionalPullSheet({
               </div>
               <div>
                 <div className="font-semibold text-gray-700 mb-4">CHECKED BY:</div>
-                <div className="border-b-2 border-gray-400 pb-1 mb-2 min-h-[40px]"></div>
-                <div className="text-xs text-gray-500">Signature</div>
-                <div className="border-b border-gray-300 pb-1 mt-4 mb-2"></div>
-                <div className="text-xs text-gray-500">Date / Time</div>
-              </div>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <div className="font-semibold text-gray-700 mb-4">RETURNED BY:</div>
-                <div className="border-b-2 border-gray-400 pb-1 mb-2 min-h-[40px]"></div>
-                <div className="text-xs text-gray-500">Signature</div>
-                <div className="border-b border-gray-300 pb-1 mt-4 mb-2"></div>
-                <div className="text-xs text-gray-500">Date / Time</div>
-              </div>
-              <div>
-                <div className="font-semibold text-gray-700 mb-4">VERIFIED BY:</div>
                 <div className="border-b-2 border-gray-400 pb-1 mb-2 min-h-[40px]"></div>
                 <div className="text-xs text-gray-500">Signature</div>
                 <div className="border-b border-gray-300 pb-1 mt-4 mb-2"></div>
