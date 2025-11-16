@@ -267,16 +267,36 @@ export default function ImportedLeadsPage() {
 
   async function handleMarkAsInterested(leadId: string) {
     try {
+      const lead = leads.find(l => l.id === leadId);
+      if (!lead) return;
+      
       const supabaseAny = supabase as any;
+      const newStatus = lead.status === 'interested' ? 'uncontacted' : 'interested';
+      
       await supabaseAny
         .from('leads')
-        .update({ status: 'interested' })
+        .update({ status: newStatus })
         .eq('id', leadId);
       
       loadLeads();
     } catch (err) {
       console.error('Error updating status:', err);
-      alert('Failed to mark as interested');
+      alert('Failed to update status');
+    }
+  }
+
+  async function handleArchiveLead(leadId: string) {
+    try {
+      const supabaseAny = supabase as any;
+      await supabaseAny
+        .from('leads')
+        .update({ status: 'archived' })
+        .eq('id', leadId);
+      
+      loadLeads();
+    } catch (err) {
+      console.error('Error archiving lead:', err);
+      alert('Failed to archive lead');
     }
   }
 
@@ -585,7 +605,7 @@ export default function ImportedLeadsPage() {
                       <button
                         onClick={() => handleMarkAsInterested(lead.id)}
                         style={{
-                          background: '#4facfe',
+                          background: lead.status === 'interested' ? '#22c55e' : '#4facfe',
                           color: 'white',
                           padding: '0.5rem 1rem',
                           borderRadius: '6px',
@@ -593,9 +613,25 @@ export default function ImportedLeadsPage() {
                           cursor: 'pointer',
                           fontSize: '0.85rem'
                         }}
-                        title="Mark as interested"
+                        title={lead.status === 'interested' ? 'Remove from interested' : 'Mark as interested'}
                       >
-                        💚 Interested
+                        {lead.status === 'interested' ? '✓ Interested' : '💚 Interested'}
+                      </button>
+                      <button
+                        onClick={() => handleArchiveLead(lead.id)}
+                        style={{
+                          background: '#ef4444',
+                          color: 'white',
+                          padding: '0.5rem 1rem',
+                          borderRadius: '6px',
+                          border: 'none',
+                          cursor: 'pointer',
+                          fontSize: '0.85rem',
+                          marginLeft: '0.5rem'
+                        }}
+                        title="Archive this lead"
+                      >
+                        📦 Archive
                       </button>
                     </div>
                   </td>
