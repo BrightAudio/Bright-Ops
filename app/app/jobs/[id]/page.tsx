@@ -634,13 +634,6 @@ export default function JobDetailPage() {
           </button>
 
           <Link
-            href={`/app/scan?job=${job.code}`}
-            className="block w-full px-4 py-2 border border-zinc-700 rounded text-center hover:bg-zinc-800 transition-colors"
-          >
-            Scan Console
-          </Link>
-
-          <Link
             href="/app/jobs"
             className="block w-full px-4 py-2 border border-zinc-700 rounded text-center hover:bg-zinc-800 transition-colors"
           >
