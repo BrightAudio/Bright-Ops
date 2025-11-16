@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import sgMail from '@sendgrid/mail';
-import { createServerClient } from '@/lib/supabaseServer';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerClient();
+    const supabase = await supabaseServer();
     
     // Check authentication
     const { data: { user }, error: authError } = await supabase.auth.getUser();

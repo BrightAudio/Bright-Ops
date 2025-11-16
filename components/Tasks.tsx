@@ -3,9 +3,9 @@
 import WidgetCard from "./WidgetCard";
 import { useState, useEffect } from "react";
 import { supabaseBrowser } from "@/lib/supabaseClient";
-import type { Database } from "@/types/database";
 
-type Task = Database["public"]["Tables"]["tasks"]["Row"];
+// @ts-ignore - tasks table may not be in generated types
+type Task = any;
 
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -44,8 +44,7 @@ export default function Tasks() {
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
     const completedAt = newStatus === "completed" ? new Date().toISOString() : null;
 
-    // @ts-expect-error - tasks table added in migration
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("tasks")
       .update({ 
         status: newStatus,
@@ -66,8 +65,7 @@ export default function Tasks() {
     
     if (!user) return;
 
-    // @ts-expect-error - tasks table added in migration
-    const { error } = await supabase
+    const { error } = await (supabase as any)
       .from("tasks")
       .insert({
         user_id: user.id,

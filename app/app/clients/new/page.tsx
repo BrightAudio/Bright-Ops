@@ -33,7 +33,7 @@ export default function NewClientPage() {
       };
       const { error: dbError } = await supabase
         .from('clients')
-        .insert([clientInsert]);
+        .insert([clientInsert] as any);
 
       if (dbError) throw dbError;
   router.push('/app/clients');

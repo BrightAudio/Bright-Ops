@@ -150,7 +150,7 @@ export function usePullSheet(id?: string) {
 export async function createPullSheet(payload: PullSheetInsert) {
   const { data, error } = await supabase
     .from("pull_sheets")
-    .insert([payload as TablesInsert<"pull_sheets">])
+    .insert([payload as TablesInsert<"pull_sheets">] as any)
     .select()
     .single();
   if (error || !data) {
@@ -160,9 +160,9 @@ export async function createPullSheet(payload: PullSheetInsert) {
 }
 
 export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("pull_sheets")
-    .update(updates as TablesUpdate<"pull_sheets">)
+    .update(updates as TablesUpdate<"pull_sheets">) as any)
     .eq("id", id)
     .select()
     .single();
@@ -214,9 +214,9 @@ export async function deletePullSheet(id: string) {
 }
 
 export async function addPullSheetItem(payload: PullSheetItemInsert & { sort_index?: number }) {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("pull_sheet_items")
-    .insert([payload as TablesInsert<"pull_sheet_items">])
+    .insert([payload as TablesInsert<"pull_sheet_items">]) as any)
     .select()
     .single();
   if (error || !data) {
@@ -226,9 +226,9 @@ export async function addPullSheetItem(payload: PullSheetItemInsert & { sort_ind
 }
 
 export async function updatePullSheetItem(id: string, updates: PullSheetItemUpdate) {
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("pull_sheet_items")
-    .update(updates as TablesUpdate<"pull_sheet_items">)
+    .update(updates as TablesUpdate<"pull_sheet_items">) as any)
     .eq("id", id)
     .select()
     .single();
@@ -251,7 +251,7 @@ export async function reorderPullSheetItems(
     orderedIds.map((id, index) =>
       supabase
         .from("pull_sheet_items")
-        .update({ sort_index: index * 100 } as TablesUpdate<"pull_sheet_items">)
+        .update({ sort_index: index * 100 } as TablesUpdate<"pull_sheet_items"> as any)
         .eq("id", id)
     )
   );

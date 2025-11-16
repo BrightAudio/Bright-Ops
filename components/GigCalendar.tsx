@@ -334,7 +334,7 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
           start_at: formData.start_date,
           end_at: formData.end_date || null,
           status: status
-        })
+        } as any)
         .eq('id', selectedJobId);
 
       if (error) throw error;
@@ -365,7 +365,7 @@ function AddEventModal({ selectedDate, selectedJobId: initialJobId, crew, onClos
           start_at: null,
           end_at: null,
           status: null
-        })
+        } as any)
         .eq('id', selectedJobId);
 
       if (error) throw error;

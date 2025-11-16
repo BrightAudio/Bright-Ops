@@ -204,7 +204,7 @@ export async function createGigEvent(input: {
   };
 
   if (input.job_id) {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('jobs')
       .update(jobData)
       .eq('id', input.job_id)
@@ -214,7 +214,7 @@ export async function createGigEvent(input: {
     if (error) throw error;
     return data;
   } else {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('jobs')
       .insert([jobData])
       .select()

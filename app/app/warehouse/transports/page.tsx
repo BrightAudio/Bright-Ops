@@ -120,7 +120,7 @@ export default function Transports() {
     const err = validateForm();
     if (err) return setError(err);
     if (editing) {
-      await supabase
+      await (supabase
         .from("transports")
         .update({
           vehicle: form.vehicle,
@@ -130,12 +130,12 @@ export default function Transports() {
           job_id: form.job_id,
           notes: form.notes,
           status: form.status
-        })
+        } as any) as any)
         .eq("id", editing.id);
     } else {
-      await supabase
+      await (supabase
         .from("transports")
-        .insert(form);
+        .insert(form as any) as any);
     }
     closeModal();
     loadTransports();
@@ -165,7 +165,7 @@ export default function Transports() {
       status: transportStatus
     };
 
-    await supabase.from("transports").insert(newTransport);
+    await (supabase.from("transports").insert(newTransport as any) as any);
     
     // Clear form
     setVehicle("");

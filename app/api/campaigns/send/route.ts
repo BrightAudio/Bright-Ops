@@ -82,12 +82,12 @@ export async function POST(request: NextRequest) {
     }
 
     // Update campaign status to 'sending'
-    await supabase
+    await (supabase as any)
       .from('campaigns')
       .update({ 
         status: 'sending',
         started_at: new Date().toISOString(),
-      } as any)
+      })
       .eq('id', campaignId);
 
     let sentCount = 0;
@@ -142,22 +142,22 @@ export async function POST(request: NextRequest) {
           .single();
 
         // Update recipient status
-        await supabase
+        await (supabase as any)
           .from('campaign_recipients')
           .update({
             status: 'sent',
             sent_at: new Date().toISOString(),
             email_id: (emailLog as any)?.id || null,
-          } as any)
+          })
           .eq('id', recipient.id);
 
         // Update lead status
-        await supabase
+        await (supabase as any)
           .from('leads')
           .update({
             status: 'contacted',
             last_contacted: new Date().toISOString(),
-          } as any)
+          })
           .eq('id', lead.id);
 
         sentCount++;
@@ -171,12 +171,12 @@ export async function POST(request: NextRequest) {
         errors.push(`${lead.email}: ${error.message}`);
 
         // Update recipient with error
-        await supabase
+        await (supabase as any)
           .from('campaign_recipients')
           .update({
             status: 'failed',
             error_message: error.message,
-          } as any)
+          })
           .eq('id', recipient.id);
       }
     }
@@ -196,7 +196,7 @@ export async function POST(request: NextRequest) {
     const pendingCount = statusCounts.pending || 0;
     const isCampaignComplete = pendingCount === 0;
 
-    await supabase
+    await (supabase as any)
       .from('campaigns')
       .update({
         status: isCampaignComplete ? 'sent' : 'sending',
@@ -204,7 +204,7 @@ export async function POST(request: NextRequest) {
         sent_count: statusCounts.sent || 0,
         failed_count: statusCounts.failed || 0,
         total_recipients: recipients.length,
-      } as any)
+      })
       .eq('id', campaignId);
 
     return NextResponse.json({
