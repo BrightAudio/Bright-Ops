@@ -41,6 +41,8 @@ type JobOption = {
   code: string | null;
   title: string | null;
   status: string | null;
+  start_at?: string | null;
+  end_at?: string | null;
 };
 
 export default function PullSheetsClient({
@@ -71,7 +73,7 @@ export default function PullSheetsClient({
     (async () => {
       const { data } = await supabase
         .from("jobs")
-        .select("id, code, title, status")
+        .select("id, code, title, status, start_at, end_at")
         .order("created_at", { ascending: false })
         .limit(100);
       setJobs(data ?? []);
@@ -409,7 +411,16 @@ export default function PullSheetsClient({
                 <select
                   className="w-full rounded-lg bg-white border border-gray-300 px-4 py-2 text-gray-900 focus:border-amber-400 focus:outline-none"
                   value={form.job_id}
-                  onChange={(e) => setForm((prev) => ({ ...prev, job_id: e.target.value }))}
+                  onChange={(e) => {
+                    const jobId = e.target.value;
+                    const selectedJob = jobs.find(j => j.id === jobId);
+                    setForm((prev) => ({
+                      ...prev,
+                      job_id: jobId,
+                      scheduled_out_at: selectedJob?.start_at ? formatDateTimeLocal(selectedJob.start_at) : prev.scheduled_out_at,
+                      expected_return_at: selectedJob?.end_at ? formatDateTimeLocal(selectedJob.end_at) : prev.expected_return_at,
+                    }));
+                  }}
                 >
                   <option value="">No linked job</option>
                   {jobs.map((job) => (
