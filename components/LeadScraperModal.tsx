@@ -4,12 +4,42 @@ import { useState } from 'react';
 import { FaUpload, FaGlobe, FaFileImport, FaTimes, FaCheckCircle, FaSearch } from 'react-icons/fa';
 import Papa from 'papaparse';
 
+// Modal scrollbar styles
+const modalScrollbarStyles = `
+  .lead-scraper-modal::-webkit-scrollbar {
+    width: 8px;
+  }
+  .lead-scraper-modal::-webkit-scrollbar-track {
+    background: #2a2a2a;
+    border-radius: 4px;
+  }
+  .lead-scraper-modal::-webkit-scrollbar-thumb {
+    background: #9333ea;
+    border-radius: 4px;
+  }
+  .lead-scraper-modal::-webkit-scrollbar-thumb:hover {
+    background: #a855f7;
+  }
+`;
+
 const US_STATES = [
   'AL', 'AK', 'AZ', 'AR', 'CA', 'CO', 'CT', 'DE', 'FL', 'GA',
   'HI', 'ID', 'IL', 'IN', 'IA', 'KS', 'KY', 'LA', 'ME', 'MD',
   'MA', 'MI', 'MN', 'MS', 'MO', 'MT', 'NE', 'NV', 'NH', 'NJ',
   'NM', 'NY', 'NC', 'ND', 'OH', 'OK', 'OR', 'PA', 'RI', 'SC',
   'SD', 'TN', 'TX', 'UT', 'VT', 'VA', 'WA', 'WV', 'WI', 'WY'
+];
+
+const MAJOR_US_CITIES = [
+  'New York', 'Los Angeles', 'Chicago', 'Houston', 'Phoenix', 'Philadelphia',
+  'San Antonio', 'San Diego', 'Dallas', 'San Jose', 'Austin', 'Jacksonville',
+  'Fort Worth', 'Columbus', 'Charlotte', 'San Francisco', 'Indianapolis',
+  'Seattle', 'Denver', 'Washington', 'Boston', 'El Paso', 'Nashville',
+  'Detroit', 'Oklahoma City', 'Portland', 'Las Vegas', 'Memphis', 'Louisville',
+  'Baltimore', 'Milwaukee', 'Albuquerque', 'Tucson', 'Fresno', 'Sacramento',
+  'Kansas City', 'Mesa', 'Atlanta', 'Omaha', 'Colorado Springs', 'Raleigh',
+  'Miami', 'Long Beach', 'Virginia Beach', 'Oakland', 'Minneapolis', 'Tampa',
+  'Tulsa', 'Arlington', 'New Orleans', 'Wichita'
 ];
 
 type ScrapedLead = {
@@ -49,6 +79,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
   const [state, setState] = useState('');
   const [radius, setRadius] = useState(25);
   const [autoSearchLeads, setAutoSearchLeads] = useState<ScrapedLead[]>([]);
+  const [searchMethod, setSearchMethod] = useState<'google' | 'chatgpt'>('chatgpt');
 
   // Handle CSV file upload
   function handleCsvUpload(event: React.ChangeEvent<HTMLInputElement>) {
@@ -125,7 +156,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     }
   }
 
-  // Handle Auto-Search (searches job titles from database)
+  // Handle Auto-Search (searches job titles from database or uses ChatGPT)
   async function handleAutoSearch() {
     if (!city || !state) {
       setError('Please enter a city and state');
@@ -137,13 +168,20 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     setSuccess(null);
 
     try {
-      const response = await fetch('/api/leads/auto-search', {
+      const endpoint = searchMethod === 'chatgpt' 
+        ? '/api/leads/chatgpt-search'
+        : '/api/leads/auto-search';
+      
+      console.log(`🔍 Sending ${searchMethod} search request:`, { city, state, radius });
+      
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ city, state, radius }),
+        body: JSON.stringify({ city, state, radius, searchType: 'all' }),
       });
 
       const data = await response.json();
+      console.log('📨 API Response:', data);
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to search for leads');
@@ -152,6 +190,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
       setAutoSearchLeads(data.leads || []);
       setSuccess(data.message);
     } catch (err: any) {
+      console.error('❌ Search error:', err);
       setError(err.message);
     } finally {
       setLoading(false);
@@ -202,8 +241,10 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
     (activeTab === 'url' ? scrapedLeads : autoSearchLeads);
 
   return (
-    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-      <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden border border-[#333333]">
+    <>
+      <style>{modalScrollbarStyles}</style>
+      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+      <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-4xl w-full h-[95vh] flex flex-col border border-[#333333]">
         {/* Header */}
         <div className="flex justify-between items-center p-6 border-b border-[#333333]">
           <h2 className="text-2xl font-bold text-[#e5e5e5]">Import Leads</h2>
@@ -253,7 +294,13 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
         </div>
 
         {/* Content */}
-        <div className="p-6 overflow-y-auto max-h-[calc(90vh-180px)]">
+        <div 
+          className="flex-1 p-6 overflow-y-auto lead-scraper-modal"
+          style={{
+            scrollbarWidth: 'thin',
+            scrollbarColor: '#9333ea #2a2a2a',
+          }}
+        >
           {/* Success/Error Messages */}
           {success && (
             <div className="mb-4 p-4 bg-green-900/20 border border-green-600 rounded-lg flex items-center gap-3 text-green-400">
@@ -366,7 +413,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                   <h3 className="text-[#e5e5e5] font-semibold mb-2">
                     Found {scrapedLeads.length} leads:
                   </h3>
-                  <div className="space-y-2 max-h-60 overflow-y-auto">
+                  <div className="space-y-2 max-h-[65vh] overflow-y-auto">
                     {scrapedLeads.map((lead, i) => (
                       <div key={i} className="p-3 bg-[#2a2a2a] rounded border border-[#333333]">
                         <div className="text-[#e5e5e5] font-medium">{lead.name}</div>
@@ -390,13 +437,31 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
               {/* City Input */}
               <div>
                 <label className="block text-[#e5e5e5] font-medium mb-2">City</label>
-                <input
-                  type="text"
-                  value={city}
-                  onChange={(e) => setCity(e.target.value)}
-                  placeholder="e.g., Los Angeles"
-                  className="w-full px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
-                />
+                <div className="flex gap-2">
+                  <select
+                    value={MAJOR_US_CITIES.includes(city) ? city : 'custom'}
+                    onChange={(e) => {
+                      if (e.target.value !== 'custom') {
+                        setCity(e.target.value);
+                      }
+                    }}
+                    className="flex-1 px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+                  >
+                    <option value="custom">Type custom city...</option>
+                    {MAJOR_US_CITIES.map((cityName) => (
+                      <option key={cityName} value={cityName}>{cityName}</option>
+                    ))}
+                  </select>
+                </div>
+                {(!MAJOR_US_CITIES.includes(city)) && (
+                  <input
+                    type="text"
+                    value={city}
+                    onChange={(e) => setCity(e.target.value)}
+                    placeholder="Enter city name"
+                    className="w-full px-4 py-3 bg-[#2a2a2a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5] mt-2"
+                  />
+                )}
               </div>
 
               {/* State Dropdown */}
@@ -434,7 +499,32 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                 </div>
               </div>
 
-              {/* Search Button */}
+              {/* Search Method Toggle */}
+              <div>
+                <label className="block text-[#e5e5e5] font-medium mb-2">Search Method</label>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setSearchMethod('chatgpt')}
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                      searchMethod === 'chatgpt'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-[#2a2a2a] text-[#9ca3af] border border-[#333333] hover:border-purple-500'
+                    }`}
+                  >
+                    🤖 ChatGPT
+                  </button>
+                  <button
+                    onClick={() => setSearchMethod('google')}
+                    className={`flex-1 px-4 py-2 rounded-lg font-medium transition-all ${
+                      searchMethod === 'google'
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-[#2a2a2a] text-[#9ca3af] border border-[#333333] hover:border-purple-500'
+                    }`}
+                  >
+                    🔍 Google
+                  </button>
+                </div>
+              </div>              {/* Search Button */}
               <button
                 onClick={handleAutoSearch}
                 disabled={loading || !city || !state}
@@ -450,7 +540,7 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
                   <h3 className="text-[#e5e5e5] font-semibold mb-3">
                     Found {autoSearchLeads.length} leads:
                   </h3>
-                  <div className="space-y-3 max-h-[50vh] overflow-y-auto">
+                  <div className="space-y-3 max-h-[70vh] overflow-y-auto">
                     {autoSearchLeads.map((lead, i) => (
                       <div key={i} className="p-4 bg-[#2a2a2a] rounded border border-[#333333]">
                         <div className="flex justify-between items-start">
@@ -506,5 +596,6 @@ export default function LeadScraperModal({ onClose, onImportComplete }: LeadScra
         </div>
       </div>
     </div>
+    </>
   );
 }

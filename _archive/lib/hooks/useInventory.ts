@@ -19,7 +19,7 @@ export async function scanIn(barcode: string, opts?: { jobId?: string }) {
     itemRow = item;
     await supabase
       .from("inventory_items")
-  .update({ qty_in_warehouse: (item.qty_in_warehouse ?? 0) + 1 } as any)
+      .update({ qty_in_warehouse: (item.qty_in_warehouse ?? 0) + 1 } as any)
       .eq("id", item.id);
   }
 

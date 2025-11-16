@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
-import LeadScraperModal from "@/components/LeadScraperModal";
+import LeadScraperSection from "@/components/LeadScraperSection";
 
 type Lead = {
   id: string;
@@ -38,7 +38,6 @@ export default function LeadsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const [showAddModal, setShowAddModal] = useState(false);
-  const [showScraperModal, setShowScraperModal] = useState(false);
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -51,6 +50,23 @@ export default function LeadsPage() {
   const [selectedLeadForCampaign, setSelectedLeadForCampaign] = useState<Lead | null>(null);
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string>('');
+  const [showEmailModal, setShowEmailModal] = useState(false);
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  const [selectedLeadForEmail, setSelectedLeadForEmail] = useState<Lead | null>(null);
+  const [selectedLeadForSchedule, setSelectedLeadForSchedule] = useState<Lead | null>(null);
+  const [emailData, setEmailData] = useState({
+    subject: '',
+    body: '',
+  });
+  const [scheduleData, setScheduleData] = useState({
+    date: '',
+    time: '',
+    type: 'call',
+    notes: '',
+  });
+  const [selectedLeads, setSelectedLeads] = useState<Set<string>>(new Set());
+  const [selectAll, setSelectAll] = useState(false);
+  const [showBulkActions, setShowBulkActions] = useState(false);
 
   useEffect(() => {
     loadLeads();
@@ -96,6 +112,18 @@ export default function LeadsPage() {
     setShowCampaignModal(true);
   }
 
+  function handleFollowUp(lead: Lead) {
+    setSelectedLeadForEmail(lead);
+    setEmailData({ subject: '', body: '' });
+    setShowEmailModal(true);
+  }
+
+  function handleSchedule(lead: Lead) {
+    setSelectedLeadForSchedule(lead);
+    setScheduleData({ date: '', time: '', type: 'call', notes: '' });
+    setShowScheduleModal(true);
+  }
+
   async function handleConfirmAddToCampaign() {
     if (!selectedCampaignId || !selectedLeadForCampaign) {
       alert('Please select a campaign');
@@ -124,6 +152,74 @@ export default function LeadsPage() {
     } catch (err: any) {
       console.error('Error adding lead to campaign:', err);
       alert(err.message || 'Failed to add lead to campaign');
+    }
+  }
+
+  async function handleSendFollowUpEmail() {
+    if (!selectedLeadForEmail || !emailData.subject || !emailData.body) {
+      alert('Please fill in all fields');
+      return;
+    }
+
+    try {
+      const supabaseAny = supabase as any;
+      // Save follow-up email record
+      const { error } = await supabaseAny
+        .from('leads')
+        .update({
+          last_contacted: new Date().toISOString(),
+          generated_subject: emailData.subject,
+          generated_body: emailData.body,
+          status: 'contacted'
+        })
+        .eq('id', selectedLeadForEmail.id);
+
+      if (error) throw error;
+
+      setShowEmailModal(false);
+      setSelectedLeadForEmail(null);
+      setEmailData({ subject: '', body: '' });
+      loadLeads();
+      alert('Follow-up email recorded!');
+    } catch (err: any) {
+      console.error('Error saving follow-up:', err);
+      alert(err.message || 'Failed to save follow-up');
+    }
+  }
+
+  async function handleScheduleMeeting() {
+    if (!selectedLeadForSchedule || !scheduleData.date || !scheduleData.time) {
+      alert('Please fill in date and time');
+      return;
+    }
+
+    try {
+      const supabaseAny = supabase as any;
+      // Save meeting to database
+      const { error } = await supabaseAny
+        .from('scheduled_meetings')
+        .insert([
+          {
+            lead_id: selectedLeadForSchedule.id,
+            lead_name: selectedLeadForSchedule.name,
+            lead_email: selectedLeadForSchedule.email,
+            meeting_date: scheduleData.date,
+            meeting_time: scheduleData.time,
+            meeting_type: scheduleData.type,
+            notes: scheduleData.notes,
+            status: 'scheduled'
+          }
+        ]);
+
+      if (error) throw error;
+
+      setShowScheduleModal(false);
+      setSelectedLeadForSchedule(null);
+      setScheduleData({ date: '', time: '', type: 'call', notes: '' });
+      alert('Meeting scheduled successfully!');
+    } catch (err: any) {
+      console.error('Error scheduling meeting:', err);
+      alert(err.message || 'Failed to schedule meeting');
     }
   }
 
@@ -169,6 +265,54 @@ export default function LeadsPage() {
     return matchesFilter && matchesSearch;
   });
 
+  const toggleLeadSelection = (leadId: string) => {
+    const newSelected = new Set(selectedLeads);
+    if (newSelected.has(leadId)) {
+      newSelected.delete(leadId);
+    } else {
+      newSelected.add(leadId);
+    }
+    setSelectedLeads(newSelected);
+    setSelectAll(false);
+    setShowBulkActions(newSelected.size > 0);
+  };
+
+  const toggleSelectAll = () => {
+    if (selectAll) {
+      setSelectedLeads(new Set());
+      setSelectAll(false);
+      setShowBulkActions(false);
+    } else {
+      const allLeadIds = new Set(filteredLeads.map(lead => lead.id));
+      setSelectedLeads(allLeadIds);
+      setSelectAll(true);
+      setShowBulkActions(true);
+    }
+  };
+
+  const handleBulkImport = async () => {
+    const selectedLeadsList = filteredLeads.filter(lead => selectedLeads.has(lead.id));
+    if (selectedLeadsList.length === 0) return;
+
+    try {
+      const response = await fetch('/api/leads/import-csv', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leads: selectedLeadsList }),
+      });
+
+      if (response.ok) {
+        alert(`Successfully imported ${selectedLeadsList.length} lead(s)`);
+        setSelectedLeads(new Set());
+        setSelectAll(false);
+        setShowBulkActions(false);
+      }
+    } catch (err) {
+      console.error('Error importing leads:', err);
+      alert('Failed to import leads');
+    }
+  };
+
   const statusCounts = {
     all: leads.length,
     uncontacted: leads.filter((l) => l.status === "uncontacted").length,
@@ -203,6 +347,19 @@ export default function LeadsPage() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => router.push('/app/dashboard/leads/imported')}
+            className="px-4 py-2 border rounded-lg transition-colors flex items-center gap-2"
+            style={{
+              background: '#667eea',
+              borderColor: '#667eea',
+              color: 'white'
+            }}
+            title="View all imported leads for follow-up"
+          >
+            <i className="fas fa-inbox"></i>
+            Imported Leads
+          </button>
+          <button
             onClick={() => setShowAddModal(true)}
             className="px-4 py-2 border rounded-lg transition-colors flex items-center gap-2"
             style={{
@@ -214,18 +371,11 @@ export default function LeadsPage() {
             <i className="fas fa-plus"></i>
             Add Lead
           </button>
-          <button
-            onClick={() => setShowScraperModal(true)}
-            className="px-4 py-2 text-white rounded-lg transition-colors flex items-center gap-2"
-            style={{
-              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
-            }}
-          >
-            <i className="fas fa-search"></i>
-            Scrape Leads
-          </button>
         </div>
       </div>
+
+      {/* Auto Lead Search Section */}
+      <LeadScraperSection onImportComplete={loadLeads} />
 
       {/* Analytics Chart */}
       {!loading && leads.length > 0 && (
@@ -327,19 +477,55 @@ export default function LeadsPage() {
         </div>
 
         {/* Search */}
-        <div className="mb-4">
-          <input
-            type="text"
-            placeholder="Search leads by name, email, organization, or title..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full max-w-md px-4 py-2 rounded-lg focus:outline-none focus:ring-2"
-            style={{
-              background: '#2a2a2a',
-              border: '1px solid #333333',
-              color: '#e5e5e5'
-            }}
-          />
+        <div className="mb-4 flex gap-4 items-end">
+          <div className="flex-1">
+            <input
+              type="text"
+              placeholder="Search leads by name, email, organization, or title..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg focus:outline-none focus:ring-2"
+              style={{
+                background: '#2a2a2a',
+                border: '1px solid #333333',
+                color: '#e5e5e5'
+              }}
+            />
+          </div>
+          
+          {showBulkActions && (
+            <div className="flex gap-2 animate-in fade-in slide-in-from-bottom-2">
+              <button
+                onClick={handleBulkImport}
+                className="px-4 py-2 rounded-lg font-medium text-sm"
+                style={{
+                  background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
+                  color: 'white',
+                  border: 'none',
+                  cursor: 'pointer'
+                }}
+                title={`Import ${selectedLeads.size} selected lead(s) to imported leads page`}
+              >
+                📥 Import {selectedLeads.size}
+              </button>
+              <button
+                onClick={() => {
+                  setSelectedLeads(new Set());
+                  setSelectAll(false);
+                  setShowBulkActions(false);
+                }}
+                className="px-4 py-2 rounded-lg font-medium text-sm"
+                style={{
+                  background: '#2a2a2a',
+                  color: '#e5e5e5',
+                  border: '1px solid #333333',
+                  cursor: 'pointer'
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Leads Table */}
@@ -360,6 +546,20 @@ export default function LeadsPage() {
             <table className="w-full">
               <thead style={{ background: '#333333', borderBottom: '1px solid #444444' }}>
                 <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>
+                    <input
+                      type="checkbox"
+                      checked={selectAll}
+                      onChange={toggleSelectAll}
+                      style={{
+                        width: '18px',
+                        height: '18px',
+                        cursor: 'pointer',
+                        accentColor: '#9333ea',
+                      }}
+                      title="Select all leads"
+                    />
+                  </th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Title</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Name</th>
                   <th className="px-6 py-3 text-left text-xs font-medium uppercase" style={{ color: '#9ca3af' }}>Email</th>
@@ -371,7 +571,20 @@ export default function LeadsPage() {
               </thead>
               <tbody className="divide-y" style={{ borderColor: '#333333' }}>
                 {filteredLeads.map((lead) => (
-                  <tr key={lead.id} className="hover:bg-gray-50" style={{ background: '#2a2a2a' }}>
+                  <tr key={lead.id} className="hover:bg-gray-50" style={{ background: selectedLeads.has(lead.id) ? '#3a3a3a' : '#2a2a2a' }}>
+                    <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5' }}>
+                      <input
+                        type="checkbox"
+                        checked={selectedLeads.has(lead.id)}
+                        onChange={() => toggleLeadSelection(lead.id)}
+                        style={{
+                          width: '18px',
+                          height: '18px',
+                          cursor: 'pointer',
+                          accentColor: '#9333ea',
+                        }}
+                      />
+                    </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5' }}>
                       {lead.title || "—"}
                     </td>
@@ -397,35 +610,72 @@ export default function LeadsPage() {
                       </span>
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-right text-sm">
-                      <button
-                        onClick={() => router.push(`/app/dashboard/leads/${lead.id}`)}
-                        className="font-medium"
-                        style={{
-                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-                          color: 'white',
-                          padding: '0.5rem 1rem',
-                          borderRadius: '6px',
-                          border: 'none',
-                          cursor: 'pointer',
-                          marginRight: '0.5rem'
-                        }}
-                      >
-                        View
-                      </button>
-                      <button
-                        onClick={() => handleAddToNowCampaign(lead)}
-                        className="font-medium"
-                        style={{
-                          background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
-                          color: 'white',
-                          padding: '0.5rem 1rem',
-                          borderRadius: '6px',
-                          border: 'none',
-                          cursor: 'pointer'
-                        }}
-                      >
-                        Add to Campaign
-                      </button>
+                      <div className="flex gap-2 justify-end">
+                        <button
+                          onClick={() => router.push(`/app/dashboard/leads/${lead.id}`)}
+                          className="font-medium"
+                          style={{
+                            background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                            color: 'white',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                          title="View details"
+                        >
+                          View
+                        </button>
+                        <button
+                          onClick={() => handleFollowUp(lead)}
+                          className="font-medium"
+                          style={{
+                            background: 'linear-gradient(135deg, #f093fb 0%, #f5576c 100%)',
+                            color: 'white',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                          title="Send follow-up email"
+                        >
+                          ✉️
+                        </button>
+                        <button
+                          onClick={() => handleSchedule(lead)}
+                          className="font-medium"
+                          style={{
+                            background: 'linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)',
+                            color: 'white',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                          title="Schedule meeting"
+                        >
+                          📅
+                        </button>
+                        <button
+                          onClick={() => handleAddToNowCampaign(lead)}
+                          className="font-medium"
+                          style={{
+                            background: 'linear-gradient(135deg, #fa709a 0%, #fee140 100%)',
+                            color: 'white',
+                            padding: '0.5rem 1rem',
+                            borderRadius: '6px',
+                            border: 'none',
+                            cursor: 'pointer',
+                            fontSize: '0.85rem'
+                          }}
+                          title="Add to campaign"
+                        >
+                          📧
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -583,17 +833,6 @@ export default function LeadsPage() {
         </div>
       )}
 
-      {/* Scraper Modal */}
-      {showScraperModal && (
-        <LeadScraperModal
-          onClose={() => setShowScraperModal(false)}
-          onImportComplete={() => {
-            loadLeads();
-            setShowScraperModal(false);
-          }}
-        />
-      )}
-
       {/* Add to Campaign Modal */}
       {showCampaignModal && selectedLeadForCampaign && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
@@ -639,6 +878,141 @@ export default function LeadsPage() {
                 className="flex-1 px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-lg disabled:opacity-50 hover:from-purple-700 hover:to-blue-700"
               >
                 Add to Campaign
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Follow-up Email Modal */}
+      {showEmailModal && selectedLeadForEmail && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-2xl w-full border border-[#333333]">
+            <div className="p-6 border-b border-[#333333]">
+              <h2 className="text-xl font-bold text-[#e5e5e5]">Follow-up Email</h2>
+              <p className="text-[#9ca3af] text-sm mt-2">
+                To: <strong>{selectedLeadForEmail.name}</strong> ({selectedLeadForEmail.email})
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4 max-h-96 overflow-y-auto">
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Subject</label>
+                <input
+                  type="text"
+                  value={emailData.subject}
+                  onChange={(e) => setEmailData({ ...emailData, subject: e.target.value })}
+                  placeholder="Email subject..."
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Message</label>
+                <textarea
+                  value={emailData.body}
+                  onChange={(e) => setEmailData({ ...emailData, body: e.target.value })}
+                  placeholder="Write your follow-up message..."
+                  rows={8}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#333333] flex gap-3">
+              <button
+                onClick={() => {
+                  setShowEmailModal(false);
+                  setSelectedLeadForEmail(null);
+                }}
+                className="flex-1 px-4 py-2 bg-[#2a2a2a] text-[#e5e5e5] rounded-lg hover:bg-[#333333]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSendFollowUpEmail}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-pink-600 to-red-600 text-white rounded-lg hover:from-pink-700 hover:to-red-700"
+              >
+                Send Follow-up
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Schedule Meeting Modal */}
+      {showScheduleModal && selectedLeadForSchedule && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-md w-full border border-[#333333]">
+            <div className="p-6 border-b border-[#333333]">
+              <h2 className="text-xl font-bold text-[#e5e5e5]">Schedule Meeting</h2>
+              <p className="text-[#9ca3af] text-sm mt-2">
+                With: <strong>{selectedLeadForSchedule.name}</strong>
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Date</label>
+                <input
+                  type="date"
+                  value={scheduleData.date}
+                  onChange={(e) => setScheduleData({ ...scheduleData, date: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Time</label>
+                <input
+                  type="time"
+                  value={scheduleData.time}
+                  onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Meeting Type</label>
+                <select
+                  value={scheduleData.type}
+                  onChange={(e) => setScheduleData({ ...scheduleData, type: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                >
+                  <option value="call">Phone Call</option>
+                  <option value="video">Video Call</option>
+                  <option value="meeting">In-Person Meeting</option>
+                  <option value="email">Email Follow-up</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Notes</label>
+                <textarea
+                  value={scheduleData.notes}
+                  onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
+                  placeholder="Add any notes about this meeting..."
+                  rows={3}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#333333] flex gap-3">
+              <button
+                onClick={() => {
+                  setShowScheduleModal(false);
+                  setSelectedLeadForSchedule(null);
+                }}
+                className="flex-1 px-4 py-2 bg-[#2a2a2a] text-[#e5e5e5] rounded-lg hover:bg-[#333333]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleScheduleMeeting}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700"
+              >
+                Schedule
               </button>
             </div>
           </div>

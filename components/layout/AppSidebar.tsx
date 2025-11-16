@@ -17,6 +17,8 @@ import {
   FaEnvelope,
   FaChartLine,
   FaCog,
+  FaPlayCircle,
+  FaShieldAlt,
 } from 'react-icons/fa';
 
 type MenuItem = {
@@ -48,14 +50,25 @@ const workSection: MenuSection = {
   icon: <FaBriefcase />,
   items: [
     { label: 'Leads Dashboard', href: '/app/dashboard/leads', icon: <FaChartLine /> },
+    { label: 'Imported Leads', href: '/app/dashboard/leads/imported', icon: <FaUsers /> },
+    { label: 'Interested Leads', href: '/app/dashboard/leads/interested', icon: <FaUsers /> },
+    { label: 'Converted Clients', href: '/app/dashboard/leads/converted', icon: <FaUsers /> },
+    { label: 'Archived Leads', href: '/app/dashboard/leads/archived', icon: <FaUsers /> },
+    { label: 'Meeting Calendar', href: '/app/dashboard/calendar', icon: <FaCalendarAlt /> },
     { label: 'Email Campaigns', href: '/app/dashboard/leads/campaigns', icon: <FaEnvelope /> },
+    { label: 'Training', href: '/app/dashboard/leads/training', icon: <FaPlayCircle /> },
+    { label: 'Security Guide', href: '/app/dashboard/leads/security-guide', icon: <FaShieldAlt /> },
     { label: 'Lead Settings', href: '/app/dashboard/leads/settings', icon: <FaCog /> },
   ],
 };
 
 export default function AppSidebar() {
   const pathname = usePathname() || '';
-  const [workExpanded, setWorkExpanded] = useState(pathname.includes('/dashboard/leads'));
+  const [workExpanded, setWorkExpanded] = useState(
+    pathname.includes('/dashboard/leads') || 
+    pathname.includes('/dashboard/calendar') ||
+    pathname.includes('/dashboard/imported')
+  );
 
   return (
     <aside className="app-sidebar">

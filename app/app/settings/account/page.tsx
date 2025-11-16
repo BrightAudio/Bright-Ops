@@ -580,6 +580,125 @@ export default function AccountSettingsPage() {
             </div>
           )}
         </div>
+
+        {/* API Key Management Card */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "1.5rem"
+        }}>
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.25rem", fontWeight: 600 }}>
+              API Keys & Security
+            </h2>
+            <p style={{ 
+              margin: 0, 
+              fontSize: "0.875rem", 
+              color: "#6b7280",
+              marginBottom: "1rem"
+            }}>
+              Manage your API keys and integration credentials
+            </p>
+          </div>
+
+          {/* 3-Month Reminder Alert */}
+          <div style={{
+            padding: "1rem",
+            marginBottom: "1.5rem",
+            backgroundColor: "#fef3c7",
+            border: "1px solid #fbbf24",
+            borderRadius: "6px",
+            display: "flex",
+            gap: "1rem",
+            alignItems: "flex-start"
+          }}>
+            <div style={{
+              fontSize: "1.5rem",
+              flexShrink: 0
+            }}>
+              ⚠️
+            </div>
+            <div>
+              <div style={{
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                color: "#92400e",
+                marginBottom: "0.25rem"
+              }}>
+                Rotate API Keys Every 3 Months
+              </div>
+              <p style={{
+                margin: 0,
+                fontSize: "0.875rem",
+                color: "#92400e",
+                lineHeight: "1.5"
+              }}>
+                For security best practices, rotate your API keys and integration credentials every three months. This helps prevent unauthorized access and protects your data.
+              </p>
+              <div style={{
+                marginTop: "0.75rem",
+                display: "flex",
+                gap: "0.5rem"
+              }}>
+                <button
+                  style={{
+                    padding: "0.375rem 0.75rem",
+                    backgroundColor: "#f59e0b",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500
+                  }}
+                >
+                  <i className="fas fa-sync-alt" style={{ marginRight: "0.25rem" }}></i>
+                  Rotate Keys Now
+                </button>
+                <button
+                  style={{
+                    padding: "0.375rem 0.75rem",
+                    backgroundColor: "transparent",
+                    color: "#92400e",
+                    border: "1px solid #fbbf24",
+                    borderRadius: "4px",
+                    cursor: "pointer",
+                    fontSize: "0.8125rem",
+                    fontWeight: 500
+                  }}
+                >
+                  <i className="fas fa-info-circle" style={{ marginRight: "0.25rem" }}></i>
+                  Learn More
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* API Keys List */}
+          <div>
+            <h3 style={{
+              margin: "0 0 1rem 0",
+              fontSize: "1rem",
+              fontWeight: 600,
+              color: "#374151"
+            }}>
+              Active API Keys
+            </h3>
+            <div style={{
+              padding: "1rem",
+              backgroundColor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "6px",
+              textAlign: "center",
+              color: "#6b7280",
+              fontSize: "0.875rem"
+            }}>
+              <i className="fas fa-key" style={{ marginRight: "0.5rem", opacity: 0.5 }}></i>
+              No API keys configured yet
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   );
