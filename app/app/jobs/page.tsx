@@ -322,7 +322,7 @@ export default function JobsPage() {
                   <span>{creatingPullSheet === job.id ? 'Creating...' : 'Pull Sheet'}</span>
                 </button>
                 <Link 
-                  href={`/app/warehouse/return-manifest?job=${job.id}`}
+                  href={`/app/warehouse/jobs/${job.id}/return-manifest`}
                   className="flex items-center gap-1 hover:text-amber-400 transition-colors"
                 >
                   <Undo2 size={14} />

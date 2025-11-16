@@ -34,7 +34,7 @@ const sections = [
       { label: "Overview", href: "/app/warehouse", icon: "fas fa-warehouse" },
       { label: "Pull sheets", href: "/app/warehouse/pull-sheets", icon: "fas fa-clipboard-list" },
       { label: "Transports", href: "/app/warehouse/transports", icon: "fas fa-truck" },
-      { label: "Return manifest", href: "/app/warehouse/return-manifest", icon: "fas fa-undo" },
+      { label: "Returns", href: "/app/warehouse/returns", icon: "fas fa-undo" },
     ],
   },
   {

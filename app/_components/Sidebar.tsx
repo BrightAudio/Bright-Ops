@@ -15,7 +15,7 @@ import {
 const warehouseLinks = [
   { label: "Jobs", href: "/app/jobs", icon: <Package className="w-4 h-4 mr-2" /> },
   { label: "Free Scan (In)", href: "/app/warehouse/scan-in", icon: <ScanLine className="w-4 h-4 mr-2" /> },
-  { label: "Return Manifest", href: "/app/warehouse/return-manifest", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
+  { label: "Returns", href: "/app/warehouse/returns", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
   { label: "Transports", href: "/app/warehouse/transports", icon: <Truck className="w-4 h-4 mr-2" /> },
   { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew", icon: <Users className="w-4 h-4 mr-2" /> },
 ];

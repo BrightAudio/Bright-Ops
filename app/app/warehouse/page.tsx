@@ -6,7 +6,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 const actions = [
   { label: "Jobs", href: "/app/jobs" },
   { label: "Free Scan (In)", href: "/app/warehouse/scan-in" },
-  { label: "Return Manifest", href: "/app/warehouse/return-manifest" },
+  { label: "Returns", href: "/app/warehouse/returns" },
   { label: "Pull Sheets", href: "/app/warehouse/pull-sheets" },
   { label: "Transports", href: "/app/warehouse/transports" },
   { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew" },
