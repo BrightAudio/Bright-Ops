@@ -5,7 +5,7 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import GearSubstitutionModal from "@/components/GearSubstitutionModal";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Printer, ArrowLeft } from "lucide-react";
+import { Printer, ArrowLeft, Upload } from "lucide-react";
 
 type Item = {
   id: string;
@@ -71,6 +71,10 @@ export default function ProfessionalPullSheet({
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemCategory, setNewItemCategory] = useState("Audio");
   const [addingItem, setAddingItem] = useState(false);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
+  const [committing, setCommitting] = useState(false);
+  const [csvError, setCsvError] = useState<string | null>(null);
 
   // Group items by category
   const itemsByCategory = items.reduce((acc, item) => {
@@ -141,6 +145,157 @@ export default function ProfessionalPullSheet({
     }
   }
 
+  async function handleEditItem() {
+    if (!editingItemId || !editingItem) return;
+
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { error } = await supabase
+        .from("pull_sheet_items")
+        .update({
+          item_name: editingItem.item_name,
+          qty_requested: editingItem.qty_requested,
+          category: editingItem.category,
+          notes: editingItem.notes
+        } as any)
+        .eq("id", editingItemId);
+
+      if (error) throw error;
+
+      setEditingItemId(null);
+      setEditingItem(null);
+      onRefresh();
+    } catch (error) {
+      console.error("Error updating item:", error);
+      alert("Failed to update item");
+    }
+  }
+
+  async function handleDeleteItem(itemId: string) {
+    if (!confirm("Delete this item?")) return;
+
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { error } = await supabase
+        .from("pull_sheet_items")
+        .delete()
+        .eq("id", itemId);
+
+      if (error) throw error;
+      onRefresh();
+    } catch (error) {
+      console.error("Error deleting item:", error);
+      alert("Failed to delete item");
+    }
+  }
+
+  async function handleCommitPullSheet() {
+    if (!confirm("Commit this pull sheet? Items will be finalized and sent to pull sheets.")) return;
+
+    setCommitting(true);
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      // Filter out empty items (no item_name or qty_requested = 0)
+      const filledItems = items.filter(item => 
+        item.item_name?.trim() && item.qty_requested && item.qty_requested > 0
+      );
+
+      // Update pull sheet status to picking
+      const { error: updateError } = await supabase
+        .from("pull_sheets")
+        .update({ status: "picking" } as any)
+        .eq("id", pullSheet.id);
+
+      if (updateError) throw updateError;
+
+      // Delete empty items
+      const emptyItems = items.filter(item => 
+        !item.item_name?.trim() || !item.qty_requested || item.qty_requested === 0
+      );
+
+      if (emptyItems.length > 0) {
+        for (const item of emptyItems) {
+          await supabase
+            .from("pull_sheet_items")
+            .delete()
+            .eq("id", item.id);
+        }
+      }
+
+      alert(`Pull sheet committed! ${filledItems.length} items sent to pull sheet.`);
+      onRefresh();
+    } catch (error) {
+      console.error("Error committing pull sheet:", error);
+      alert("Failed to commit pull sheet");
+    } finally {
+      setCommitting(false);
+    }
+  }
+
+  async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.currentTarget.files?.[0];
+    if (!file) return;
+
+    setCsvError(null);
+
+    try {
+      const text = await file.text();
+      const lines = text.split('\n').filter(line => line.trim());
+      
+      // Parse CSV - expect columns: item_name, qty_requested, category (optional, defaults to Audio)
+      const itemsToAdd = [];
+      
+      for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const [name, qtyStr, category] = line.split(',').map(s => s.trim());
+        
+        if (!name) continue;
+        
+        const qty = parseInt(qtyStr) || 1;
+        if (qty <= 0) continue;
+
+        itemsToAdd.push({
+          item_name: name,
+          qty_requested: qty,
+          category: CATEGORY_ORDER.includes(category) ? category : 'Audio'
+        });
+      }
+
+      if (itemsToAdd.length === 0) {
+        setCsvError("No valid items found in CSV");
+        return;
+      }
+
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const { error } = await supabase
+        .from("pull_sheet_items")
+        .insert(
+          itemsToAdd.map(item => ({
+            pull_sheet_id: pullSheet.id,
+            item_name: item.item_name,
+            qty_requested: item.qty_requested,
+            qty_pulled: 0,
+            qty_fulfilled: 0,
+            category: item.category,
+            prep_status: "pending"
+          })) as never
+        );
+
+      if (error) throw error;
+
+      alert(`Imported ${itemsToAdd.length} items from CSV`);
+      e.currentTarget.value = '';
+      onRefresh();
+    } catch (error) {
+      console.error("Error importing CSV:", error);
+      setCsvError("Failed to import CSV: " + (error as Error).message);
+    }
+  }
+
   return (
     <>
       {/* Gear Substitution Modal */}
@@ -162,7 +317,80 @@ export default function ProfessionalPullSheet({
         />
       )}
 
-      {/* Add Item Inline Form */}
+      {/* Edit Item Modal */}
+      {editingItemId && editingItem && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4 shadow-lg">
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Edit Item</h2>
+            
+            <div className="space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Item Name</label>
+                <input
+                  type="text"
+                  value={editingItem.item_name || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, item_name: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  autoFocus
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Quantity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={editingItem.qty_requested || 0}
+                  onChange={(e) => setEditingItem({ ...editingItem, qty_requested: parseInt(e.target.value) || 0 })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Category</label>
+                <select
+                  value={editingItem.category || 'Audio'}
+                  onChange={(e) => setEditingItem({ ...editingItem, category: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                >
+                  {CATEGORY_ORDER.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <input
+                  type="text"
+                  value={editingItem.notes || ''}
+                  onChange={(e) => setEditingItem({ ...editingItem, notes: e.target.value })}
+                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm"
+                  placeholder="Optional notes"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={handleEditItem}
+                className="flex-1 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-medium"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => {
+                  setEditingItemId(null);
+                  setEditingItem(null);
+                }}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showInlineAddItem && (
         <div className="bg-blue-50 border-t-2 border-blue-300 p-4 no-print">
           <div className="max-w-7xl mx-auto">
@@ -243,20 +471,20 @@ export default function ProfessionalPullSheet({
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowInlineAddItem(!showInlineAddItem)}
-                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+                  className="btn-primary flex items-center gap-2"
                 >
                   + Add Item
                 </button>
                 <button
                   onClick={handlePrint}
-                  className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                  className="btn-secondary flex items-center gap-2"
                 >
                   <Printer size={18} />
                   Print
                 </button>
                 <Link
                   href={`/app/warehouse/scans`}
-                  className="flex items-center gap-2 bg-purple-600 text-white px-4 py-2 rounded hover:bg-purple-700"
+                  className="btn-secondary flex items-center gap-2"
                 >
                   View Scans
                 </Link>
