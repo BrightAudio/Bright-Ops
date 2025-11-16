@@ -89,6 +89,8 @@ export default function ProfessionalPullSheet({
   const [showScanHistory, setShowScanHistory] = useState(false);
   const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
   const [loadingScanHistory, setLoadingScanHistory] = useState(false);
+  const [editingCellId, setEditingCellId] = useState<string | null>(null);
+  const [editingCellValue, setEditingCellValue] = useState<string>("");
 
   // Group items by category
   const itemsByCategory = items.reduce((acc, item) => {
@@ -183,6 +185,38 @@ export default function ProfessionalPullSheet({
     } catch (error) {
       console.error("Error updating item:", error);
       alert("Failed to update item");
+    }
+  }
+
+  async function saveCellEdit(itemId: string, field: string, value: string) {
+    try {
+      const { supabase } = await import("@/lib/supabaseClient");
+      
+      const updateData: any = {};
+      
+      if (field === 'qty_requested') {
+        updateData.qty_requested = parseInt(value) || 0;
+      } else if (field === 'qty_pulled') {
+        updateData.qty_pulled = parseInt(value) || 0;
+      } else if (field === 'notes') {
+        updateData.notes = value || null;
+      } else if (field === 'prep_status') {
+        updateData.prep_status = value;
+      }
+
+      const { error } = await supabase
+        .from("pull_sheet_items")
+        .update(updateData as any)
+        .eq("id", itemId);
+
+      if (error) throw error;
+
+      setEditingCellId(null);
+      setEditingCellValue("");
+      onRefresh();
+    } catch (error) {
+      console.error("Error saving cell edit:", error);
+      alert("Failed to save changes");
     }
   }
 
@@ -721,23 +755,44 @@ export default function ProfessionalPullSheet({
                         const isComplete = fulfilled >= requested;
                         
                         return (
-                        <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer" onClick={() => {
-                          setEditingItemId(item.id);
-                          setEditingItem(item);
-                        }}>
-                          <td className="py-2 px-2 border-r border-gray-200">
-                            <div className={`font-bold text-sm ${isComplete ? 'text-green-600' : 'text-amber-600'}`}>
-                              {fulfilled}/{requested}
-                            </div>
-                            {isComplete && (
-                              <div className="text-green-600 text-[10px] font-semibold">
-                                ✓ Complete
+                        <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50">
+                          <td className="py-2 px-2 border-r border-gray-200 cursor-pointer hover:bg-blue-50" onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCellId(`${item.id}-qty_requested`);
+                            setEditingCellValue(String(item.qty_requested || 0));
+                          }}>
+                            {editingCellId === `${item.id}-qty_requested` ? (
+                              <input
+                                type="number"
+                                min="0"
+                                value={editingCellValue}
+                                onChange={(e) => setEditingCellValue(e.target.value)}
+                                onBlur={() => saveCellEdit(item.id, 'qty_requested', editingCellValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveCellEdit(item.id, 'qty_requested', editingCellValue);
+                                  if (e.key === 'Escape') setEditingCellId(null);
+                                }}
+                                autoFocus
+                                className="w-full border border-blue-400 rounded px-1 py-0 text-sm"
+                              />
+                            ) : (
+                              <div className={`font-bold text-sm ${isComplete ? 'text-green-600' : 'text-amber-600'}`}>
+                                {fulfilled}/{requested}
                               </div>
                             )}
-                            {!isComplete && fulfilled > 0 && (
-                              <div className="text-amber-600 text-[10px]">
-                                In Progress
-                              </div>
+                            {!editingCellId && (
+                              <>
+                                {isComplete && (
+                                  <div className="text-green-600 text-[10px] font-semibold">
+                                    ✓ Complete
+                                  </div>
+                                )}
+                                {!isComplete && fulfilled > 0 && (
+                                  <div className="text-amber-600 text-[10px]">
+                                    In Progress
+                                  </div>
+                                )}
+                              </>
                             )}
                           </td>
                           <td className="py-2 px-2 border-r border-gray-200">
@@ -748,17 +803,54 @@ export default function ProfessionalPullSheet({
                               </div>
                             )}
                           </td>
-                          <td className="py-2 px-2 text-gray-600 border-r border-gray-200">
-                            {item.notes || '—'}
+                          <td className="py-2 px-2 text-gray-600 border-r border-gray-200 cursor-pointer hover:bg-blue-50" onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCellId(`${item.id}-notes`);
+                            setEditingCellValue(item.notes || '');
+                          }}>
+                            {editingCellId === `${item.id}-notes` ? (
+                              <input
+                                type="text"
+                                value={editingCellValue}
+                                onChange={(e) => setEditingCellValue(e.target.value)}
+                                onBlur={() => saveCellEdit(item.id, 'notes', editingCellValue)}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') saveCellEdit(item.id, 'notes', editingCellValue);
+                                  if (e.key === 'Escape') setEditingCellId(null);
+                                }}
+                                autoFocus
+                                className="w-full border border-blue-400 rounded px-1 py-0 text-sm"
+                              />
+                            ) : (
+                              item.notes || '—'
+                            )}
                           </td>
-                          <td className="py-2 px-2 border-r border-gray-200">
-                            <div className={`text-center px-2 py-1 rounded text-[10px] font-semibold ${
-                              item.prep_status === 'pulled' ? 'bg-green-100 text-green-800' :
-                              item.prep_status === 'prepped' ? 'bg-blue-100 text-blue-800' :
-                              'bg-gray-100 text-gray-600'
-                            }`}>
-                              {item.prep_status || 'PENDING'}
-                            </div>
+                          <td className="py-2 px-2 border-r border-gray-200 cursor-pointer hover:bg-blue-50" onClick={(e) => {
+                            e.stopPropagation();
+                            setEditingCellId(`${item.id}-prep_status`);
+                            setEditingCellValue(item.prep_status || 'pending');
+                          }}>
+                            {editingCellId === `${item.id}-prep_status` ? (
+                              <select
+                                value={editingCellValue}
+                                onChange={(e) => setEditingCellValue(e.target.value)}
+                                onBlur={() => saveCellEdit(item.id, 'prep_status', editingCellValue)}
+                                autoFocus
+                                className="w-full border border-blue-400 rounded px-1 py-0 text-sm"
+                              >
+                                <option value="pending">Pending</option>
+                                <option value="pulled">Pulled</option>
+                                <option value="prepped">Prepped</option>
+                              </select>
+                            ) : (
+                              <div className={`text-center px-2 py-1 rounded text-[10px] font-semibold ${
+                                item.prep_status === 'pulled' ? 'bg-green-100 text-green-800' :
+                                item.prep_status === 'prepped' ? 'bg-blue-100 text-blue-800' :
+                                'bg-gray-100 text-gray-600'
+                              }`}>
+                                {item.prep_status || 'PENDING'}
+                              </div>
+                            )}
                           </td>
                           <td className="no-print py-2 px-2 relative" onClick={(e) => e.stopPropagation()}>
                             <button
