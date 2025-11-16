@@ -48,6 +48,35 @@ export default function MaintenanceClient() {
 
   const selectedItem = items.find(item => item.id === selectedItemId);
 
+  const handleSaveNotes = async () => {
+    if (!selectedItem) return;
+
+    try {
+      setRepairing(true);
+      const { error } = await (supabase as any)
+        .from('inventory_items')
+        .update({
+          rental_notes: maintenanceNotes || null
+        })
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
+      // Update the item in the list
+      setItems(items.map(item => 
+        item.id === selectedItem.id 
+          ? { ...item, rental_notes: maintenanceNotes }
+          : item
+      ));
+      alert('Notes saved!');
+    } catch (err) {
+      console.error('Error saving notes:', err);
+      alert('Failed to save notes');
+    } finally {
+      setRepairing(false);
+    }
+  };
+
   const handleRepair = async () => {
     if (!selectedItem) return;
 
@@ -201,18 +230,19 @@ export default function MaintenanceClient() {
                 {/* Actions */}
                 <div className="flex gap-3">
                   <button
+                    onClick={handleSaveNotes}
+                    disabled={repairing}
+                    className="flex-1 flex items-center justify-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
+                  >
+                    💾 Save Notes
+                  </button>
+                  <button
                     onClick={handleRepair}
                     disabled={repairing}
                     className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
                   >
                     <CheckCircle size={20} />
-                    Repair & Return to Inventory
-                  </button>
-                  <button
-                    onClick={() => router.push('/app/inventory')}
-                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition"
-                  >
-                    Return to Inventory
+                    Repair & Return
                   </button>
                 </div>
               </div>
