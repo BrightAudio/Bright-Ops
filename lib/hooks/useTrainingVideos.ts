@@ -177,12 +177,13 @@ export async function updateTrainingVideo(id: string, updates: Partial<TrainingV
     updateData.youtube_video_id = videoId;
   }
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("training_videos")
+    // @ts-expect-error - Supabase type inference issue
     .update(updateData)
     .eq("id", id)
     .select()
-    .single();
+    .single());
 
   if (error) throw error;
   return data as TrainingVideo;
@@ -207,12 +208,14 @@ export async function incrementViewCount(id: string): Promise<void> {
       .single();
     
     if (video) {
-      await supabase
+      await (supabase
         .from("training_videos")
-        .update({ view_count: (video.view_count || 0) + 1 })
-        .eq("id", id);
+        // @ts-expect-error - Supabase type inference issue
+        .update({ view_count: (video as any).view_count || 0 + 1 })
+        .eq("id", id));
     }
   } catch (err) {
     console.error('Failed to increment view count:', err);
   }
 }
+

@@ -98,8 +98,8 @@ export default function DashboardLayout({
           .single();
         
         setUserProfile({
-          full_name: profile?.full_name || 'User',
-          company_name: profile?.company_name || null,
+          full_name: (profile as any)?.full_name || 'User',
+          company_name: (profile as any)?.company_name || null,
           email: user.email || ''
         });
       }

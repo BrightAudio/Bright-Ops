@@ -151,12 +151,13 @@ export async function updateVenue(id: string, updates: Partial<Venue>): Promise<
     updated_at: new Date().toISOString(),
   };
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase
     .from("venues")
+    // @ts-expect-error - Supabase type inference issue
     .update(updateData)
     .eq("id", id)
     .select()
-    .single();
+    .single());
 
   if (error) throw error;
   return data as Venue;

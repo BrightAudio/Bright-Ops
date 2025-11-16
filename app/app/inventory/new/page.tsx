@@ -99,7 +99,7 @@ export default function NewInventoryItemPage() {
 				quantity_on_hand: form.quantity_on_hand,
 				unit_value: form.unit_value,
 				purchase_cost: form.purchase_cost,
-				purchase_date: form.purchase_date || null,
+				purchase_date: form.purchase_date ?? undefined,
 				useful_life_years: form.useful_life_years,
 				estimated_jobs_per_year: form.estimated_jobs_per_year,
 				residual_value: form.residual_value,
