@@ -147,6 +147,20 @@ export default function ProfessionalPullSheet({
 
       if (error) throw error;
 
+      // Also add to scan history so it appears in recently scanned section
+      const { error: scanError } = await supabase
+        .from("pull_sheet_scans")
+        .insert({
+          pull_sheet_id: pullSheet.id,
+          item_name: newItemName,
+          qty: newItemQty,
+          scanned_at: new Date().toISOString()
+        } as never);
+
+      if (scanError) {
+        console.warn("Failed to add to scan history, but item was created:", scanError);
+      }
+
       // Reset form
       setNewItemName("");
       setNewItemQty(1);

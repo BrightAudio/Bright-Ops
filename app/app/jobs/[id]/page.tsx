@@ -211,7 +211,7 @@ export default function JobDetailPage() {
         <div className="flex gap-1">
           {[
             { id: 'overview' as const, label: 'Overview', icon: 'fa-info-circle' },
-            { id: 'pullsheet' as const, label: 'Create Pull Sheet', icon: 'fa-clipboard-list' },
+            { id: 'pullsheet' as const, label: 'CreatePullSheet', icon: 'fa-clipboard-list' },
             { id: 'crew' as const, label: 'Crew', icon: 'fa-users' },
             { id: 'financial' as const, label: 'Financial', icon: 'fa-dollar-sign' },
             { id: 'timeline' as const, label: 'Timeline', icon: 'fa-history' },
@@ -574,20 +574,12 @@ export default function JobDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <button
-            onClick={() => setEditingIncome(true)}
-            className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            <i className="fas fa-dollar-sign"></i>
-            {parseFloat((job as any).income || 0) > 0 ? 'Edit Income' : 'Add Income'}
-          </button>
-
           <Link
             href={`/app/jobs/${job.id}/estimate`}
             className="block w-full px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-semibold transition-colors text-center"
           >
             <i className="fas fa-file-invoice-dollar mr-2"></i>
-            Cost Estimate & Invoice
+            Invoice
           </Link>
 
           <button
@@ -595,8 +587,16 @@ export default function JobDetailPage() {
             className="w-full px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors disabled:opacity-60 disabled:cursor-not-allowed"
             disabled={pullSheetLoading}
           >
-            {pullSheetLoading ? 'Opening…' : pullSheet ? 'Open Pull Sheet' : 'Create Pull Sheet'}
+            {pullSheetLoading ? 'Opening…' : pullSheet ? 'Open Pull Sheet' : 'CreatePullSheet'}
           </button>
+
+          <Link
+            href={`/app/warehouse/returns?job=${job.id}`}
+            className="block w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-semibold transition-colors text-center flex items-center justify-center gap-2"
+          >
+            <i className="fas fa-undo"></i>
+            Returns
+          </Link>
 
           {pullSheet && (
             <button
@@ -615,11 +615,23 @@ export default function JobDetailPage() {
           
           <Link
             href={`/app/warehouse/transports?job=${job.id}`}
-            className="block w-full px-4 py-2 bg-zinc-800 border border-zinc-700 rounded text-center hover:bg-zinc-700 transition-colors flex items-center justify-center gap-2"
+            className="block w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded font-semibold transition-colors flex items-center justify-center gap-2"
           >
             <i className="fas fa-truck"></i>
-            Manage Transports
+            Transport
           </Link>
+
+          <button
+            className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-semibold transition-colors flex items-center justify-center gap-2"
+            onClick={() => {
+              if (confirm('Are you sure you want to archive this job?')) {
+                console.log('Archive job:', job.id);
+              }
+            }}
+          >
+            <i className="fas fa-archive"></i>
+            Archive
+          </button>
 
           <Link
             href={`/app/scan?job=${job.code}`}
