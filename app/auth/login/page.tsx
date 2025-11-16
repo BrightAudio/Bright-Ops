@@ -4,8 +4,6 @@ import { useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 
-export const dynamic = 'force-dynamic';
-
 function LoginContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -150,3 +148,5 @@ export default function LoginPage() {
     </Suspense>
   );
 }
+
+export const dynamic = 'force-dynamic';
