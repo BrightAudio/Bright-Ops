@@ -133,6 +133,11 @@ export default function MaintenanceClient() {
                       <div className="text-xs text-orange-600 font-semibold mt-1 capitalize">
                         {item.maintenance_status.replace('_', ' ')}
                       </div>
+                      {item.rental_notes && (
+                        <div className="text-xs text-gray-500 mt-2 p-2 bg-gray-50 rounded">
+                          <span className="font-semibold">Notes: </span>{item.rental_notes}
+                        </div>
+                      )}
                     </button>
                   ))}
                 </div>
