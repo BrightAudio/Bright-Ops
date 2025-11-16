@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import type { Database } from '@/types/database';
-import { createPullSheet } from '@/lib/hooks/usePullSheets';
+import { createPullSheet, type PullSheet } from '@/lib/hooks/usePullSheets';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 
 type Job = {
@@ -26,13 +26,6 @@ type Job = {
     email: string | null;
     phone: string | null;
   } | null;
-};
-
-type PullSheet = {
-  id: string;
-  name: string;
-  job_id: string;
-  created_at: string;
 };
 
 export default function JobDetailPage() {
@@ -128,9 +121,10 @@ export default function JobDetailPage() {
     if (!job) return;
     setSavingIncome(true);
     try {
-      const { error } = await supabase
+      const incomeNum = parseFloat(incomeValue) || 0;
+      const { error } = await (supabase as any)
         .from('jobs')
-        .update({ income: parseFloat(incomeValue) || 0 })
+        .update({ income: incomeNum })
         .eq('id', job.id);
 
       if (error) throw error;
