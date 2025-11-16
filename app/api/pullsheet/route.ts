@@ -467,7 +467,7 @@ export async function GET(req: Request) {
 </head>
 <body>
   <div style="padding: 10px 20px; border-bottom: 1px solid #ddd; display: flex; gap: 10px; align-items: center;">
-    <button onclick="window.history.back()" style="padding: 8px 16px; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
+    <button onclick="if(window.history.length > 1) { window.history.back(); } else { window.location.href='/app/warehouse/pull-sheets'; }" style="padding: 8px 16px; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
       ← Back
     </button>
     <button onclick="window.print()" style="padding: 8px 16px; background-color: #f0f0f0; border: 1px solid #999; border-radius: 4px; cursor: pointer; font-size: 14px; font-weight: 500;">
