@@ -261,7 +261,8 @@ export default function ArchivedLeadsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </div>

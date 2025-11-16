@@ -257,7 +257,8 @@ export default function ConvertedLeadsPage() {
                 </tr>
               ))}
             </tbody>
-          </table>
+            </table>
+          </div>
         </div>
       )}
     </div>
