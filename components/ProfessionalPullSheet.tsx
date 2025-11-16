@@ -5,7 +5,8 @@ import BarcodeScanner from "@/components/BarcodeScanner";
 import GearSubstitutionModal from "@/components/GearSubstitutionModal";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Printer, ArrowLeft, Upload } from "lucide-react";
+import { Printer, ArrowLeft, Upload, ChevronDown } from "lucide-react";
+import { supabase } from "@/lib/supabaseClient";
 
 type Item = {
   id: string;
@@ -44,6 +45,15 @@ type ProfessionalPullSheetProps = {
   onRefresh: () => void;
 };
 
+type ScanRecord = {
+  id: string;
+  pull_sheet_id: string;
+  item_id: string;
+  item_name: string;
+  scanned_at: string;
+  qty: number;
+};
+
 // Category order matching Mercury format
 const CATEGORY_ORDER = [
   'Audio',
@@ -75,6 +85,10 @@ export default function ProfessionalPullSheet({
   const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
   const [committing, setCommitting] = useState(false);
   const [csvError, setCsvError] = useState<string | null>(null);
+  const [openSubstituteMenu, setOpenSubstituteMenu] = useState<string | null>(null);
+  const [showScanHistory, setShowScanHistory] = useState(false);
+  const [scanHistory, setScanHistory] = useState<ScanRecord[]>([]);
+  const [loadingScanHistory, setLoadingScanHistory] = useState(false);
 
   // Group items by category
   const itemsByCategory = items.reduce((acc, item) => {
@@ -235,6 +249,28 @@ export default function ProfessionalPullSheet({
     }
   }
 
+  async function loadScanHistory() {
+    setLoadingScanHistory(true);
+    try {
+      const { data, error } = await supabase
+        .from("pull_sheet_scans")
+        .select("*")
+        .eq("pull_sheet_id", pullSheet.id)
+        .order("scanned_at", { ascending: false })
+        .limit(50);
+
+      if (error) throw error;
+
+      setScanHistory(data || []);
+      setShowScanHistory(true);
+    } catch (error) {
+      console.error("Error loading scan history:", error);
+      alert("Failed to load scan history");
+    } finally {
+      setLoadingScanHistory(false);
+    }
+  }
+
   async function handleCSVImport(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.currentTarget.files?.[0];
     if (!file) return;
@@ -391,6 +427,53 @@ export default function ProfessionalPullSheet({
           </div>
         </div>
       )}
+
+      {/* Scan History Modal */}
+      {showScanHistory && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
+          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-lg max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4 text-gray-900">Scan History</h2>
+            
+            {scanHistory.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                No scans recorded for this pull sheet yet.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Item Name</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Quantity</th>
+                      <th className="px-4 py-2 text-left font-medium text-gray-700">Scanned At</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {scanHistory.map((scan) => (
+                      <tr key={scan.id} className="border-t border-gray-200 hover:bg-gray-50">
+                        <td className="px-4 py-2 text-gray-900">{scan.item_name}</td>
+                        <td className="px-4 py-2 text-gray-900">{scan.qty}</td>
+                        <td className="px-4 py-2 text-gray-600 text-xs">
+                          {new Date(scan.scanned_at).toLocaleString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex gap-2 mt-6">
+              <button
+                onClick={() => setShowScanHistory(false)}
+                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {showInlineAddItem && (
         <div className="bg-blue-50 border-t-2 border-blue-300 p-4 no-print">
           <div className="max-w-7xl mx-auto">
@@ -482,12 +565,13 @@ export default function ProfessionalPullSheet({
                   <Printer size={18} />
                   Print
                 </button>
-                <Link
-                  href={`/app/warehouse/scans`}
+                <button
+                  onClick={loadScanHistory}
+                  disabled={loadingScanHistory}
                   className="btn-secondary flex items-center gap-2"
                 >
-                  View Scans
-                </Link>
+                  {loadingScanHistory ? "Loading..." : "Scan History"}
+                </button>
               </div>
             </div>
             <BarcodeScanner pullSheetId={pullSheet.id} onScan={onRefresh} />
@@ -577,7 +661,10 @@ export default function ProfessionalPullSheet({
                         const isComplete = fulfilled >= requested;
                         
                         return (
-                        <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50">
+                        <tr key={item.id} className="border-b border-gray-200 hover:bg-gray-50 cursor-pointer" onClick={() => {
+                          setEditingItemId(item.id);
+                          setEditingItem(item);
+                        }}>
                           <td className="py-2 px-2 border-r border-gray-200">
                             <div className={`font-bold text-sm ${isComplete ? 'text-green-600' : 'text-amber-600'}`}>
                               {fulfilled}/{requested}
@@ -613,13 +700,38 @@ export default function ProfessionalPullSheet({
                               {item.prep_status || 'PENDING'}
                             </div>
                           </td>
-                          <td className="no-print py-2 px-2">
-                            <button
-                              onClick={() => setSubstitutionModal({ open: true, item })}
-                              className="text-purple-600 hover:text-purple-800 text-[10px] font-medium"
-                            >
-                              Substitute
-                            </button>
+                          <td className="no-print py-2 px-2 relative" onClick={(e) => e.stopPropagation()}>
+                            <div className="relative">
+                              <button
+                                onClick={() => setOpenSubstituteMenu(openSubstituteMenu === item.id ? null : item.id)}
+                                className="flex items-center gap-1 text-purple-600 hover:text-purple-800 text-[10px] font-medium"
+                              >
+                                Substitute
+                                <ChevronDown size={12} />
+                              </button>
+                              {openSubstituteMenu === item.id && (
+                                <div className="absolute right-0 top-full mt-1 bg-white border border-gray-200 rounded shadow-lg z-10 min-w-max">
+                                  <button
+                                    onClick={() => {
+                                      setSubstitutionModal({ open: true, item });
+                                      setOpenSubstituteMenu(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                                  >
+                                    Find Substitute
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      handleDeleteItem(item.id);
+                                      setOpenSubstituteMenu(null);
+                                    }}
+                                    className="block w-full text-left px-4 py-2 text-sm text-red-700 hover:bg-red-50"
+                                  >
+                                    Remove Item
+                                  </button>
+                                </div>
+                              )}
+                            </div>
                           </td>
                         </tr>
                       );
