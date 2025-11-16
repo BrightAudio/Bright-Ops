@@ -1,0 +1,220 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { ArrowLeft, Wrench, CheckCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+
+type MaintenanceItem = {
+  id: string;
+  barcode: string;
+  name: string;
+  gear_type: string | null;
+  maintenance_status: string;
+  location: string;
+  created_at: string;
+  rental_notes: string | null;
+};
+
+export default function MaintenanceClient() {
+  const router = useRouter();
+  const [items, setItems] = useState<MaintenanceItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [maintenanceNotes, setMaintenanceNotes] = useState('');
+  const [repairing, setRepairing] = useState(false);
+
+  useEffect(() => {
+    loadMaintenanceItems();
+  }, []);
+
+  const loadMaintenanceItems = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await (supabase as any)
+        .from('inventory_items')
+        .select('id, barcode, name, gear_type, maintenance_status, location, created_at, rental_notes')
+        .in('maintenance_status', ['needs_repair', 'in_repair', 'maintenance'])
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setItems(data || []);
+    } catch (err) {
+      console.error('Error loading maintenance items:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectedItem = items.find(item => item.id === selectedItemId);
+
+  const handleRepair = async () => {
+    if (!selectedItem) return;
+
+    try {
+      setRepairing(true);
+      const { error } = await (supabase as any)
+        .from('inventory_items')
+        .update({
+          maintenance_status: 'operational',
+          location: 'Warehouse',
+          rental_notes: maintenanceNotes ? `Repaired: ${maintenanceNotes}` : null
+        })
+        .eq('id', selectedItem.id);
+
+      if (error) throw error;
+
+      // Remove from the list
+      setItems(items.filter(item => item.id !== selectedItem.id));
+      setSelectedItemId(null);
+      setMaintenanceNotes('');
+      alert('Equipment repaired and returned to inventory!');
+    } catch (err) {
+      console.error('Error repairing item:', err);
+      alert('Failed to repair equipment');
+    } finally {
+      setRepairing(false);
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', backgroundColor: '#f9fafb' }}>
+      {/* Header */}
+      <div className="bg-white border-b border-gray-200 sticky top-0 z-10">
+        <div className="max-w-7xl mx-auto px-6 py-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <button
+                onClick={() => router.back()}
+                className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+              >
+                <ArrowLeft size={20} />
+                <span>Back</span>
+              </button>
+              <h1 className="text-3xl font-bold text-gray-900">Maintenance Queue</h1>
+              <p className="text-gray-600 mt-1">Equipment under maintenance or needing repairs</p>
+            </div>
+            <div className="text-right">
+              <div className="text-3xl font-bold text-orange-600">{items.length}</div>
+              <div className="text-sm text-gray-600">In Maintenance</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-7xl mx-auto p-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Items List */}
+          <div className="lg:col-span-1">
+            <div className="bg-white rounded-lg shadow">
+              <div className="p-4 border-b border-gray-200">
+                <h2 className="font-semibold text-gray-900">Equipment List</h2>
+              </div>
+
+              {loading ? (
+                <div className="p-8 text-center text-gray-500">Loading...</div>
+              ) : items.length === 0 ? (
+                <div className="p-8 text-center text-gray-500">No equipment in maintenance</div>
+              ) : (
+                <div className="max-h-[calc(100vh-300px)] overflow-y-auto">
+                  {items.map(item => (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedItemId(item.id)}
+                      className={`w-full text-left p-4 border-b border-gray-100 hover:bg-orange-50 transition ${
+                        selectedItemId === item.id ? 'bg-orange-50 border-l-4 border-l-orange-600' : ''
+                      }`}
+                    >
+                      <div className="font-semibold text-gray-900">{item.name}</div>
+                      <div className="text-sm text-gray-600">{item.barcode}</div>
+                      <div className="text-xs text-gray-500 mt-1">
+                        {item.gear_type && <span className="inline-block bg-gray-100 px-2 py-1 rounded">{item.gear_type}</span>}
+                      </div>
+                      <div className="text-xs text-orange-600 font-semibold mt-1 capitalize">
+                        {item.maintenance_status.replace('_', ' ')}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Item Details */}
+          <div className="lg:col-span-2">
+            {!selectedItem ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+                Select an item to view details and maintenance notes
+              </div>
+            ) : (
+              <div className="bg-white rounded-lg shadow p-6 space-y-6">
+                {/* Item Information */}
+                <div>
+                  <h3 className="text-lg font-semibold text-gray-900 mb-4">Equipment Details</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm text-gray-600">Name</label>
+                      <p className="text-gray-900 font-medium">{selectedItem.name}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Barcode</label>
+                      <p className="text-gray-900 font-medium">{selectedItem.barcode}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Type</label>
+                      <p className="text-gray-900 font-medium">{selectedItem.gear_type || 'Unknown'}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Status</label>
+                      <p className="text-orange-600 font-medium capitalize">{selectedItem.maintenance_status.replace('_', ' ')}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Location</label>
+                      <p className="text-gray-900 font-medium">{selectedItem.location}</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm text-gray-600">Date Added</label>
+                      <p className="text-gray-900 font-medium">{new Date(selectedItem.created_at).toLocaleDateString()}</p>
+                    </div>
+                  </div>
+                </div>
+
+                <hr className="border-gray-200" />
+
+                {/* Maintenance Notes */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-900 mb-2">Maintenance Notes</label>
+                  <textarea
+                    value={maintenanceNotes}
+                    onChange={(e) => setMaintenanceNotes(e.target.value)}
+                    placeholder="Enter maintenance notes, repair details, or work completed..."
+                    className="w-full border border-gray-300 rounded-lg p-3 text-sm focus:outline-none focus:border-orange-500 focus:ring-1 focus:ring-orange-500"
+                    rows={6}
+                  />
+                </div>
+
+                {/* Actions */}
+                <div className="flex gap-3">
+                  <button
+                    onClick={handleRepair}
+                    disabled={repairing}
+                    className="flex-1 flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-400 text-white font-medium py-2 px-4 rounded-lg transition"
+                  >
+                    <CheckCircle size={20} />
+                    Repair & Return to Inventory
+                  </button>
+                  <button
+                    onClick={() => router.push('/app/inventory')}
+                    className="flex items-center justify-center gap-2 bg-gray-600 hover:bg-gray-700 text-white font-medium py-2 px-4 rounded-lg transition"
+                  >
+                    Return to Inventory
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

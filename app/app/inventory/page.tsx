@@ -10,6 +10,7 @@ import {
 } from "@/lib/hooks/useInventory";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useLocation } from "@/lib/contexts/LocationContext";
+import { supabase } from "@/lib/supabaseClient";
 
 // Inventory listing page
 //
@@ -28,6 +29,26 @@ export default function InventoryPage() {
 	const [csvModalOpen, setCsvModalOpen] = useState(false);
 	const { data: items, loading, error, refetch } = useInventory({ search });
 	const { currentLocation } = useLocation();
+
+	// Handler for putting item under maintenance
+	async function handleMaintenance(e: React.MouseEvent, id: string) {
+		e.stopPropagation();
+		try {
+			const supabaseAny = supabase as any;
+			const { error } = await supabaseAny
+				.from('inventory_items')
+				.update({
+					maintenance_status: 'maintenance'
+				})
+				.eq('id', id);
+
+			if (error) throw error;
+			refetch();
+			alert('Item sent to maintenance queue');
+		} catch (err) {
+			alert(err instanceof Error ? err.message : String(err));
+		}
+	}
 
 	// Handler for removing an item. Because Supabase row level
 	// permissions should protect critical data, deleting an item
@@ -84,6 +105,12 @@ export default function InventoryPage() {
 			<div className="flex justify-between items-center mb-4">
 				<h1 className="text-3xl font-bold text-white">Inventory</h1>
 				<div className="flex gap-2">
+					<Link
+						href="/app/inventory/archived"
+						className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md"
+					>
+						🔧 Maintenance Queue
+					</Link>
 					<button
 						onClick={() => setCsvModalOpen(true)}
 						className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
@@ -227,6 +254,12 @@ export default function InventoryPage() {
 											>
 												Edit
 											</Link>
+											<button
+												onClick={(e) => handleMaintenance(e, item.id)}
+												className="text-yellow-400 hover:text-yellow-300 hover:underline flex-1 text-center"
+											>
+												Maintenance
+											</button>
 											<button
 												onClick={() => handleDelete(item.id)}
 												className="text-red-400 hover:text-red-300 hover:underline flex-1 text-center"
