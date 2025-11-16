@@ -631,13 +631,13 @@ export default function ProfessionalPullSheet({
         <div className="no-print bg-white border-b border-gray-200 p-4">
           <div className="max-w-7xl mx-auto">
             <div className="flex items-center justify-between mb-4">
-              <Link
-                href="/app/warehouse/pull-sheets"
+              <button
+                onClick={() => router.back()}
                 className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
               >
                 <ArrowLeft size={20} />
                 <span>Back</span>
-              </Link>
+              </button>
               <div className="flex gap-2">
                 <button
                   onClick={() => setShowInlineAddItem(!showInlineAddItem)}
