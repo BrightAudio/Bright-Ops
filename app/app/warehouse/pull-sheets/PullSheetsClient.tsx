@@ -254,7 +254,6 @@ export default function PullSheetsClient({
             <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
               <th className="px-6 py-4">Code</th>
               <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Job</th>
               <th className="px-6 py-4">Scheduled Out</th>
               <th className="px-6 py-4">Expected Return</th>
               <th className="px-6 py-4">Status</th>
@@ -264,13 +263,13 @@ export default function PullSheetsClient({
           <tbody className="text-sm bg-white">
             {loading ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-600">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-600">
                   Loading pull sheets...
                 </td>
               </tr>
             ) : pullSheets.length === 0 ? (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-gray-600">
+                <td colSpan={6} className="px-6 py-8 text-center text-gray-600">
                   No pull sheets yet. Create one to start organizing your picks.
                 </td>
               </tr>
@@ -279,30 +278,32 @@ export default function PullSheetsClient({
                 const isEditing = editingIds.has(sheet.id);
                 return (
                 <tr key={sheet.id} className="border-t border-gray-300 hover:bg-amber-50 transition-colors">
-                  <td className="px-6 py-4 font-semibold text-gray-900">{sheet.code}</td>
+                  <td className="px-6 py-4 font-semibold text-gray-900">
+                    <div>{sheet.code}</div>
+                    <div className="text-xs text-gray-600 mt-1">
+                      {canCreate ? (
+                        <select
+                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-gray-900 text-xs focus:border-amber-400 focus:outline-none disabled:opacity-50"
+                          value={sheet.job_id ?? ""}
+                          disabled={isEditing}
+                          onChange={(e) => updatePullSheetField(sheet.id, "job_id", e.target.value || null)}
+                        >
+                          <option value="">No linked job</option>
+                          {jobs.map((job) => (
+                            <option key={job.id} value={job.id}>
+                              {job.code ?? job.title ?? "Unnamed Job"}
+                            </option>
+                          ))}
+                        </select>
+                      ) : (
+                        <span className="text-gray-700">{jobLabel(sheet.jobs)}</span>
+                      )}
+                    </div>
+                  </td>
                   <td className="px-6 py-4 text-gray-900 font-medium">
                     <Link href={`/app/warehouse/pull-sheets/${sheet.id}`} className="hover:text-amber-600 hover:underline">
                       {sheet.name}
                     </Link>
-                  </td>
-                  <td className="px-6 py-4">
-                    {canCreate ? (
-                      <select
-                        className="w-full rounded border border-gray-300 bg-white px-3 py-1.5 text-gray-900 text-sm focus:border-amber-400 focus:outline-none disabled:opacity-50"
-                        value={sheet.job_id ?? ""}
-                        disabled={isEditing}
-                        onChange={(e) => updatePullSheetField(sheet.id, "job_id", e.target.value || null)}
-                      >
-                        <option value="">No linked job</option>
-                        {jobs.map((job) => (
-                          <option key={job.id} value={job.id}>
-                            {job.code ?? job.title ?? "Unnamed Job"}
-                          </option>
-                        ))}
-                      </select>
-                    ) : (
-                      <span className="text-gray-700">{jobLabel(sheet.jobs)}</span>
-                    )}
                   </td>
                   <td className="px-6 py-4">
                     {canCreate ? (
