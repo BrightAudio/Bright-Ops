@@ -50,11 +50,12 @@ export default function ScheduledCrew() {
     console.log("Starting loadData...");
     
     try {
-      // Load open/active jobs - try all jobs first to see what exists
-      console.log("Fetching jobs from Supabase...");
+      // Load open/active jobs - exclude archived/deleted jobs
+      console.log("Fetching jobs from Supabase (excluding archived)...");
       const { data: jobsData, error: jobsError } = await supabase
         .from("jobs")
         .select("*")
+        .eq('archived', false)
         .order("created_at", { ascending: false });
 
       console.log("Jobs query result:", { data: jobsData, error: jobsError });
