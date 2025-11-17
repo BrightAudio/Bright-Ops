@@ -160,6 +160,43 @@ export default function FinancialPage() {
             >
               Comprehensive financial overview across all operations
             </p>
+            {/* Navigation to Goals */}
+            <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
+              <a
+                href="/app/warehouse/financial"
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "#999999",
+                  textDecoration: "none",
+                  borderBottom: "2px solid #4ade80",
+                  paddingBottom: "0.25rem",
+                }}
+              >
+                Dashboard
+              </a>
+              <a
+                href="/app/warehouse/financial/goals"
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: "#999999",
+                  textDecoration: "none",
+                  paddingBottom: "0.25rem",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  (e.target as HTMLElement).style.color = "#fbbf24";
+                  (e.target as HTMLElement).style.borderBottom = "2px solid #fbbf24";
+                }}
+                onMouseLeave={(e) => {
+                  (e.target as HTMLElement).style.color = "#999999";
+                  (e.target as HTMLElement).style.borderBottom = "none";
+                }}
+              >
+                Goals
+              </a>
+            </div>
           </div>
         </div>
 

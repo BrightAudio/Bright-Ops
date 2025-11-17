@@ -275,6 +275,35 @@ export default function DashboardLayout({
         </div>
 
         <div className="right-actions">
+          {/* Goals Portal Link */}
+          <button 
+            onClick={() => window.location.href = '/app/warehouse/financial/goals'}
+            style={{
+              fontFamily: "'Playfair Display', serif",
+              fontSize: '20px',
+              fontWeight: 700,
+              background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)',
+              WebkitBackgroundClip: 'text',
+              WebkitTextFillColor: 'transparent',
+              backgroundClip: 'text',
+              letterSpacing: '1px',
+              textDecoration: 'none',
+              padding: '0 1rem',
+              cursor: 'pointer',
+              transition: 'all 0.3s ease',
+              border: 'none',
+              backgroundColor: 'transparent'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
+            GOALS
+          </button>
+
           {/* Leads Portal Link */}
           <button 
             onClick={handleLeadsClick}

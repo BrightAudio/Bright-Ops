@@ -11,6 +11,7 @@ import {
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { useLocation } from "@/lib/contexts/LocationContext";
 import { supabase } from "@/lib/supabaseClient";
+import { InventoryValuation } from "@/components/InventoryValuation";
 
 // Inventory listing page
 //
@@ -27,6 +28,9 @@ export default function InventoryPage() {
 	const [maintenanceFilter, setMaintenanceFilter] = useState("");
 	const [sortBy, setSortBy] = useState("name");
 	const [csvModalOpen, setCsvModalOpen] = useState(false);
+	const [showValuation, setShowValuation] = useState(false);
+	const [searchingItemId, setSearchingItemId] = useState<string | null>(null);
+	const [itemPrices, setItemPrices] = useState<Map<string, any>>(new Map());
 	const { data: items, loading, error, refetch } = useInventory({ search });
 	const { currentLocation } = useLocation();
 
@@ -66,6 +70,43 @@ export default function InventoryPage() {
 		}
 	}
 
+	// Handler for searching individual item price
+	async function handleSearchItemPrice(e: React.MouseEvent, id: string, name: string) {
+		e.stopPropagation();
+		setSearchingItemId(id);
+
+		try {
+			const response = await fetch('/api/inventory/price-search', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({
+					itemIds: [id],
+					itemNames: [name],
+				}),
+			});
+
+			if (!response.ok) {
+				throw new Error('Search failed');
+			}
+
+			const data = await response.json();
+			
+			if (data.results && data.results.length > 0) {
+				const result = data.results[0];
+				const newPrices = new Map(itemPrices);
+				newPrices.set(id, result);
+				setItemPrices(newPrices);
+				alert(`Found price: $${result.price} (${result.source})`);
+			} else {
+				alert('No price found for this item');
+			}
+		} catch (err) {
+			alert(err instanceof Error ? err.message : 'Search failed');
+		} finally {
+			setSearchingItemId(null);
+		}
+	}
+
 	// Calculate total value of all inventory
 	const totalValue = items?.reduce((sum, item) => {
 		const qty = item.quantity_on_hand ?? 0;
@@ -102,185 +143,336 @@ export default function InventoryPage() {
 	return (
 		<DashboardLayout>
 		<main className="p-6">
-			<div className="flex justify-between items-center mb-4">
-				<h1 className="text-3xl font-bold text-white">Inventory</h1>
-				<div className="flex gap-2">
-					<Link
-						href="/app/inventory/archived"
-						className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-md"
-					>
-						🔧 Maintenance Queue
-					</Link>
-					<button
-						onClick={() => setCsvModalOpen(true)}
-						className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md"
-					>
-						📁 Import CSV
-					</button>
-					<Link
-						href="/app/inventory/new"
-						className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md"
-					>
-						Add Item
-					</Link>
+			{/* Header Section */}
+			<div className="mb-8">
+				<div className="flex justify-between items-center mb-6">
+					<div>
+						<h1 className="text-4xl font-bold text-white mb-1">Inventory Management</h1>
+						<p className="text-zinc-400">Track and manage all equipment</p>
+					</div>
+					<div className="flex gap-2 flex-wrap">
+						<button
+							onClick={() => setShowValuation(!showValuation)}
+							className="inline-flex items-center px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition"
+						>
+							💰 {showValuation ? 'Hide' : 'Value'}
+						</button>
+						<Link
+							href="/app/inventory/speaker-rates"
+							className="inline-flex items-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition"
+						>
+							🎵 Speaker Rates
+						</Link>
+						<Link
+							href="/app/inventory/archived"
+							className="inline-flex items-center px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium transition"
+						>
+							🔧 Maintenance
+						</Link>
+						<button
+							onClick={() => setCsvModalOpen(true)}
+							className="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition"
+						>
+							📁 Import CSV
+						</button>
+						<Link
+							href="/app/inventory/new"
+							className="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition"
+						>
+							+ Add Item
+						</Link>
+					</div>
+				</div>
+
+				{/* Filters Section */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+					<div>
+						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Search</label>
+						<input
+							type="text"
+							value={search}
+							onChange={(e) => setSearch(e.target.value)}
+							placeholder="Item name or barcode..."
+							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white placeholder-zinc-500 focus:border-blue-500 focus:outline-none"
+						/>
+					</div>
+					<div>
+						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Category</label>
+						<select
+							value={categoryFilter}
+							onChange={(e) => setCategoryFilter(e.target.value)}
+							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+						>
+							<option value="">All Categories</option>
+							<option value="monitor_wedges">Monitor Wedges</option>
+							<option value="tops">Tops</option>
+							<option value="subs">Subs</option>
+							<option value="amps">Amps</option>
+							<option value="amprack">Amp Rack</option>
+							<option value="road_cases">Road Cases</option>
+							<option value="lights">Lights</option>
+							<option value="uplights">Uplights</option>
+							<option value="field_audio">Field Audio</option>
+							<option value="column_speakers">Column Speakers</option>
+							<option value="other">Other</option>
+						</select>
+					</div>
+					<div>
+						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Status</label>
+						<select
+							value={maintenanceFilter}
+							onChange={(e) => setMaintenanceFilter(e.target.value)}
+							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+						>
+							<option value="">All Status</option>
+							<option value="operational">✓ Operational</option>
+							<option value="needs_repair">⚠ Needs Repair</option>
+							<option value="in_repair">🔧 In Repair</option>
+							<option value="retired">✕ Retired</option>
+						</select>
+					</div>
+					<div>
+						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Sort</label>
+						<select
+							value={sortBy}
+							onChange={(e) => setSortBy(e.target.value)}
+							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+						>
+							<option value="name">Name</option>
+							<option value="barcode">Barcode</option>
+							<option value="value">Total Value</option>
+							<option value="maintenance">Status</option>
+						</select>
+					</div>
 				</div>
 			</div>
-			<div className="mb-4 grid grid-cols-1 md:grid-cols-4 gap-3">
-				<input
-					type="text"
-					value={search}
-					onChange={(e) => setSearch(e.target.value)}
-					placeholder="Search by name or barcode..."
-					className="px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-				/>
-				<select
-					value={categoryFilter}
-					onChange={(e) => setCategoryFilter(e.target.value)}
-					className="px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-				>
-					<option value="">All Categories</option>
-					<option value="monitor_wedges">Monitor Wedges</option>
-					<option value="tops">Tops</option>
-					<option value="subs">Subs</option>
-					<option value="amps">Amps</option>
-					<option value="amprack">Amp Rack</option>
-					<option value="road_cases">Road Cases</option>
-					<option value="lights">Lights</option>
-					<option value="uplights">Uplights</option>
-					<option value="field_audio">Field Audio</option>
-					<option value="column_speakers">Column Speakers</option>
-					<option value="other">Other</option>
-				</select>
-				<select
-					value={maintenanceFilter}
-					onChange={(e) => setMaintenanceFilter(e.target.value)}
-					className="px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-				>
-					<option value="">All Maintenance Status</option>
-					<option value="operational">Operational</option>
-					<option value="needs_repair">Needs Repair</option>
-					<option value="in_repair">In Repair</option>
-					<option value="retired">Retired</option>
-				</select>
-				<select
-					value={sortBy}
-					onChange={(e) => setSortBy(e.target.value)}
-					className="px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-				>
-					<option value="name">Sort by Name</option>
-					<option value="barcode">Sort by Barcode</option>
-					<option value="value">Sort by Value</option>
-					<option value="maintenance">Sort by Status</option>
-				</select>
-			</div>
+
+			{/* Valuation Section */}
+			{showValuation && filteredItems && filteredItems.length > 0 && (
+				<div className="mb-8 rounded-xl border border-purple-900/30 bg-gradient-to-br from-purple-950/50 to-purple-900/20 p-6">
+					<InventoryValuation 
+						items={filteredItems.map(item => ({
+							id: item.id,
+							name: item.name,
+							unit_value: item.unit_value || 0,
+							barcode: item.barcode,
+							category: item.category,
+						}))}
+						onUpdate={() => refetch()}
+					/>
+				</div>
+			)}
 			{loading ? (
-				<p className="text-zinc-400">Loading inventory...</p>
+				<div className="flex items-center justify-center py-12">
+					<div className="text-center">
+						<div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mb-4"></div>
+						<p className="text-zinc-400">Loading inventory...</p>
+					</div>
+				</div>
 			) : error ? (
-				<p className="text-red-500">{error}</p>
+				<div className="bg-red-900/30 border border-red-700 rounded-lg p-4">
+					<p className="text-red-400 font-semibold">Error loading inventory</p>
+					<p className="text-red-300 text-sm mt-1">{error}</p>
+				</div>
 			) : (
 				<>
-					<div className="space-y-2">
-						{/* Header */}
-						<div className="grid grid-cols-8 gap-0 px-4 py-2 text-sm font-semibold text-zinc-400 border-b border-zinc-700">
-							<div className="px-2 border-r border-zinc-700">Barcode</div>
-							<div className="px-2 border-r border-zinc-700">Name</div>
-							<div className="px-2 border-r border-zinc-700">Location</div>
-							<div className="px-2 border-r border-zinc-700">On Gig</div>
-							<div className="px-2 border-r border-zinc-700">Qty on Hand</div>
-							<div className="px-2 border-r border-zinc-700 text-right">Unit Value</div>
-							<div className="px-2 border-r border-zinc-700 text-right">Total Value</div>
-							<div className="px-2">Actions</div>
+					{/* Stats Cards */}
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+						<div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-700/30 rounded-lg p-4">
+							<p className="text-zinc-400 text-sm mb-1">Total Items</p>
+							<p className="text-2xl font-bold text-white">{filteredItems.length}</p>
 						</div>
-						
-						{/* Item rows as cards */}
-						{filteredItems && filteredItems.length > 0 ? (
-							filteredItems.map((item: InventoryItemWithJob) => {
+						<div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-700/30 rounded-lg p-4">
+							<p className="text-zinc-400 text-sm mb-1">Inventory Value</p>
+							<p className="text-2xl font-bold text-green-400">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+						</div>
+						<div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-700/30 rounded-lg p-4">
+							<p className="text-zinc-400 text-sm mb-1">In Warehouse</p>
+							<p className="text-2xl font-bold text-purple-400">{filteredItems.filter(i => (i.qty_in_warehouse ?? 0) > 0).length}</p>
+						</div>
+					</div>
+
+					{/* Inventory Grid */}
+					{filteredItems && filteredItems.length > 0 ? (
+						<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+							{filteredItems.map((item: InventoryItemWithJob) => {
 								const qty = item.quantity_on_hand ?? 0;
 								const unitValue = item.unit_value ?? 0;
 								const itemTotal = qty * unitValue;
 								const qtyInWarehouse = item.qty_in_warehouse ?? 0;
 								
-								// Format date from ISO string
+								// Determine status badge
+								const getStatusBadge = () => {
+									switch (item.maintenance_status) {
+										case 'needs_repair':
+											return { icon: '⚠', label: 'Needs Repair', color: 'text-yellow-400 bg-yellow-900/30 border-yellow-700/30' };
+										case 'in_repair':
+											return { icon: '🔧', label: 'In Repair', color: 'text-orange-400 bg-orange-900/30 border-orange-700/30' };
+										case 'retired':
+											return { icon: '✕', label: 'Retired', color: 'text-red-400 bg-red-900/30 border-red-700/30' };
+										default:
+											return { icon: '✓', label: 'Operational', color: 'text-green-400 bg-green-900/30 border-green-700/30' };
+									}
+								};
+
+								const status = getStatusBadge();
+
+								// Format date
 								const formatDate = (isoDate: string | null) => {
 									if (!isoDate) return "";
 									const date = new Date(isoDate);
-									return `${date.getMonth() + 1}/${date.getDate()}`;
+									return `${date.getMonth() + 1}/${date.getDate()}/${date.getFullYear()}`;
 								};
 								
-								// Determine location/job display
-								let jobDisplay: React.ReactNode;
+								// Determine job status
+								let jobInfo = { display: null as React.ReactNode, isOnJob: false };
 								if (qtyInWarehouse > 0) {
-									// Item is in warehouse - show 0
-									jobDisplay = <span className="text-zinc-400">0</span>;
+									jobInfo = { display: <span className="text-zinc-400">In Warehouse</span>, isOnJob: false };
 								} else if (item.currentJob) {
-									// Item is on a job - show job name and date in RED
-									const outDate = formatDate(item.currentJob.scheduled_out_at);
-									jobDisplay = (
-										<span className="text-red-600 font-semibold">
-											{item.currentJob.name}
-											{outDate && ` (Out: ${outDate})`}
-										</span>
-									);
-								} else {
-									// Shouldn't happen but fallback
-									jobDisplay = <span className="text-yellow-400">On Job</span>;
+									jobInfo = { 
+										display: (
+											<div>
+												<p className="text-red-400 font-semibold">{item.currentJob.name}</p>
+												<p className="text-red-300 text-xs mt-0.5">Out: {formatDate(item.currentJob.scheduled_out_at)}</p>
+											</div>
+										), 
+										isOnJob: true 
+									};
 								}
-								
+
 								return (
 									<div 
-										key={item.id} 
-										className="grid grid-cols-8 gap-0 px-4 py-3 bg-zinc-800/30 hover:bg-zinc-800/60 rounded-lg border border-zinc-700/50 hover:border-zinc-600 cursor-pointer transition-all shadow-sm hover:shadow-md"
+										key={item.id}
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
+										className="group bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 hover:border-zinc-600 rounded-lg p-5 cursor-pointer transition-all hover:shadow-xl hover:shadow-zinc-900/50 hover:-translate-y-1"
 									>
-										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{item.barcode}</div>
-										<div className="text-sm font-medium text-white px-2 border-r border-zinc-700/50">{item.name}</div>
-										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">
-											{item.location || "-"}
+										{/* Top Section: Status Badge & Category */}
+										<div className="flex justify-between items-start mb-3">
+											<span className={`text-xs font-semibold px-2.5 py-1 rounded border ${status.color}`}>
+												{status.icon} {status.label}
+											</span>
+											{item.category && (
+												<span className="text-xs text-zinc-500 bg-zinc-900/50 px-2 py-1 rounded">
+													{item.category.replace('_', ' ').toUpperCase()}
+												</span>
+											)}
 										</div>
-										<div className="text-sm px-2 border-r border-zinc-700/50">
-											{jobDisplay}
+
+										{/* Item Name & Barcode */}
+										<div className="mb-4">
+											<h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition">
+												{item.name}
+											</h3>
+											{item.barcode && (
+												<p className="text-xs text-zinc-500 mt-1">📦 {item.barcode}</p>
+											)}
 										</div>
-										<div className="text-sm text-zinc-300 px-2 border-r border-zinc-700/50">{qty}</div>
-										<div className="text-sm text-zinc-300 text-right px-2 border-r border-zinc-700/50">
-											{unitValue > 0 ? `$${unitValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+
+										{/* Location */}
+										{item.location && (
+											<div className="mb-3 pb-3 border-b border-zinc-700/30">
+												<p className="text-xs text-zinc-500 mb-1">Location</p>
+												<p className="text-sm text-zinc-300">{item.location}</p>
+											</div>
+										)}
+
+										{/* Job Status */}
+										<div className={`mb-4 pb-4 border-b border-zinc-700/30 ${jobInfo.isOnJob ? 'bg-red-950/40 -mx-5 px-5 py-3 rounded' : ''}`}>
+											<p className="text-xs text-zinc-500 mb-1.5">Job Assignment</p>
+											{jobInfo.display}
 										</div>
-										<div className="text-sm font-semibold text-green-400 text-right px-2 border-r border-zinc-700/50">
-											{itemTotal > 0 ? `$${itemTotal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : '-'}
+
+										{/* Quantities */}
+										<div className="grid grid-cols-2 gap-3 mb-4">
+											<div className="bg-zinc-900/50 rounded p-3">
+												<p className="text-xs text-zinc-500 mb-1">On Hand</p>
+												<p className="text-xl font-bold text-white">{qty}</p>
+											</div>
+											<div className="bg-zinc-900/50 rounded p-3">
+												<p className="text-xs text-zinc-500 mb-1">Unit Value</p>
+												<p className="text-xl font-bold text-green-400">${unitValue.toFixed(2)}</p>
+											</div>
 										</div>
-										<div className="text-sm flex justify-between items-center px-2" onClick={(e) => e.stopPropagation()}>
+
+										{/* Total Value */}
+										<div className="bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-700/30 rounded p-3 mb-4">
+											<p className="text-xs text-zinc-500 mb-1">Total Value</p>
+											<p className="text-2xl font-bold text-green-400">
+												${itemTotal.toFixed(2)}
+											</p>
+										</div>
+
+										{/* Rental Rates (if available) */}
+										{(item.rental_cost_daily || item.rental_cost_weekly) && (
+											<div className="bg-orange-950/40 border border-orange-700/30 rounded p-3 mb-4">
+												<p className="text-xs text-zinc-500 mb-2">Rental Rates</p>
+												<div className="grid grid-cols-2 gap-2">
+													{item.rental_cost_daily ? (
+														<div>
+															<p className="text-xs text-zinc-400">Daily</p>
+															<p className="text-lg font-bold text-orange-400">${item.rental_cost_daily.toFixed(2)}</p>
+														</div>
+													) : null}
+													{item.rental_cost_weekly ? (
+														<div>
+															<p className="text-xs text-zinc-400">Weekly</p>
+															<p className="text-lg font-bold text-orange-300">${item.rental_cost_weekly.toFixed(2)}</p>
+														</div>
+													) : null}
+												</div>
+											</div>
+										)}
+
+										{/* Price Search Result (if available) */}
+										{itemPrices.has(item.id) && (
+											<div className="bg-blue-950/40 border border-blue-700/30 rounded p-3 mb-4">
+												<p className="text-xs text-zinc-500 mb-1">Market Price</p>
+												<p className="text-lg font-bold text-blue-400">
+													${itemPrices.get(item.id).price.toFixed(2)}
+												</p>
+												<p className="text-xs text-zinc-400 mt-1">{itemPrices.get(item.id).source}</p>
+											</div>
+										)}
+
+										{/* Action Buttons */}
+										<div className="flex gap-2 flex-wrap" onClick={(e) => e.stopPropagation()}>
 											<Link
 												href={`/app/inventory/${item.id}`}
-												className="text-blue-400 hover:text-blue-300 hover:underline flex-1 text-center"
+												className="flex-1 min-w-0 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded transition text-center"
 											>
 												Edit
 											</Link>
 											<button
-												onClick={(e) => handleMaintenance(e, item.id)}
-												className="text-yellow-400 hover:text-yellow-300 hover:underline flex-1 text-center"
+												onClick={(e) => handleSearchItemPrice(e, item.id, item.name)}
+												disabled={searchingItemId === item.id}
+												className="flex-1 min-w-0 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded transition disabled:opacity-50"
 											>
-												Maintenance
+												{searchingItemId === item.id ? '⏳' : '🔍'}
+											</button>
+											<button
+												onClick={(e) => handleMaintenance(e, item.id)}
+												className="flex-1 min-w-0 px-3 py-2 bg-yellow-600 hover:bg-yellow-700 text-white text-sm font-medium rounded transition"
+											>
+												Maint
 											</button>
 											<button
 												onClick={() => handleDelete(item.id)}
-												className="text-red-400 hover:text-red-300 hover:underline flex-1 text-center"
+												className="flex-1 min-w-0 px-3 py-2 bg-red-600 hover:bg-red-700 text-white text-sm font-medium rounded transition"
 											>
-												Delete
+												Del
 											</button>
 										</div>
 									</div>
 								);
-							})
-						) : (
-							<div className="py-8 text-center text-zinc-500">
-								No items found.
-							</div>
-						)}
-					</div>
-					<div className="mt-4 pt-4 border-t border-zinc-700 flex justify-end">
-						<div className="text-lg font-bold">
-							Total Inventory Value: <span className="text-green-400">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
+							})}
 						</div>
-					</div>
+					) : (
+						<div className="py-12 text-center">
+							<div className="text-5xl mb-3">📦</div>
+							<p className="text-xl font-semibold text-zinc-400">No items found</p>
+							<p className="text-sm text-zinc-500 mt-2">Try adjusting your filters or add a new item</p>
+						</div>
+					)}
 				</>
 			)}
 			
