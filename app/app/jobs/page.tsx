@@ -112,6 +112,22 @@ export default function JobsPage() {
       await (supabase.from('jobs') as any)
         .update({ archived: !currentlyArchived })
         .eq('id', jobId);
+      // Also archive/unarchive any pull sheets attached to this job
+      try {
+        if (!currentlyArchived) {
+          // Job is being archived -> mark pull sheets as archived
+          await (supabase.from('pull_sheets') as any)
+            .update({ status: 'archived' })
+            .eq('job_id', jobId);
+        } else {
+          // Job is being un-archived -> return pull sheets to draft
+          await (supabase.from('pull_sheets') as any)
+            .update({ status: 'draft' })
+            .eq('job_id', jobId);
+        }
+      } catch (psErr) {
+        console.error('Failed to update pull sheets for job archive toggle', psErr);
+      }
       reload();
     } catch (err) {
       console.error('Error toggling archive:', err);
