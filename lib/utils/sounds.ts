@@ -8,83 +8,41 @@ let successAudio: HTMLAudioElement | null = null;
 let rejectAudio: HTMLAudioElement | null = null;
 
 /**
- * Initialize audio elements
- * Uses Data URIs for simple beep sounds to avoid external file dependencies
+ * Initialize audio elements with actual sound files
  */
 function initializeAudio() {
   if (typeof window === 'undefined') return; // SSR safety
   
-  // Success sound: Higher pitch, pleasant ding (440Hz for 150ms)
+  // Success sound: Use success.mp3
   if (!successAudio) {
-    successAudio = new Audio();
-    // You can replace this with a real audio file path like '/sounds/success.mp3'
-    // For now, using AudioContext to generate a simple beep
-    createBeepSound(successAudio, 800, 0.15); // 800Hz, 150ms
+    successAudio = new Audio('/success.mp3');
+    successAudio.volume = 0.6;
   }
   
-  // Reject sound: Lower pitch, warning beep (220Hz for 300ms)
+  // Reject sound: Use fail.mp3
   if (!rejectAudio) {
-    rejectAudio = new Audio();
-    createBeepSound(rejectAudio, 300, 0.3); // 300Hz, 300ms
-  }
-}
-
-/**
- * Generate a simple beep sound using Web Audio API
- * @param audioElement - The HTMLAudioElement to attach the sound to
- * @param frequency - Frequency in Hz
- * @param duration - Duration in seconds
- */
-function createBeepSound(audioElement: HTMLAudioElement, frequency: number, duration: number) {
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    const context = new AudioContext();
-    const oscillator = context.createOscillator();
-    const gainNode = context.createGain();
-    
-    oscillator.connect(gainNode);
-    gainNode.connect(context.destination);
-    
-    oscillator.frequency.value = frequency;
-    oscillator.type = 'sine';
-    
-    gainNode.gain.setValueAtTime(0.3, context.currentTime);
-    gainNode.gain.exponentialRampToValueAtTime(0.01, context.currentTime + duration);
-    
-    oscillator.start(context.currentTime);
-    oscillator.stop(context.currentTime + duration);
-    
-    // Store the play function
-    (audioElement as any).__playBeep = () => {
-      const ctx = new AudioContext();
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      
-      osc.frequency.value = frequency;
-      osc.type = 'sine';
-      
-      gain.gain.setValueAtTime(0.3, ctx.currentTime);
-      gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + duration);
-      
-      osc.start(ctx.currentTime);
-      osc.stop(ctx.currentTime + duration);
-    };
-  } catch (err) {
-    console.warn('Web Audio API not available:', err);
+    rejectAudio = new Audio('/fail.mp3');
+    rejectAudio.volume = 0.6;
   }
 }
 
 /**
  * Play success sound (scan accepted)
  */
-export function playSuccess() {
+export function playSuccess(theme: 'ding' | 'voice' = 'ding') {
   try {
-    initializeAudio();
-    if (successAudio && (successAudio as any).__playBeep) {
-      (successAudio as any).__playBeep();
+    if (theme === 'voice') {
+      const msg = new SpeechSynthesisUtterance('Scanned');
+      msg.rate = 1.2;
+      msg.pitch = 1.1;
+      msg.volume = 0.8;
+      window.speechSynthesis.speak(msg);
+    } else {
+      initializeAudio();
+      if (successAudio) {
+        successAudio.currentTime = 0; // Reset to start
+        successAudio.play().catch(err => console.warn('Could not play success sound:', err));
+      }
     }
   } catch (err) {
     console.warn('Could not play success sound:', err);
@@ -94,11 +52,20 @@ export function playSuccess() {
 /**
  * Play reject sound (duplicate scan or error)
  */
-export function playReject() {
+export function playReject(theme: 'ding' | 'voice' = 'ding') {
   try {
-    initializeAudio();
-    if (rejectAudio && (rejectAudio as any).__playBeep) {
-      (rejectAudio as any).__playBeep();
+    if (theme === 'voice') {
+      const msg = new SpeechSynthesisUtterance('Duplicate');
+      msg.rate = 1.2;
+      msg.pitch = 0.9;
+      msg.volume = 0.8;
+      window.speechSynthesis.speak(msg);
+    } else {
+      initializeAudio();
+      if (rejectAudio) {
+        rejectAudio.currentTime = 0; // Reset to start
+        rejectAudio.play().catch(err => console.warn('Could not play reject sound:', err));
+      }
     }
   } catch (err) {
     console.warn('Could not play reject sound:', err);

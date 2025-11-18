@@ -526,6 +526,12 @@ button{font-family:inherit; cursor:pointer}
   flex: 1;
   padding: 0.75rem 0;
   overflow-y: auto;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE and Edge */
+}
+
+.sidebar-nav::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 /* Navigation sections */

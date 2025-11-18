@@ -7,6 +7,7 @@ import { playSuccess, playReject } from "@/lib/utils/sounds";
 
 type ScannerProps = {
   pullSheetId: string;
+  soundTheme?: 'ding' | 'voice';
   onScan?: (scan: any) => void;
 };
 
@@ -17,7 +18,7 @@ type ScanResult = {
   scan?: any;
 };
 
-export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
+export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onScan }: ScannerProps) {
   const [barcode, setBarcode] = useState("");
   const [scanning, setScanning] = useState(false);
   const [scanType, setScanType] = useState<'pull' | 'return' | 'verify'>('pull');
@@ -131,7 +132,7 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
 
         if (existingScan) {
           // Duplicate detected - reject with sound
-          playReject();
+          playReject(soundTheme);
           setLastScan({
             success: false,
             message: `Duplicate scan! ${(inventoryItem as any).name} has already been scanned for this pull sheet.`,
@@ -195,7 +196,7 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
       }
 
       // 7. Play success sound
-      playSuccess();
+      playSuccess(soundTheme);
 
       // 8. Show success
       setLastScan({
