@@ -116,3 +116,101 @@ export async function completePrepSheet(prepSheetId: string) {
   if (updateRes.error) throw updateRes.error;
   return true;
 }
+
+export async function finalizePrepSheetByJob(jobId: string) {
+  try {
+    // Find the prep_sheet for this job
+    const prepRes = await supabase
+      .from('prep_sheets')
+      .select('*')
+      .eq('job_id', jobId)
+      .maybeSingle();
+    
+    if (prepRes.error) {
+      console.error('Error fetching prep sheet:', prepRes.error);
+      throw new Error(`Failed to fetch prep sheet: ${prepRes.error.message}`);
+    }
+    
+    const prep = prepRes.data;
+    if (!prep) throw new Error('Prep sheet not found for job');
+
+    // Load prep items
+    const itemsRes = await supabase
+      .from('prep_sheet_items')
+      .select('id, inventory_item_id, required_qty, picked_qty, inventory_items(name)')
+      .eq('prep_sheet_id', prep.id);
+    
+    if (itemsRes.error) {
+      console.error('Error fetching prep items:', itemsRes.error);
+      throw new Error(`Failed to fetch prep items: ${itemsRes.error.message}`);
+    }
+    
+    const items = itemsRes.data || [];
+
+    // Load job information
+    const { data: jobData, error: jobErr } = await supabase
+      .from('jobs')
+      .select('id, code, title, start_at, end_at, notes')
+      .eq('id', jobId)
+      .maybeSingle();
+    
+    if (jobErr) {
+      console.error('Error fetching job:', jobErr);
+      throw new Error(`Failed to fetch job: ${jobErr.message}`);
+    }
+
+    const pullName = `${(jobData as any)?.code ?? (jobData as any)?.title ?? 'Pull Sheet'}`;
+
+    // Create pull sheet
+    const { data: createdPull, error: createErr } = await supabase
+      .from('pull_sheets')
+      .insert([{
+        name: pullName,
+        job_id: jobId,
+        status: 'draft',
+        scheduled_out_at: (jobData as any)?.start_at ?? null,
+        expected_return_at: (jobData as any)?.end_at ?? null,
+        notes: (jobData as any)?.notes ?? null,
+      }])
+      .select()
+      .maybeSingle();
+
+    if (createErr) {
+      console.error('Error creating pull sheet:', createErr);
+      throw new Error(`Failed to create pull sheet: ${createErr.message}`);
+    }
+    
+    if (!createdPull) throw new Error('Failed to create pull sheet - no data returned');
+
+    // Insert pull sheet items
+    const itemsToInsert = [] as any[];
+    for (const it of items) {
+      const qty = (it.required_qty ?? 0);
+      const itemName = (it as any).inventory_items?.name || 'Unknown Item';
+      itemsToInsert.push({
+        pull_sheet_id: createdPull.id,
+        inventory_item_id: it.inventory_item_id || null,
+        item_name: itemName,
+        qty_requested: qty,
+        qty_pulled: 0,
+        sort_index: 0,
+      });
+    }
+
+    if (itemsToInsert.length > 0) {
+      const { error: itemsErr } = await supabase
+        .from('pull_sheet_items')
+        .insert(itemsToInsert as any[]);
+      
+      if (itemsErr) {
+        console.error('Error inserting pull sheet items:', itemsErr);
+        throw new Error(`Failed to insert pull sheet items: ${itemsErr.message}`);
+      }
+    }
+
+    return createdPull as any;
+  } catch (error) {
+    console.error('finalizePrepSheetByJob error:', error);
+    throw error;
+  }
+}

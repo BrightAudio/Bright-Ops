@@ -268,8 +268,29 @@ const PullSheetDetailClient: React.FC = () => {
     return item.products?.sku || item.inventory_items?.barcode || "Unknown Item";
   };
 
+  const handleActivateForScanning = async () => {
+    if (!sheet.id) return;
+    
+    try {
+      const { error } = await supabase
+        .from('pull_sheets')
+        .update({ status: 'active' } as any)
+        .eq('id', sheet.id);
+      
+      if (error) throw error;
+      
+      setHeaderForm((prev) => ({ ...prev, status: 'active' }));
+      alert('Pull sheet activated! You can now scan items to fill deficits.');
+      // Reload the page to reflect changes
+      window.location.reload();
+    } catch (err) {
+      console.error('Failed to activate pull sheet:', err);
+      alert('Failed to activate pull sheet for scanning');
+    }
+  };
+
   return (
-    <div className="p-4 md:p-6">
+    <div className="p-4 md:p-6 bg-sky-50 min-h-screen">
       {addModalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
           <div className="max-w-2xl w-full bg-white rounded-lg p-4 md:p-6 max-h-[90vh] overflow-y-auto">
@@ -313,6 +334,35 @@ const PullSheetDetailClient: React.FC = () => {
           <span>Back to Pull Sheets</span>
         </button>
       </div>
+
+      {/* Status Banner - Show activation needed or scanning ready */}
+      {headerForm.status === 'draft' && (
+        <div className="mb-6 bg-amber-50 border-2 border-amber-400 rounded-lg p-4">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-lg font-semibold text-amber-900 mb-1">Pull Sheet Ready for Activation</h3>
+              <p className="text-sm text-amber-800">
+                This pull sheet is in draft mode. Activate it to start scanning items and filling deficits.
+              </p>
+            </div>
+            <button
+              onClick={handleActivateForScanning}
+              className="px-6 py-3 bg-amber-400 text-black rounded-lg font-semibold hover:bg-amber-500 transition-colors whitespace-nowrap"
+            >
+              Activate for Scanning
+            </button>
+          </div>
+        </div>
+      )}
+
+      {headerForm.status === 'active' && (
+        <div className="mb-6 bg-green-50 border-2 border-green-400 rounded-lg p-4">
+          <h3 className="text-lg font-semibold text-green-900 mb-1">✓ Pull Sheet Active</h3>
+          <p className="text-sm text-green-800">
+            Scan items below to fill deficits. Scanning will update quantities from 0/X to Y/X.
+          </p>
+        </div>
+      )}
 
       {/* Barcode Scanner - Top Left */}
       {sheet.id && (

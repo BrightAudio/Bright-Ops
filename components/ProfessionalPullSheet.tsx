@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import React, { useState, useEffect } from "react";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import GearSubstitutionModal from "@/components/GearSubstitutionModal";
 import { useRouter } from "next/navigation";
@@ -80,6 +80,53 @@ export default function ProfessionalPullSheet({
   const [newItemName, setNewItemName] = useState("");
   const [newItemQty, setNewItemQty] = useState(1);
   const [newItemCategory, setNewItemCategory] = useState("Audio");
+  const [inventorySearch, setInventorySearch] = useState("");
+  const [inventoryResults, setInventoryResults] = useState<Item[]>([]);
+  const [inventoryLoading, setInventoryLoading] = useState(false);
+  const [selectedInventory, setSelectedInventory] = useState<Item | null>(null);
+
+  // Fetch inventory suggestions when searching
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      if (!inventorySearch || inventorySearch.trim().length < 2) {
+        setInventoryResults([]);
+        setInventoryLoading(false);
+        return;
+      }
+      setInventoryLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('inventory_items')
+          .select('id, name, barcode, gear_type, location')
+          .or(`name.ilike.%${inventorySearch.trim()}%,barcode.ilike.%${inventorySearch.trim()}%`)
+          .order('name', { ascending: true })
+          .limit(25);
+
+        if (!active) return;
+        if (error) {
+          console.error('Inventory search error:', error);
+          setInventoryResults([]);
+        } else {
+          const items = (data || []) as any[];
+          setInventoryResults(
+            items.map((it) => ({
+              id: it.id,
+              inventory_items: { name: it.name, barcode: it.barcode, category: it.gear_type },
+            }))
+          );
+        }
+      } catch (err) {
+        console.error('Inventory search failed:', err);
+        setInventoryResults([]);
+      } finally {
+        setInventoryLoading(false);
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [inventorySearch]);
   const [addingItem, setAddingItem] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [editingItem, setEditingItem] = useState<Partial<Item> | null>(null);
@@ -566,16 +613,44 @@ export default function ProfessionalPullSheet({
           <div className="max-w-7xl mx-auto">
             <h3 className="text-lg font-semibold text-blue-900 mb-4">Add Item to Pull Sheet</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 items-end">
-              <div>
-                <label className="block text-xs font-medium text-blue-800 mb-1">Item Name *</label>
+              <div className="col-span-2 lg:col-span-2">
+                <label className="block text-xs font-medium text-blue-800 mb-1">Search Inventory *</label>
                 <input
                   type="text"
-                  value={newItemName}
-                  onChange={(e) => setNewItemName(e.target.value)}
+                  value={inventorySearch}
+                  onChange={(e) => {
+                    setInventorySearch(e.target.value);
+                    setSelectedInventory(null);
+                  }}
                   className="w-full border border-blue-300 rounded px-3 py-2 text-sm"
-                  placeholder="e.g., Shure SM58"
+                  placeholder="Search by name or barcode"
                   autoFocus
                 />
+                <div className="mt-1 max-h-40 overflow-y-auto border border-gray-200 bg-white rounded">
+                  {inventoryLoading ? (
+                    <div className="p-2 text-sm text-gray-500">Searching…</div>
+                  ) : inventoryResults.length === 0 ? (
+                    <div className="p-2 text-sm text-gray-500">No matches</div>
+                  ) : (
+                    inventoryResults.map((inv) => (
+                      <button
+                        key={inv.id}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm ${selectedInventory?.id === inv.id ? 'bg-amber-100 text-amber-900' : 'hover:bg-gray-50'}`}
+                        onClick={() => {
+                          setSelectedInventory(inv);
+                          setNewItemName(inv.inventory_items?.name || (inv as any).name || '');
+                          setNewItemCategory(inv.inventory_items?.category || 'Other');
+                        }}
+                      >
+                        <div className="flex justify-between">
+                          <span className="truncate">{inv.inventory_items?.name || (inv as any).name || 'Unnamed'}</span>
+                          <span className="text-xs text-gray-500">{inv.inventory_items?.barcode || '—'}</span>
+                        </div>
+                      </button>
+                    ))
+                  )}
+                </div>
               </div>
 
               <div>
@@ -590,31 +665,66 @@ export default function ProfessionalPullSheet({
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-blue-800 mb-1">Category *</label>
-                <select
+                <label className="block text-xs font-medium text-blue-800 mb-1">Category</label>
+                <input
+                  type="text"
                   value={newItemCategory}
                   onChange={(e) => setNewItemCategory(e.target.value)}
                   className="w-full border border-blue-300 rounded px-3 py-2 text-sm"
-                >
-                  {CATEGORY_ORDER.map(cat => (
-                    <option key={cat} value={cat}>{cat}</option>
-                  ))}
-                </select>
+                  placeholder="Auto-filled from inventory"
+                />
               </div>
 
               <button
-                onClick={handleAddItem}
-                disabled={!newItemName.trim() || addingItem}
+                onClick={async () => {
+                  if (!selectedInventory) {
+                    alert('Please select an item from inventory');
+                    return;
+                  }
+                  setAddingItem(true);
+                  try {
+                    const { supabase } = await import('@/lib/supabaseClient');
+                    const { error } = await supabase
+                      .from('pull_sheet_items')
+                      .insert({
+                        pull_sheet_id: pullSheet.id,
+                        inventory_item_id: selectedInventory.id,
+                        item_name: selectedInventory.inventory_items?.name || (selectedInventory as any).name || '',
+                        qty_requested: newItemQty,
+                        qty_pulled: 0,
+                        qty_fulfilled: 0,
+                        category: selectedInventory.inventory_items?.category || newItemCategory || 'Other',
+                        prep_status: 'pending'
+                      } as never);
+
+                    if (error) throw error;
+                    setInventorySearch('');
+                    setInventoryResults([]);
+                    setSelectedInventory(null);
+                    setNewItemQty(1);
+                    setNewItemCategory('Audio');
+                    setShowInlineAddItem(false);
+                    onRefresh();
+                  } catch (err) {
+                    console.error('Failed to add inventory item to pull sheet:', err);
+                    alert('Failed to add item');
+                  } finally {
+                    setAddingItem(false);
+                  }
+                }}
+                disabled={!selectedInventory || addingItem}
                 className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed font-medium text-sm"
               >
-                {addingItem ? "Adding..." : "Add"}
+                {addingItem ? 'Adding...' : 'Add'}
               </button>
               <button
                 onClick={() => {
                   setShowInlineAddItem(false);
-                  setNewItemName("");
+                  setInventorySearch('');
+                  setInventoryResults([]);
+                  setSelectedInventory(null);
                   setNewItemQty(1);
-                  setNewItemCategory("Audio");
+                  setNewItemCategory('Audio');
                 }}
                 disabled={addingItem}
                 className="bg-gray-300 text-gray-800 px-4 py-2 rounded hover:bg-gray-400 disabled:opacity-50 font-medium text-sm"
@@ -626,7 +736,7 @@ export default function ProfessionalPullSheet({
         </div>
       )}
 
-      <div className="min-h-screen bg-gray-50">
+      <div className="min-h-screen bg-sky-50">
         {/* No-print navigation & scanner */}
         <div className="no-print bg-white border-b border-gray-200 p-4">
           <div className="max-w-7xl mx-auto">

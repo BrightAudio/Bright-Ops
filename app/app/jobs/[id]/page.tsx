@@ -153,20 +153,8 @@ export default function JobDetailPage() {
     setPullSheetLoading(true);
     setPullSheetError(null);
     try {
-      if (pullSheet) {
-  router.push(`/app/warehouse/pull-sheets/${pullSheet.id}`);
-        return;
-      }
-      const created = await createPullSheet({
-        name: `${job.code ?? job.title ?? 'Job'} Pull Sheet`,
-        job_id: job.id,
-        status: 'draft',
-        scheduled_out_at: job.start_at ?? null,
-        expected_return_at: job.end_at ?? null,
-        notes: job.notes ?? null,
-      });
-      setPullSheet(created);
-  router.push(`/app/warehouse/pull-sheets/${created.id}`);
+      // Open the job-level prep sheet UI (create-mode). The prep sheet is the job-side form.
+      router.push(`/app/warehouse/jobs/${job.id}/prep-sheet`);
     } catch (err) {
       setPullSheetError((err as Error).message);
     } finally {

@@ -67,12 +67,60 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
         .eq('inventory_item_id', (inventoryItem as any).id)
         .maybeSingle();
 
+      // Fetch pull sheet status to determine scan behavior (create-mode vs active pulls)
+      const { data: sheetData } = await supabase
+        .from('pull_sheets')
+        .select('status')
+        .eq('id', pullSheetId)
+        .maybeSingle();
+      const sheetStatus = (sheetData as any)?.status || 'draft';
+
+      // If there's no pull sheet item for this inventory unit, create one so scans are attached
+      let resolvedPullSheetItem = pullSheetItem as any | null;
+      if (!resolvedPullSheetItem) {
+        try {
+          const { data: createdItem, error: createError } = await (supabase as any)
+            .from('pull_sheet_items')
+            .insert([
+              {
+                pull_sheet_id: pullSheetId,
+                inventory_item_id: (inventoryItem as any).id,
+                item_name: (inventoryItem as any).name,
+                qty_requested: 1,
+                qty_pulled: 0,
+                qty_fulfilled: 0,
+                prep_status: 'pending'
+              },
+            ])
+            .select()
+            .maybeSingle();
+
+          if (!createError && createdItem) {
+            resolvedPullSheetItem = createdItem;
+          }
+        } catch (err) {
+          console.warn('Failed to create pull_sheet_item for scanned unit:', err);
+        }
+      }
+
+      // Normalize sheet status string and decide if we're in active pull mode
+      const normalizedStatus = String(sheetStatus || '').toLowerCase();
+      // Treat the sheet as active pull mode only when it is explicitly marked 'active'.
+      // This prevents 'create' / draft flows from behaving like live warehouse picks.
+      const isActivePullMode = scanType === 'pull' && normalizedStatus === 'active';
+
+      // Debug: log resolved mode for easier troubleshooting in the browser console
+      // (remove or lower verbosity later if noisy).
+      // eslint-disable-next-line no-console
+      console.debug('[BarcodeScanner] sheetStatus=', sheetStatus, 'normalized=', normalizedStatus, 'isActivePullMode=', isActivePullMode);
+
       // 3. Check for duplicate scans (unit-level tracking)
-      if (pullSheetItem && scanType === 'pull') {
+      // Ensure we have a resolved pull sheet item first (created above if missing)
+      if (resolvedPullSheetItem && isActivePullMode) {
         const { data: existingScan, error: dupError } = await supabase
           .from('pull_sheet_item_scans')
           .select('*')
-          .eq('pull_sheet_item_id', (pullSheetItem as any).id)
+          .eq('pull_sheet_item_id', (resolvedPullSheetItem as any).id)
           .eq('barcode', barcode.trim())
           .eq('scan_status', 'active')
           .maybeSingle();
@@ -96,12 +144,13 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
       }
 
       // 4. Record the unit scan (for pull operations)
-      if (pullSheetItem && scanType === 'pull') {
+      // Only record unit-level active scans when the pull sheet is in active pull mode
+      if (resolvedPullSheetItem && isActivePullMode) {
         const { error: unitScanError } = await (supabase
           .from('pull_sheet_item_scans') as any)
           .insert([{
             pull_sheet_id: pullSheetId,
-            pull_sheet_item_id: (pullSheetItem as any).id,
+            pull_sheet_item_id: (resolvedPullSheetItem as any).id,
             inventory_item_id: (inventoryItem as any).id,
             barcode: barcode.trim(),
             scan_status: 'active',
@@ -111,10 +160,12 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
         if (unitScanError) {
           console.warn('Error recording unit scan:', unitScanError);
         }
-        // qty_fulfilled auto-updates via trigger
+        // eslint-disable-next-line no-console
+        console.debug('[BarcodeScanner] Recorded unit scan for pull_sheet_item_id=', (resolvedPullSheetItem as any).id);
+        // qty_fulfilled / qty_pulled can be updated by triggers or manually below
       }
 
-      // 5. Record the scan history
+      // 5. Record the scan history (always record history regardless of mode)
       // 5. Record the scan history
       const scanData = {
         pull_sheet_id: pullSheetId,
@@ -134,13 +185,13 @@ export default function BarcodeScanner({ pullSheetId, onScan }: ScannerProps) {
 
       if (scanError) throw scanError;
 
-      // 6. Update pull sheet item qty_pulled if it's a pull scan (legacy tracking)
-      if (pullSheetItem && scanType === 'pull') {
-        const newQtyPulled = ((pullSheetItem as any).qty_pulled || 0) + 1;
+      // 6. Update pull sheet item qty_pulled if it's an active pull scan
+      if (resolvedPullSheetItem && isActivePullMode) {
+        const newQtyPulled = ((resolvedPullSheetItem as any).qty_pulled || 0) + 1;
         await (supabase
           .from('pull_sheet_items') as any)
           .update({ qty_pulled: newQtyPulled })
-          .eq('id', (pullSheetItem as any).id);
+          .eq('id', (resolvedPullSheetItem as any).id);
       }
 
       // 7. Play success sound

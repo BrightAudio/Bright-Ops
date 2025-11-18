@@ -218,7 +218,7 @@ export default function PullSheetsClient({
     : "Ask an owner to grant you pull sheet permissions.";
 
   return (
-    <main className="min-h-screen bg-gray-50 px-6 py-10 text-gray-900">
+    <main className="min-h-screen bg-sky-50 px-6 py-10 text-gray-900">
       <header className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl font-bold">Pull Sheets</h1>

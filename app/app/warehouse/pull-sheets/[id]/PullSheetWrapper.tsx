@@ -2,10 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
-import ProfessionalPullSheet from "@/components/ProfessionalPullSheet";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import PullSheetRedesign from "./PullSheetRedesign";
 
 type Item = {
   id: string;
@@ -113,7 +112,7 @@ export default function PullSheetDetailWrapper() {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="text-lg text-gray-600">Loading pull sheet...</div>
+            <div className="text-lg text-zinc-400">Loading pull sheet...</div>
           </div>
         </div>
       </DashboardLayout>
@@ -125,10 +124,13 @@ export default function PullSheetDetailWrapper() {
       <DashboardLayout>
         <div className="flex items-center justify-center min-h-screen">
           <div className="text-center">
-            <div className="text-lg text-red-600 mb-4">{error || 'Pull sheet not found'}</div>
-            <Link href="/app/warehouse/pull-sheets" className="text-blue-600 hover:underline">
+            <div className="text-lg text-red-400 mb-4">{error || 'Pull sheet not found'}</div>
+            <button 
+              onClick={() => window.location.href = '/app/warehouse/pull-sheets'} 
+              className="text-amber-400 hover:text-amber-300"
+            >
               Back to Pull Sheets
-            </Link>
+            </button>
           </div>
         </div>
       </DashboardLayout>
@@ -136,10 +138,12 @@ export default function PullSheetDetailWrapper() {
   }
 
   return (
-    <ProfessionalPullSheet
-      pullSheet={pullSheet}
-      items={items}
-      onRefresh={loadData}
-    />
+    <DashboardLayout>
+      <PullSheetRedesign
+        pullSheet={pullSheet}
+        items={items}
+        onRefresh={loadData}
+      />
+    </DashboardLayout>
   );
 }

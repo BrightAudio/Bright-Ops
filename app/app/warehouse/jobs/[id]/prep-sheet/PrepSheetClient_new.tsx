@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
@@ -70,32 +70,30 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
         existingPrepSheet = newPrepSheet;
       }
 
-      if (existingPrepSheet) {
-        setPrepSheetId(existingPrepSheet.id);
+      setPrepSheetId(existingPrepSheet.id);
 
-        const { data: itemsData, error: itemsError } = await supabase
-          .from('prep_sheet_items')
-          .select('*, inventory_items(name)')
-          .eq('prep_sheet_id', existingPrepSheet.id);
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('prep_sheet_items')
+        .select('*, inventory_items(name)')
+        .eq('prep_sheet_id', existingPrepSheet.id);
 
-        if (itemsError) throw itemsError;
+      if (itemsError) throw itemsError;
 
-        const prepItems: PrepItem[] = (itemsData || []).map((item: any) => ({
-          id: item.id,
-          inventory_item_id: item.inventory_item_id,
-          item_name: item.inventory_items?.name || 'Unknown Item',
-          required_qty: item.required_qty || 0,
-          picked_qty: item.picked_qty || 0,
-        }));
+      const prepItems: PrepItem[] = (itemsData || []).map((item: any) => ({
+        id: item.id,
+        inventory_item_id: item.inventory_item_id,
+        item_name: item.inventory_items?.name || 'Unknown Item',
+        required_qty: item.required_qty || 0,
+        picked_qty: item.picked_qty || 0,
+      }));
 
-        setPrepSheet({
-          id: existingPrepSheet.id,
-          job_id: jobId,
-          job_code: (jobData as any).code || '',
-          job_title: (jobData as any).title || '',
-          items: prepItems,
-        });
-      }
+      setPrepSheet({
+        id: existingPrepSheet.id,
+        job_id: jobId,
+        job_code: (jobData as any).code || '',
+        job_title: (jobData as any).title || '',
+        items: prepItems,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load prep sheet');
     } finally {
@@ -176,8 +174,7 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
       router.push(`/app/warehouse/pull-sheets/${createdPull.id}`);
     } catch (err) {
       console.error('Failed to finalize prep sheet:', err);
-      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
-      alert(`Failed to finalize to pull sheet: ${errorMsg}`);
+      alert('Failed to finalize to pull sheet');
     }
   };
 
