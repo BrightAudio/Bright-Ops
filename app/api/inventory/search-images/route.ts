@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+// Unsplash API - free tier allows 50 requests per hour
+const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || 'your-access-key-here';
 
 export async function POST(request: NextRequest) {
   try {
@@ -14,93 +15,34 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!OPENAI_API_KEY) {
-      return NextResponse.json(
-        { error: 'OpenAI API key not configured' },
-        { status: 500 }
-      );
-    }
+    // Search Unsplash for product images
+    const searchQuery = encodeURIComponent(itemName + ' professional audio equipment product');
+    const unsplashUrl = `https://api.unsplash.com/search/photos?query=${searchQuery}&per_page=6&orientation=landscape`;
 
-    // Use ChatGPT to search for high-quality product images
-    const prompt = `Find 5 high-quality, clear product images for: "${itemName}"
-
-This is professional audio/video equipment. I need:
-- Clear, professional product photos
-- White or neutral backgrounds preferred
-- Official product images or high-quality stock photos
-- Images showing the full product clearly
-
-Respond with ONLY a JSON array of image URLs (no other text):
-["https://example.com/image1.jpg", "https://example.com/image2.jpg", ...]
-
-If you cannot find suitable images, respond with an empty array: []`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
+    const response = await fetch(unsplashUrl, {
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENAI_API_KEY}`,
+        'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`,
       },
-      body: JSON.stringify({
-        model: 'gpt-4-turbo',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an expert at finding high-quality product images for professional audio and video equipment. You have access to search engines and image databases. Provide direct URLs to clear, professional product photos.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-        temperature: 0.3,
-        max_tokens: 500,
-      }),
     });
 
     if (!response.ok) {
-      console.error('OpenAI API error');
+      console.error('Unsplash API error:', response.statusText);
       return NextResponse.json(
-        { error: 'Image search failed' },
+        { error: 'Image search failed', details: response.statusText },
         { status: 500 }
       );
     }
 
     const data = await response.json();
-    const content = data.choices[0]?.message?.content || '';
-
-    // Parse JSON from response
-    let images: string[] = [];
-    try {
-      // Handle markdown code blocks
-      let jsonStr = content;
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/);
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1].trim();
-      }
-      images = JSON.parse(jsonStr);
-    } catch {
-      // Try to extract JSON array
-      const arrayMatch = content.match(/\[[\s\S]*\]/);
-      if (arrayMatch) {
-        images = JSON.parse(arrayMatch[0]);
-      }
-    }
-
-    // Filter out invalid URLs
-    const validImages = images.filter(url => {
-      try {
-        new URL(url);
-        return url.startsWith('http://') || url.startsWith('https://');
-      } catch {
-        return false;
-      }
-    });
+    
+    // Extract image URLs from Unsplash response
+    const images = data.results?.map((result: any) => result.urls.regular) || [];
 
     return NextResponse.json({
       success: true,
-      images: validImages,
+      images: images.slice(0, 5), // Return top 5 results
       itemName,
+      source: 'Unsplash',
     });
   } catch (error) {
     console.error('Image search error:', error);
