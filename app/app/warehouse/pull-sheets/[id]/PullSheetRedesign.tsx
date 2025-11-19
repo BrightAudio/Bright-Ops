@@ -64,16 +64,19 @@ const getSubcategory = (itemName: string, category: string): string => {
   
   // Audio speaker detection by brand/model
   if (category === 'AUDIO' || category === 'OTHER') {
-    // Subs
-    if (name.includes('b1-15') || name.includes('b112') || name.includes('sub') || 
-        name.includes('b215') || name.includes('sb') || name.includes('bass') ||
-        name.includes('cd18') || name.includes('cd-18')) {
+    // Subs - must check BEFORE tops to avoid misclassification
+    if (name.includes('b1-15') || name.includes('b112') || name.includes('b215') || 
+        name.includes('sb') || name.includes('bass') ||
+        name.includes('cd18') || name.includes('cd-18') || name.includes('cd 18') ||
+        name.includes('nexo cd18') || name.includes('nexo cd-18') || name.includes('nexo cd 18') ||
+        name.includes('subwoofer') || name.match(/\bsub\b/)) {
       return 'Subs';
     }
     // Tops/Speakers
     if (name.includes('arcs') || name.includes('kara') || name.includes('ks') || 
         name.includes('qsc') || name.includes('k12') || name.includes('k10') ||
-        name.includes('srx') || name.includes('vrx') || name.includes('line array')) {
+        name.includes('srx') || name.includes('vrx') || name.includes('line array') ||
+        name.includes('nexo') || name.includes('ps') || name.includes('geo')) {
       return 'Tops';
     }
     // Wedges/Monitors

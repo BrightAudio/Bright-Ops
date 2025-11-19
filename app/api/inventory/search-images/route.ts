@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-// Using Pexels API for image search (free, instant access)
-// Users can configure their API key in Settings > Account > API Keys
+// Using Google Custom Search API for image search
+// Get free API key from: https://developers.google.com/custom-search/v1/overview
+// Create Custom Search Engine: https://programmablesearchengine.google.com/
 
 export async function POST(request: NextRequest) {
   try {
@@ -73,7 +74,19 @@ export async function POST(request: NextRequest) {
       return searchPexels(itemName, PEXELS_API_KEY);
     }
 
-    return searchPexels(itemName, profile.pexels_api_key);
+    // Get Google API credentials
+    const apiKey = process.env.GOOGLE_API_KEY;
+    const searchEngineId = process.env.GOOGLE_SEARCH_ENGINE_ID;
+    
+    if (!apiKey || !searchEngineId) {
+      return NextResponse.json({
+        success: false,
+        error: 'Please configure GOOGLE_API_KEY and GOOGLE_SEARCH_ENGINE_ID in environment variables',
+        images: [],
+      });
+    }
+    
+    return searchGoogle(itemName, apiKey, searchEngineId);
 
   } catch (error) {
     console.error('Image search error:', error);
@@ -84,39 +97,35 @@ export async function POST(request: NextRequest) {
   }
 }
 
-async function searchPexels(itemName: string, apiKey: string) {
-  const searchQuery = encodeURIComponent(itemName);
+async function searchGoogle(itemName: string, apiKey: string, searchEngineId: string) {
+  const searchQuery = encodeURIComponent(`${itemName} professional audio equipment`);
   
-  // Use Pexels API (free, instant access, no waiting period)
-  const pexelsUrl = `https://api.pexels.com/v1/search?query=${searchQuery} audio equipment&per_page=5&orientation=landscape`;
+  // Use Google Custom Search API
+  const googleUrl = `https://www.googleapis.com/customsearch/v1?key=${apiKey}&cx=${searchEngineId}&q=${searchQuery}&searchType=image&num=5&imgSize=large`;
   
-  const response = await fetch(pexelsUrl, {
-    headers: {
-      'Authorization': apiKey,
-    },
-  });
+  const response = await fetch(googleUrl);
 
   if (response.ok) {
     const data = await response.json();
-    const images = data.photos?.map((photo: any) => ({
-      url: photo.src.large,
-      downloadUrl: photo.url,
-      photographer: photo.photographer,
-      photographerUrl: photo.photographer_url,
-      unsplashUrl: photo.url,
+    const images = data.items?.map((item: any) => ({
+      url: item.link,
+      downloadUrl: item.image?.contextLink || item.link,
+      photographer: item.displayLink || 'Unknown',
+      photographerUrl: item.image?.contextLink || '',
+      unsplashUrl: item.link,
     })) || [];
 
     return NextResponse.json({
       success: true,
       images,
       itemName,
-      source: 'Pexels',
+      source: 'Google Images',
     });
   }
 
   return NextResponse.json({
     success: false,
-    error: 'Failed to search Pexels',
+    error: 'Failed to search Google Images',
     images: [],
   });
 }
