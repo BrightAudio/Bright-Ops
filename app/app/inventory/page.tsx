@@ -119,7 +119,7 @@ export default function InventoryPage() {
 	const filteredItems = items
 		?.filter(item => {
 			if (categoryFilter && item.category !== categoryFilter) return false;
-			if (subcategoryFilter && item.gear_type !== subcategoryFilter) return false;
+			if (subcategoryFilter && item.subcategory !== subcategoryFilter) return false;
 			if (maintenanceFilter && item.maintenance_status !== maintenanceFilter) return false;
 			// Filter by location if not "All Locations"
 			if (currentLocation !== "All Locations" && item.location !== currentLocation) return false;
@@ -200,24 +200,19 @@ export default function InventoryPage() {
 					</div>
 					<div>
 						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Category</label>
-						<select
-							value={categoryFilter}
-							onChange={(e) => setCategoryFilter(e.target.value)}
-							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
-						>
-							<option value="">All Categories</option>
-							<option value="monitor_wedges">Monitor Wedges</option>
-							<option value="tops">Tops</option>
-							<option value="subs">Subs</option>
-							<option value="amps">Amps</option>
-							<option value="amprack">Amp Rack</option>
-							<option value="road_cases">Road Cases</option>
-							<option value="lights">Lights</option>
-							<option value="uplights">Uplights</option>
-							<option value="field_audio">Field Audio</option>
-							<option value="column_speakers">Column Speakers</option>
-							<option value="other">Other</option>
-						</select>
+					<select
+						value={categoryFilter}
+						onChange={(e) => setCategoryFilter(e.target.value)}
+						className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+					>
+						<option value="">All Categories</option>
+						<option value="Audio">Audio</option>
+						<option value="Lights">Lights</option>
+						<option value="Video">Video</option>
+						<option value="Stage">Stage</option>
+						<option value="Field Audio">Field Audio</option>
+						<option value="Misc">Misc</option>
+					</select>
 				</div>
 				<div>
 					<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Subcategory</label>
@@ -227,7 +222,7 @@ export default function InventoryPage() {
 						className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
 					>
 						<option value="">All Subcategories</option>
-						{items && Array.from(new Set(items.map(i => i.gear_type).filter((g): g is string => Boolean(g)))).sort().map(subcategory => (
+						{items && Array.from(new Set(items.map(i => i.subcategory).filter((g): g is string => Boolean(g)))).sort().map(subcategory => (
 							<option key={subcategory} value={subcategory}>{subcategory}</option>
 						))}
 					</select>
