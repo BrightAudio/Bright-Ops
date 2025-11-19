@@ -546,6 +546,7 @@ export default function PullSheetRedesign({
                 pullSheetId={pullSheet.id}
                 soundTheme={soundTheme}
                 onScan={async (scan) => {
+                  console.log('🔍 onScan called with:', scan);
                   // Fetch the complete scan with inventory item details
                   if (scan?.id) {
                     const { data } = await supabase
@@ -554,8 +555,10 @@ export default function PullSheetRedesign({
                       .eq('id', scan.id)
                       .single();
                     
+                    console.log('📦 Fetched scan data:', data);
                     if (data) {
                       setLastScan(data);
+                      console.log('✅ Set lastScan to:', data);
                     }
                   }
                   onRefresh();
