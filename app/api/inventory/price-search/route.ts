@@ -41,22 +41,28 @@ function findPriceInDatabase(itemName: string): number | null {
   return null;
 }
 
-async function searchWithChatGPT(itemName: string): Promise<number | null> {
+async function searchWithChatGPT(itemName: string): Promise<{ price: number | null; source: string | null }> {
   if (!OPENAI_API_KEY) {
     return null;
   }
 
   try {
-    const prompt = `You are an audio equipment pricing expert with access to current eBay sold listings. What is the HIGHEST SOLD PRICE on eBay for: "${itemName}"?
+    const prompt = `You are an audio equipment pricing expert with access to current market data. Find pricing for: "${itemName}"
 
-Search eBay's recently sold listings and find the highest price paid for this item in good/excellent condition.
+Search these sources in order:
+1. eBay SOLD listings (highest sold price for good/excellent condition)
+2. eBay ACTIVE listings (current asking prices)
+3. Facebook Marketplace (recent listings)
+4. Reverb.com, Sweetwater, Guitar Center
+
+Provide the BEST/HIGHEST price you find and specify which source.
 
 Respond with ONLY a JSON object (no other text):
-{"price": <number only>}
+{"price": <number only>, "source": "<source name>"}
 
-Example: {"price": 2500}
+Example: {"price": 2500, "source": "eBay Sold Listing"}
 
-If you cannot determine a price from eBay sold listings, respond: {"price": null}`;
+If you cannot determine a price, respond: {"price": null, "source": null}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -69,7 +75,7 @@ If you cannot determine a price from eBay sold listings, respond: {"price": null
         messages: [
           {
             role: 'system',
-            content: 'You are an expert in professional audio equipment pricing with access to eBay sold listings data. Provide accurate highest sold prices from eBay for used equipment in good/excellent condition.',
+            content: 'You are an expert in professional audio equipment pricing with access to eBay (sold and active listings), Facebook Marketplace, Reverb, and other music gear marketplaces. Provide accurate market prices for used equipment in good/excellent condition.',
           },
           {
             role: 'user',
@@ -77,7 +83,7 @@ If you cannot determine a price from eBay sold listings, respond: {"price": null
           },
         ],
         temperature: 0.3,
-        max_tokens: 100,
+        max_tokens: 150,
       }),
     });
 
@@ -109,14 +115,15 @@ If you cannot determine a price from eBay sold listings, respond: {"price": null
     }
 
     const price = priceData.price;
+    const source = priceData.source;
     if (!price || price <= 0) {
-      return null;
+      return { price: null, source: null };
     }
 
-    return price;
+    return { price, source: source || 'ChatGPT Analysis' };
   } catch (error) {
     console.error('ChatGPT pricing error:', error);
-    return null;
+    return { price: null, source: null };
   }
 }
 
@@ -150,8 +157,9 @@ export async function POST(request: NextRequest) {
       }
 
       // Try ChatGPT first
-      let price = await searchWithChatGPT(itemName);
-      let source = 'eBay Highest Sold Price';
+      const chatGPTResult = await searchWithChatGPT(itemName);
+      let price = chatGPTResult.price;
+      let source = chatGPTResult.source || 'Market Search';
       let confidence = 'high';
 
       // Fall back to database

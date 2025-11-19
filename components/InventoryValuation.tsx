@@ -165,48 +165,57 @@ export function InventoryValuation({ items, onUpdate, onSearchItem }: InventoryV
     setMessage(null);
 
     try {
-      const updates = Array.from(selectedItems).map((itemId) => {
+      // Build updates array from selected items with search results
+      const updates = [];
+      for (const itemId of Array.from(selectedItems)) {
         const result = getSearchResult(itemId);
         if (!result || !result.priceResult) {
-          throw new Error(`No price result for item ${itemId}`);
+          console.warn(`No price result for item ${itemId}`);
+          continue;
         }
 
-        return {
+        updates.push({
           itemId,
           marketValue: result.priceResult.price,
           marketSource: result.priceResult.source,
-        };
-      });
+        });
+      }
 
-      const response = await fetch('/api/inventory/search-values', {
+      if (updates.length === 0) {
+        throw new Error('No valid price results to apply');
+      }
+
+      const response = await fetch('/api/inventory/update-values', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          mode: 'update',
-          itemIds: Array.from(selectedItems),
-          updates,
-        }),
+        body: JSON.stringify({ updates }),
       });
 
       if (!response.ok) {
-        throw new Error('Update failed');
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Update failed');
       }
 
       const data = await response.json();
-      const successCount = data.updates.filter((u: { success: boolean }) => u.success).length;
+      const successCount = data.updated || 0;
 
       setMessage({
         type: 'success',
-        text: `Updated ${successCount} items with new market values`,
+        text: `Updated ${successCount} of ${data.total} items with new market values`,
       });
 
       // Reset selection
       setSelectedItems(new Set());
       setSearchResults(new Map());
 
-      // Notify parent component
-      if (onUpdate && data.updates[0]?.data) {
-        onUpdate(data.updates.map((u: { data: InventoryItem }) => u.data));
+      // Notify parent component with updated items
+      if (onUpdate && data.results) {
+        const updatedItems = data.results
+          .filter((r: { success: boolean; data?: InventoryItem }) => r.success && r.data)
+          .map((r: { data: InventoryItem }) => r.data);
+        if (updatedItems.length > 0) {
+          onUpdate(updatedItems);
+        }
       }
     } catch (error) {
       setMessage({
