@@ -76,7 +76,8 @@ const getSubcategory = (itemName: string, category: string): string => {
     if (name.includes('arcs') || name.includes('kara') || name.includes('ks') || 
         name.includes('qsc') || name.includes('k12') || name.includes('k10') ||
         name.includes('srx') || name.includes('vrx') || name.includes('line array') ||
-        name.includes('nexo') || name.includes('ps') || name.includes('geo')) {
+        name.includes('nexo') || name.includes('ps') || name.includes('geo') ||
+        name.includes('eaw') || name.includes('kf650') || name.includes('kf-650') || name.includes('kf 650')) {
       return 'Tops';
     }
     // Wedges/Monitors

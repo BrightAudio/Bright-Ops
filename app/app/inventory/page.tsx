@@ -356,6 +356,20 @@ export default function InventoryPage() {
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
 										className="group bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 hover:border-zinc-600 rounded p-2 cursor-pointer transition-all hover:shadow-lg hover:shadow-zinc-900/50 hover:-translate-y-0.5"
 									>
+										{/* Item Image */}
+										{item.image_url && (
+											<div className="mb-1.5 -mx-2 -mt-2">
+												<img 
+													src={item.image_url}
+													alt={item.name}
+													className="w-full h-24 object-cover rounded-t"
+													onError={(e) => {
+														(e.target as HTMLImageElement).style.display = 'none';
+													}}
+												/>
+											</div>
+										)}
+
 										{/* Top Section: Status Badge & Category */}
 										<div className="flex justify-between items-start mb-1.5">
 											<span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${status.color}`}>
