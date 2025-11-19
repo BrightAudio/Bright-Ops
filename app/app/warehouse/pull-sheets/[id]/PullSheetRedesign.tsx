@@ -149,6 +149,10 @@ export default function PullSheetRedesign({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'completed' | 'not-scanned'>('all');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [forceScannedItemId, setForceScannedItemId] = useState<string | null>(null);
+  const [forceScanQty, setForceScanQty] = useState(1);
+  const [lastTapTime, setLastTapTime] = useState<number>(0);
+  const [lastTapItemId, setLastTapItemId] = useState<string | null>(null);
   const [columnWidths, setColumnWidths] = useState({
     qty: 80,
     description: 300,
@@ -434,8 +438,118 @@ export default function PullSheetRedesign({
     setSelectedItemId(null);
   };
 
+  const handleForceScan = async () => {
+    const item = items.find(i => i.id === forceScannedItemId);
+    if (!item || !forceScannedItemId) return;
+
+    const qtyToAdd = forceScanQty;
+    const currentPulled = item.qty_pulled || 0;
+    const requested = item.qty_requested || 0;
+    const newTotal = currentPulled + qtyToAdd;
+
+    if (newTotal > requested) {
+      if (!confirm(`This will scan ${qtyToAdd} units, bringing total to ${newTotal}/${requested}.\n\nThis exceeds the requested quantity. Continue?`)) {
+        return;
+      }
+    }
+
+    try {
+      setSaving(true);
+      
+      // Update qty_pulled
+      const { error } = await supabase
+        .from('pull_sheet_items')
+        .update({ qty_pulled: newTotal } as any)
+        .eq('id', forceScannedItemId);
+      
+      if (error) throw error;
+
+      // Close modal and reset
+      setForceScannedItemId(null);
+      setForceScanQty(1);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to force scan:', err);
+      alert('Failed to add scans');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleItemClick = (itemId: string) => {
+    const now = Date.now();
+    const DOUBLE_TAP_DELAY = 300; // milliseconds
+
+    // Check for double tap
+    if (lastTapItemId === itemId && (now - lastTapTime) < DOUBLE_TAP_DELAY) {
+      // Double tap detected - open force scan modal
+      const item = items.find(i => i.id === itemId);
+      if (item) {
+        setForceScannedItemId(itemId);
+        setForceScanQty(1);
+        setSelectedItemId(null); // Close action buttons
+      }
+      setLastTapTime(0);
+      setLastTapItemId(null);
+    } else {
+      // Single tap - toggle selection
+      setSelectedItemId(selectedItemId === itemId ? null : itemId);
+      setLastTapTime(now);
+      setLastTapItemId(itemId);
+    }
+  };
+
   return (
     <div className="h-[calc(100vh-4rem)] bg-zinc-900 flex flex-col">
+      {/* Force Scan Modal */}
+      {forceScannedItemId && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-zinc-800 border-2 border-amber-400 rounded-lg p-6 max-w-md w-full mx-4">
+            <h2 className="text-xl font-bold text-white mb-4">Force Scan</h2>
+            <div className="mb-4">
+              <div className="text-zinc-300 mb-2">
+                {items.find(i => i.id === forceScannedItemId)?.inventory_items?.name || 
+                 items.find(i => i.id === forceScannedItemId)?.item_name || 'Unknown Item'}
+              </div>
+              <div className="text-sm text-zinc-400">
+                Current: {items.find(i => i.id === forceScannedItemId)?.qty_pulled || 0} / {items.find(i => i.id === forceScannedItemId)?.qty_requested || 0}
+              </div>
+            </div>
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-zinc-400 mb-2">
+                How many units to scan?
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={forceScanQty}
+                onChange={(e) => setForceScanQty(Math.max(1, parseInt(e.target.value) || 1))}
+                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-600 rounded text-white text-lg font-bold focus:border-amber-400 focus:outline-none"
+                autoFocus
+              />
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setForceScannedItemId(null);
+                  setForceScanQty(1);
+                }}
+                className="flex-1 px-4 py-3 bg-zinc-700 text-white rounded-lg font-semibold hover:bg-zinc-600 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleForceScan}
+                disabled={saving}
+                className="flex-1 px-4 py-3 bg-amber-400 text-black rounded-lg font-semibold hover:bg-amber-500 transition-colors disabled:opacity-50"
+              >
+                {saving ? 'Scanning...' : 'Scan'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Finalized Banner */}
       {(pullSheet.status === 'finalized' || pullSheet.status === 'complete') && (
         <div className="bg-red-600 text-white px-6 py-3 text-center font-bold border-b-2 border-red-700">
@@ -747,7 +861,7 @@ export default function PullSheetRedesign({
                                   return (
                                     <tr 
                                       key={item.id} 
-                                      onClick={() => setSelectedItemId(isSelected ? null : item.id)}
+                                      onClick={() => handleItemClick(item.id)}
                                       className={`transition-colors cursor-pointer ${
                                         isSelected 
                                           ? 'bg-amber-500/20 border-l-4 border-amber-400' 
