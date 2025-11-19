@@ -148,6 +148,7 @@ export default function PullSheetRedesign({
   const [userFullName, setUserFullName] = useState('User');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'completed' | 'not-scanned'>('all');
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [columnWidths, setColumnWidths] = useState({
     qty: 80,
     description: 300,
@@ -373,6 +374,64 @@ export default function PullSheetRedesign({
     } catch (err) {
       console.error('Failed to update notes:', err);
     }
+  };
+
+  const handleUndoScan = async (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    const currentPulled = item.qty_pulled || 0;
+    if (currentPulled === 0) {
+      alert('No scans to undo for this item');
+      return;
+    }
+
+    if (!confirm(`Undo one scan for ${item.inventory_items?.name || item.item_name}?\n\nThis will reduce qty from ${currentPulled} to ${currentPulled - 1}`)) {
+      return;
+    }
+
+    try {
+      setSaving(true);
+      
+      // Reduce qty_pulled by 1
+      const { error } = await supabase
+        .from('pull_sheet_items')
+        .update({ qty_pulled: currentPulled - 1 } as any)
+        .eq('id', itemId);
+      
+      if (error) throw error;
+
+      // Delete the most recent scan for this item
+      if (item.inventory_item_id) {
+        const { error: scanError } = await supabase
+          .from('pull_sheet_item_scans')
+          .delete()
+          .eq('pull_sheet_id', pullSheet.id)
+          .eq('pull_sheet_item_id', itemId)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        if (scanError) console.warn('Failed to delete scan record:', scanError);
+      }
+
+      setSelectedItemId(null);
+      onRefresh();
+    } catch (err) {
+      console.error('Failed to undo scan:', err);
+      alert('Failed to undo scan');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSubstitute = async (itemId: string) => {
+    const item = items.find(i => i.id === itemId);
+    if (!item) return;
+
+    // TODO: Implement substitute dialog
+    // For now, just show a placeholder
+    alert(`Substitute feature for ${item.inventory_items?.name || item.item_name}\n\nThis will allow you to replace this item with a different one from inventory.`);
+    setSelectedItemId(null);
   };
 
   return (
@@ -680,17 +739,54 @@ export default function PullSheetRedesign({
                                   const pulled = item.qty_pulled || 0;
                                   const requested = item.qty_requested || 0;
                                   const isPrepComplete = pulled >= requested;
+                                  const isSelected = selectedItemId === item.id;
 
                                   return (
-                                    <tr key={item.id} className="hover:bg-zinc-800/50 transition-colors">
+                                    <tr 
+                                      key={item.id} 
+                                      onClick={() => setSelectedItemId(isSelected ? null : item.id)}
+                                      className={`transition-colors cursor-pointer ${
+                                        isSelected 
+                                          ? 'bg-amber-500/20 border-l-4 border-amber-400' 
+                                          : 'hover:bg-zinc-800/50'
+                                      }`}
+                                    >
                                       <td 
                                         className="px-4 py-3 border-r border-zinc-700"
                                         style={{ width: `${columnWidths.qty}px` }}
                                       >
-                                        <div className="flex items-center gap-1 text-sm font-mono">
-                                          <span className={pulled >= requested ? 'text-green-400 font-bold' : 'text-white font-bold'}>{pulled}</span>
-                                          <span className="text-zinc-500">/</span>
-                                          <span className="text-zinc-400">{requested}</span>
+                                        <div className="flex items-center justify-between gap-2">
+                                          <div className="flex items-center gap-1 text-sm font-mono">
+                                            <span className={pulled >= requested ? 'text-green-400 font-bold' : 'text-white font-bold'}>{pulled}</span>
+                                            <span className="text-zinc-500">/</span>
+                                            <span className="text-zinc-400">{requested}</span>
+                                          </div>
+                                          {isSelected && (
+                                            <div className="flex gap-1">
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleUndoScan(item.id);
+                                                }}
+                                                disabled={saving || (pulled === 0)}
+                                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded disabled:opacity-50 disabled:cursor-not-allowed"
+                                                title="Undo last scan"
+                                              >
+                                                ↶ Undo
+                                              </button>
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleSubstitute(item.id);
+                                                }}
+                                                disabled={saving}
+                                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded disabled:opacity-50"
+                                                title="Substitute with different item"
+                                              >
+                                                ⇄ Sub
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
                                       </td>
                                       <td 
@@ -707,6 +803,7 @@ export default function PullSheetRedesign({
                                           type="text"
                                           value={item.notes || ''}
                                           onChange={(e) => handleUpdateNotes(item.id, e.target.value)}
+                                          onClick={(e) => e.stopPropagation()}
                                           placeholder="Add notes..."
                                           disabled={pullSheet.status === 'finalized' || pullSheet.status === 'complete'}
                                           className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-600 rounded text-white text-xs focus:border-amber-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
