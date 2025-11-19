@@ -29,6 +29,7 @@ export default function NewInventoryItemPage() {
 		estimated_jobs_per_year: 50,
 		residual_value: 0,
 		category: "",
+		subcategory: "",
 		location: "NEW SOUND Warehouse",
 		tags: [] as string[],
 		image_url: "",
@@ -135,10 +136,11 @@ export default function NewInventoryItemPage() {
 				purchase_cost: form.purchase_cost,
 				purchase_date: form.purchase_date?.trim() || null,
 				useful_life_years: form.useful_life_years,
-				estimated_jobs_per_year: form.estimated_jobs_per_year,
-				residual_value: form.residual_value,
-				category: form.category || null,
-				location: form.location,
+			estimated_jobs_per_year: form.estimated_jobs_per_year,
+			residual_value: form.residual_value,
+			category: form.category || null,
+			subcategory: form.subcategory || null,
+			location: form.location,
 				tags: form.tags,
 				image_url: form.image_url || null,
 				repair_cost: form.repair_cost,
@@ -272,19 +274,47 @@ export default function NewInventoryItemPage() {
 								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
 							>
 								<option value="">Select category...</option>
+								<option value="Audio">Audio</option>
+								<option value="Lights">Lights</option>
+								<option value="Video">Video</option>
+								<option value="Stage">Stage</option>
+								<option value="Field Audio">Field Audio</option>
+								<option value="Misc">Misc</option>
+							</select>
+						</div>
+						<div>
+							<label className="block text-sm font-medium text-zinc-200">
+								Subcategory
+							</label>
+							<select
+								value={form.subcategory}
+								onChange={(e) => handleChange("subcategory", e.target.value)}
+								className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+							>
+								<option value="">Select subcategory...</option>
 								<option value="monitor_wedges">Monitor Wedges</option>
 								<option value="tops">Tops</option>
 								<option value="subs">Subs</option>
 								<option value="amps">Amps</option>
 								<option value="amprack">Amp Rack</option>
+								<option value="mixers">Mixers</option>
+								<option value="active_speakers">Active Speakers</option>
+								<option value="microphones">Microphones</option>
+								<option value="RF">RF</option>
+								<option value="compressors">Compressors</option>
+								<option value="EQ">EQ</option>
+								<option value="interfaces">Interfaces</option>
+								<option value="column_speakers">Column Speakers</option>
 								<option value="road_cases">Road Cases</option>
 								<option value="lights">Lights</option>
 								<option value="uplights">Uplights</option>
 								<option value="field_audio">Field Audio</option>
-								<option value="column_speakers">Column Speakers</option>
 								<option value="other">Other</option>
 							</select>
 						</div>
+					</div>
+
+					<div className="grid grid-cols-2 gap-4 mt-4">
 						<div>
 							<label className="block text-sm font-medium text-zinc-200">
 								Stock Location
@@ -402,7 +432,7 @@ export default function NewInventoryItemPage() {
 				</div>
 
 				{/* Speaker Test Data Section */}
-				{(form.category === "monitor_wedges" || form.category === "tops" || form.category === "subs" || form.category === "column_speakers") && (
+				{(form.subcategory === "monitor_wedges" || form.subcategory === "tops" || form.subcategory === "subs" || form.subcategory === "column_speakers") && (
 					<div className="border-t border-zinc-700 pt-4 mt-4">
 						<h3 className="text-lg font-semibold text-white mb-3">Speaker Test Data</h3>
 						<p className="text-sm text-zinc-400 mb-4">
