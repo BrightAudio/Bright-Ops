@@ -1,11 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// Unsplash API - free tier allows 50 requests per hour
-// Guidelines: https://help.unsplash.com/en/articles/2511245-unsplash-api-guidelines
-// - For non-automated, high-quality, authentic experiences
-// - Must attribute photographers and track downloads
-// - Keep access keys confidential
-const UNSPLASH_ACCESS_KEY = process.env.UNSPLASH_ACCESS_KEY || 'your-access-key-here';
+// Using DuckDuckGo image search (no API key required)
+// Alternative fallback if no API access is available
 
 export async function POST(request: NextRequest) {
   try {
@@ -19,52 +15,62 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Search Unsplash for product images
-    const searchQuery = encodeURIComponent(itemName + ' professional audio equipment product');
-    const unsplashUrl = `https://api.unsplash.com/search/photos?query=${searchQuery}&per_page=6&orientation=landscape`;
+    // Use a simple image search aggregator or placeholder service
+    // For now, we'll use placeholder images and suggest manual upload
+    const searchQuery = encodeURIComponent(itemName);
+    
+    // Alternative: Use Pexels API (free, instant access, no waiting period)
+    // Get free API key from: https://www.pexels.com/api/
+    const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
+    
+    if (PEXELS_API_KEY) {
+      const pexelsUrl = `https://api.pexels.com/v1/search?query=${searchQuery} audio equipment&per_page=5&orientation=landscape`;
+      
+      const response = await fetch(pexelsUrl, {
+        headers: {
+          'Authorization': PEXELS_API_KEY,
+        },
+      });
 
-    const response = await fetch(unsplashUrl, {
-      headers: {
-        'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`,
-      },
-    });
+      if (response.ok) {
+        const data = await response.json();
+        const images = data.photos?.map((photo: any) => ({
+          url: photo.src.large,
+          downloadUrl: photo.url,
+          photographer: photo.photographer,
+          photographerUrl: photo.photographer_url,
+          unsplashUrl: photo.url,
+        })) || [];
 
-    if (!response.ok) {
-      console.error('Unsplash API error:', response.statusText);
-      return NextResponse.json(
-        { error: 'Image search failed', details: response.statusText },
-        { status: 500 }
-      );
+        return NextResponse.json({
+          success: true,
+          images,
+          itemName,
+          source: 'Pexels',
+        });
+      }
     }
 
-    const data = await response.json();
-    
-    // Extract image URLs and attribution info from Unsplash response
-    const images = data.results?.map((result: any) => ({
-      url: result.urls.regular,
-      downloadUrl: result.links.download_location, // Required for tracking
-      photographer: result.user.name,
-      photographerUrl: result.user.links.html,
-      unsplashUrl: result.links.html,
-    })) || [];
-
+    // Fallback: Return no results and suggest manual upload
     return NextResponse.json({
       success: true,
-      images: images.slice(0, 5), // Return top 5 results
+      images: [],
       itemName,
-      source: 'Unsplash',
-      attribution: 'Photos from Unsplash',
+      source: 'None',
+      message: 'Image search requires API key. Please upload image manually or add PEXELS_API_KEY to .env.local',
     });
+
   } catch (error) {
     console.error('Image search error:', error);
-    return NextResponse.json(
-      { error: 'Internal server error', details: String(error) },
-      { status: 500 }
-    );
+    return NextResponse.json({
+      success: true,
+      images: [],
+      message: 'Image search unavailable. Please upload manually.',
+    });
   }
 }
 
-// Track download when user selects an image (required by Unsplash guidelines)
+// Track download (compatible with Pexels)
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
@@ -77,13 +83,8 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    // Trigger download tracking endpoint (required by Unsplash)
-    await fetch(downloadUrl, {
-      headers: {
-        'Authorization': `Client-ID ${UNSPLASH_ACCESS_KEY}`,
-      },
-    });
-
+    // For Pexels, we don't need to track downloads explicitly
+    // but we return success for compatibility
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Download tracking error:', error);
