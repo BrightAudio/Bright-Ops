@@ -25,6 +25,7 @@ import { InventoryValuation } from "@/components/InventoryValuation";
 export default function InventoryPage() {
 	const [search, setSearch] = useState("");
 	const [categoryFilter, setCategoryFilter] = useState("");
+	const [subcategoryFilter, setSubcategoryFilter] = useState("");
 	const [maintenanceFilter, setMaintenanceFilter] = useState("");
 	const [sortBy, setSortBy] = useState("name");
 	const [csvModalOpen, setCsvModalOpen] = useState(false);
@@ -118,6 +119,7 @@ export default function InventoryPage() {
 	const filteredItems = items
 		?.filter(item => {
 			if (categoryFilter && item.category !== categoryFilter) return false;
+			if (subcategoryFilter && item.gear_type !== subcategoryFilter) return false;
 			if (maintenanceFilter && item.maintenance_status !== maintenanceFilter) return false;
 			// Filter by location if not "All Locations"
 			if (currentLocation !== "All Locations" && item.location !== currentLocation) return false;
@@ -185,7 +187,7 @@ export default function InventoryPage() {
 				</div>
 
 				{/* Filters Section */}
-				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
 					<div>
 						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Search</label>
 						<input
@@ -216,13 +218,26 @@ export default function InventoryPage() {
 							<option value="column_speakers">Column Speakers</option>
 							<option value="other">Other</option>
 						</select>
-					</div>
-					<div>
-						<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Status</label>
-						<select
-							value={maintenanceFilter}
-							onChange={(e) => setMaintenanceFilter(e.target.value)}
-							className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+				</div>
+				<div>
+					<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Subcategory</label>
+					<select
+						value={subcategoryFilter}
+						onChange={(e) => setSubcategoryFilter(e.target.value)}
+						className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
+					>
+						<option value="">All Subcategories</option>
+						{items && Array.from(new Set(items.map(i => i.gear_type).filter((g): g is string => Boolean(g)))).sort().map(subcategory => (
+							<option key={subcategory} value={subcategory}>{subcategory}</option>
+						))}
+					</select>
+				</div>
+				<div>
+					<label className="text-xs font-semibold text-zinc-400 uppercase mb-1 block">Status</label>
+					<select
+						value={maintenanceFilter}
+						onChange={(e) => setMaintenanceFilter(e.target.value)}
+						className="w-full px-3 py-2 rounded-lg border border-zinc-700 bg-zinc-800 text-white focus:border-blue-500 focus:outline-none"
 						>
 							<option value="">All Status</option>
 							<option value="operational">✓ Operational</option>
