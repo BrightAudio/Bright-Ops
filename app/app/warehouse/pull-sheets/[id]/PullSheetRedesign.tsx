@@ -16,6 +16,8 @@ type Item = {
     barcode?: string;
     name?: string;
     category?: string;
+    gear_type?: string;
+    image_url?: string;
   };
 };
 
@@ -241,8 +243,6 @@ export default function PullSheetRedesign({
   // Group items by category and subcategory
   const groupedItems: Record<string, Record<string, Item[]>> = {};
   
-  console.log('Pull Sheet Items:', items); // Debug
-  
   filteredItems.forEach(item => {
     // Get category from inventory_items or fallback to AUDIO (most common)
     let category = 'AUDIO';
@@ -255,10 +255,20 @@ export default function PullSheetRedesign({
       category = 'AUDIO'; // Default to AUDIO instead of OTHER
     }
     
+    // Use gear_type from database if available, otherwise try to detect from name
     const itemName = item.inventory_items?.name || item.item_name || 'Unknown Item';
-    const subcategory = getSubcategory(itemName, category);
+    let subcategory = item.inventory_items?.gear_type || '';
     
-    console.log(`Item: ${itemName}, Category: ${category}, Subcategory: ${subcategory}`); // Debug
+    // If no gear_type in database, fall back to detection
+    if (!subcategory) {
+      subcategory = getSubcategory(itemName, category);
+    }
+    
+    // Ensure subcategory exists in our list, or use default
+    const categorySubcats = SUBCATEGORIES[category] || [];
+    if (!categorySubcats.includes(subcategory)) {
+      subcategory = categorySubcats[categorySubcats.length - 1] || 'Other';
+    }
     
     if (!groupedItems[category]) {
       groupedItems[category] = {};
@@ -268,8 +278,6 @@ export default function PullSheetRedesign({
     }
     groupedItems[category][subcategory].push(item);
   });
-  
-  console.log('Grouped Items:', groupedItems); // Debug
 
   const handleActivate = async () => {
     try {
@@ -483,7 +491,7 @@ export default function PullSheetRedesign({
                   if (scan?.id) {
                     const { data } = await supabase
                       .from('pull_sheet_scans')
-                      .select('*, inventory_items(name, barcode, category)')
+                      .select('*, inventory_items(name, barcode, category, gear_type, image_url)')
                       .eq('id', scan.id)
                       .single();
                     
@@ -848,11 +856,18 @@ export default function PullSheetRedesign({
               {lastScan ? (
                 <div className="space-y-4">
                   {/* Item Image */}
-                  <div className="w-full aspect-square bg-zinc-700 rounded-lg flex items-center justify-center">
-                    <div className="text-center text-zinc-500">
-                      <div className="text-4xl mb-2">📦</div>
-                      <div className="text-sm">Picture Unavailable</div>
-                    </div>
+                  <div className="w-full aspect-square bg-zinc-700 rounded-lg flex items-center justify-center overflow-hidden">
+                    {lastScan.inventory_items?.image_url ? (
+                      <img 
+                        src={lastScan.inventory_items.image_url} 
+                        alt={lastScan.inventory_items?.name || 'Item'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center text-zinc-500">
+                        <div className="text-sm">No Image Available</div>
+                      </div>
+                    )}
                   </div>
 
                   {/* Item Details */}

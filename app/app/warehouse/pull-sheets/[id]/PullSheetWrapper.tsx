@@ -83,7 +83,7 @@ export default function PullSheetDetailWrapper() {
         .from('pull_sheet_items')
         .select(`
           *,
-          inventory_items (barcode, name, category)
+          inventory_items (barcode, name, category, gear_type, image_url)
         `)
         .eq('pull_sheet_id', pullSheetId)
         .order('sort_index', { ascending: true });
