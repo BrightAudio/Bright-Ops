@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
 import { createPullSheet } from "@/lib/hooks/usePullSheets";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Plus, Search, FileText, Undo2, Truck } from "lucide-react";
+import { Plus, Search, FileText, Undo2, Truck, X } from "lucide-react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 const STATUS_OPTIONS = [
@@ -22,15 +22,42 @@ export default function JobsPage() {
   const [status, setStatus] = useState("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showArchived, setShowArchived] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [form, setForm] = useState({ code: "", title: "", client: "" });
+  const [showModal, setShowModal] = useState(false);
+  const [form, setForm] = useState({ code: "", title: "", client: "", startDate: "", endDate: "" });
   const [creating, setCreating] = useState(false);
   const [creatingPullSheet, setCreatingPullSheet] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
+  
+  // Client/Venue modal state
+  const [showClientModal, setShowClientModal] = useState(false);
+  const [clientForm, setClientForm] = useState({ phone: "", email: "", venueId: "" });
+  const [venues, setVenues] = useState<any[]>([]);
+  const [loadingVenues, setLoadingVenues] = useState(false);
+  
   const { data: allJobs, loading, reload } = useJobs({ search, status });
   
   // Filter jobs by archived status
   const jobs = allJobs?.filter(job => showArchived ? (job as any).archived === true : !(job as any).archived);
+  
+  // Load venues for dropdown
+  useEffect(() => {
+    async function loadVenues() {
+      setLoadingVenues(true);
+      try {
+        const { data, error } = await supabase
+          .from('venues')
+          .select('id, name, address, city, state')
+          .order('name');
+        if (error) throw error;
+        setVenues(data || []);
+      } catch (err) {
+        console.error('Error loading venues:', err);
+      } finally {
+        setLoadingVenues(false);
+      }
+    }
+    loadVenues();
+  }, []);
 
   // Calculate summary stats
   const stats = {
@@ -53,12 +80,89 @@ export default function JobsPage() {
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
+    
+    // Check if client already exists
+    const { data: existingClient } = await (supabase
+      .from('clients') as any)
+      .select('id, name, email, phone')
+      .ilike('name', form.client.trim())
+      .maybeSingle();
+    
+    if (!existingClient) {
+      // New client - show modal to collect phone, email, venue
+      setShowClientModal(true);
+    } else {
+      // Existing client - create job directly
+      await createJobWithClient(existingClient.id, null);
+    }
+  }
+  
+  async function handleClientInfoSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setCreating(true);
+    
+    try {
+      // Create new client
+      const { data: newClient, error: clientError } = await (supabase
+        .from('clients') as any)
+        .insert([{
+          name: form.client.trim(),
+          phone: clientForm.phone.trim() || null,
+          email: clientForm.email.trim() || null,
+        }])
+        .select()
+        .single();
+      
+      if (clientError) throw clientError;
+      
+      // Link client to venue if selected
+      if (clientForm.venueId) {
+        await (supabase
+          .from('client_venues') as any)
+          .insert([{
+            client_id: newClient.id,
+            venue_id: clientForm.venueId,
+            is_primary: true,
+          }]);
+      }
+      
+      // Create job with new client
+      await createJobWithClient(newClient.id, clientForm.venueId || null);
+      
+      // Close modals and reset
+      setShowClientModal(false);
+      setClientForm({ phone: "", email: "", venueId: "" });
+    } catch (err) {
+      console.error('Error creating client:', err);
+      alert('Failed to create client: ' + (err as Error).message);
+    } finally {
+      setCreating(false);
+    }
+  }
+  
+  async function createJobWithClient(clientId: string, venueId: string | null) {
     setCreating(true);
     try {
-      await createJob(form);
-      setForm({ code: "", title: "", client: "" });
-      setShowForm(false);
+      const jobData: any = {
+        code: form.code.trim(),
+        title: form.title.trim() || null,
+        client: form.client.trim(),
+        client_id: clientId,
+        venue_id: venueId,
+        start_at: form.startDate || null,
+        end_at: form.endDate || null,
+        status: 'draft',
+      };
+      
+      await createJob(jobData);
+      
+      // Reset form and close modal
+      setForm({ code: "", title: "", client: "", startDate: "", endDate: "" });
+      setShowModal(false);
       reload();
+    } catch (err) {
+      console.error('Error creating job:', err);
+      alert('Failed to create job: ' + (err as Error).message);
     } finally {
       setCreating(false);
     }
@@ -203,47 +307,12 @@ export default function JobsPage() {
           </Link>
           <button
             className="flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-400"
-            onClick={() => setShowForm((v) => !v)}
+            onClick={() => setShowModal(true)}
           >
             <Plus size={18} /> New Job
           </button>
         </div>
       </div>
-      {showForm && (
-        <form
-          className="bg-zinc-800 p-4 rounded mb-6 flex gap-4 items-end"
-          onSubmit={handleCreate}
-        >
-          <input
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-            placeholder="Code"
-            value={form.code}
-            onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-            required
-          />
-          <input
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-            placeholder="Title"
-            value={form.title}
-            onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-            required
-          />
-          <input
-            className="bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-            placeholder="Client"
-            value={form.client}
-            onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
-            required
-          />
-          <button
-            type="submit"
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
-            disabled={creating}
-          >
-            {creating ? "Creating..." : "Create"}
-          </button>
-        </form>
-      )}
       <div className="flex gap-4 mb-6">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
@@ -366,6 +435,203 @@ export default function JobsPage() {
               </div>
             </div>
           ))}
+        </div>
+      )}
+      
+      {/* New Job Modal */}
+      {showModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-amber-400">Create New Job</h2>
+              <button
+                onClick={() => setShowModal(false)}
+                className="text-zinc-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Job Code *
+                </label>
+                <input
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="e.g., JOB-001"
+                  value={form.code}
+                  onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Job Title *
+                </label>
+                <input
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="e.g., Conference Setup"
+                  value={form.title}
+                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                  required
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Client Name *
+                </label>
+                <input
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="Enter client name"
+                  value={form.client}
+                  onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
+                  required
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  If this is a new client, you'll be prompted for contact details
+                </p>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Start Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  value={form.startDate}
+                  onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  End Date
+                </label>
+                <input
+                  type="date"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  value={form.endDate}
+                  onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                />
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-amber-500 text-black px-4 py-2 rounded font-semibold hover:bg-amber-400"
+                  disabled={creating}
+                >
+                  {creating ? "Creating..." : "Create Job"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowModal(false)}
+                  className="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      
+      {/* Client Info Modal */}
+      {showClientModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-zinc-700">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-amber-400">New Client Details</h2>
+              <button
+                onClick={() => {
+                  setShowClientModal(false);
+                  setClientForm({ phone: "", email: "", venueId: "" });
+                }}
+                className="text-zinc-400 hover:text-white"
+              >
+                <X size={24} />
+              </button>
+            </div>
+            
+            <p className="text-zinc-300 mb-4">
+              <strong>{form.client}</strong> is a new client. Please provide their contact information:
+            </p>
+            
+            <form onSubmit={handleClientInfoSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Phone Number
+                </label>
+                <input
+                  type="tel"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="(555) 123-4567"
+                  value={clientForm.phone}
+                  onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Email Address
+                </label>
+                <input
+                  type="email"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="client@example.com"
+                  value={clientForm.email}
+                  onChange={e => setClientForm(f => ({ ...f, email: e.target.value }))}
+                />
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Venue
+                </label>
+                <select
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  value={clientForm.venueId}
+                  onChange={e => setClientForm(f => ({ ...f, venueId: e.target.value }))}
+                >
+                  <option value="">Select a venue (optional)</option>
+                  {venues.map(venue => (
+                    <option key={venue.id} value={venue.id}>
+                      {venue.name} {venue.city && `- ${venue.city}, ${venue.state}`}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-zinc-500 mt-1">
+                  You can add venues later in the Venues section
+                </p>
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-500"
+                  disabled={creating}
+                >
+                  {creating ? "Creating..." : "Save & Create Job"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowClientModal(false);
+                    setClientForm({ phone: "", email: "", venueId: "" });
+                  }}
+                  className="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          </div>
         </div>
       )}
     </div>
