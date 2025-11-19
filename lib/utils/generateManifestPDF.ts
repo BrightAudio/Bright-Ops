@@ -8,8 +8,8 @@
  * - Complete item list with quantities
  */
 
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 export interface ManifestData {
   pullSheet: {
@@ -192,7 +192,7 @@ export function generateManifestPDF(data: ManifestData): void {
     item.notes || ''
   ]);
 
-  (doc as any).autoTable({
+  autoTable(doc, {
     startY: yPos,
     head: [['Qty', 'Item', 'Category', 'Barcode', 'Notes']],
     body: tableData,
@@ -218,7 +218,7 @@ export function generateManifestPDF(data: ManifestData): void {
 
   // Footer with notes if present
   if (data.pullSheet.notes) {
-    const finalY = (doc as any).lastAutoTable.finalY || yPos + 60;
+    const finalY = (doc as any).lastAutoTable?.finalY || yPos + 60;
     doc.setFontSize(10);
     doc.setFont('helvetica', 'bold');
     doc.text('Notes:', 14, finalY + 10);
