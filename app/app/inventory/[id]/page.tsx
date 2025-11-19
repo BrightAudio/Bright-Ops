@@ -68,7 +68,13 @@ export default function EditInventoryItemPage() {
 	const [originalBarcode, setOriginalBarcode] = useState("");
 	const [uploadingImage, setUploadingImage] = useState(false);
 	const [searchingImages, setSearchingImages] = useState(false);
-	const [imageSearchResults, setImageSearchResults] = useState<string[]>([]);
+	const [imageSearchResults, setImageSearchResults] = useState<Array<{
+		url: string;
+		downloadUrl: string;
+		photographer: string;
+		photographerUrl: string;
+		unsplashUrl: string;
+	}>>([]);
 
 	// Populate form when item loads
 	useEffect(() => {
@@ -225,10 +231,21 @@ export default function EditInventoryItemPage() {
 		}
 	}
 
-	async function handleSelectSearchedImage(imageUrl: string) {
-		setForm((prev) => ({ ...prev, image_url: imageUrl }));
+	async function handleSelectSearchedImage(image: { url: string; downloadUrl: string; photographer: string }) {
+		// Track download with Unsplash (required by their guidelines)
+		try {
+			await fetch('/api/inventory/search-images', {
+				method: 'PUT',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ downloadUrl: image.downloadUrl }),
+			});
+		} catch (err) {
+			console.error('Failed to track download:', err);
+		}
+
+		setForm((prev) => ({ ...prev, image_url: image.url }));
 		setImageSearchResults([]);
-		setLocalError('Image selected! Click Save to update.');
+		setLocalError(`Image by ${image.photographer} selected! Click Save to update.`);
 		setTimeout(() => setLocalError(null), 3000);
 	}
 
@@ -430,22 +447,23 @@ export default function EditInventoryItemPage() {
 						{/* Image Search Results */}
 						{imageSearchResults.length > 0 && (
 							<div className="mt-3 space-y-2">
-								<p className="text-xs font-medium text-zinc-400">Select an image:</p>
+								<p className="text-xs font-medium text-zinc-400">Select an image (from Unsplash):</p>
 								<div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
-									{imageSearchResults.map((imageUrl, index) => (
+									{imageSearchResults.map((image, index) => (
 										<div
 											key={index}
-											onClick={() => handleSelectSearchedImage(imageUrl)}
-											className="cursor-pointer bg-zinc-800 p-2 rounded border border-zinc-700 hover:border-blue-500 transition"
+											onClick={() => handleSelectSearchedImage(image)}
+											className="cursor-pointer bg-zinc-800 p-2 rounded border border-zinc-700 hover:border-blue-500 transition group"
 										>
 											<img
-												src={imageUrl}
+												src={image.url}
 												alt={`Result ${index + 1}`}
-												className="w-full h-20 object-contain rounded"
+												className="w-full h-20 object-contain rounded mb-1"
 												onError={(e) => {
 													(e.target as HTMLImageElement).style.display = 'none';
 												}}
 											/>
+											<p className="text-xs text-zinc-500 truncate">by {image.photographer}</p>
 										</div>
 									))}
 								</div>
