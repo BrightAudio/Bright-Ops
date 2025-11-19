@@ -88,13 +88,6 @@ export default function PullSheetDetailWrapper() {
         .eq('pull_sheet_id', pullSheetId)
         .order('sort_index', { ascending: true });
 
-      console.log('=== PULL SHEET DATA DEBUG ===');
-      console.log('Pull Sheet ID:', pullSheetId);
-      console.log('Items Query Result:', itemsData);
-      console.log('Items Error:', itemsError);
-      console.log('Items Count:', itemsData?.length || 0);
-      console.log('============================');
-
       if (itemsError) {
         console.error('Items error:', itemsError);
         throw new Error(itemsError.message || 'Failed to load items');
