@@ -53,11 +53,14 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
       if (jobError) throw jobError;
       if (!jobData) throw new Error('Job not found');
 
-      let { data: existingPrepSheet } = await supabase
+      // Get all prep sheets for this job (use latest one)
+      const { data: allPrepSheets } = await supabase
         .from('prep_sheets')
         .select('*')
         .eq('job_id', jobId)
-        .maybeSingle();
+        .order('created_at', { ascending: false });
+
+      let existingPrepSheet = allPrepSheets && allPrepSheets.length > 0 ? allPrepSheets[0] : null;
 
       if (!existingPrepSheet) {
         const { data: newPrepSheet, error: createError } = await supabase

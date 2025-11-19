@@ -63,7 +63,8 @@ const getSubcategory = (itemName: string, category: string): string => {
   if (category === 'AUDIO' || category === 'OTHER') {
     // Subs
     if (name.includes('b1-15') || name.includes('b112') || name.includes('sub') || 
-        name.includes('b215') || name.includes('sb') || name.includes('bass')) {
+        name.includes('b215') || name.includes('sb') || name.includes('bass') ||
+        name.includes('cd18') || name.includes('cd-18')) {
       return 'Subs';
     }
     // Tops/Speakers
@@ -142,6 +143,7 @@ export default function PullSheetRedesign({
   const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
   const [soundTheme, setSoundTheme] = useState<'ding' | 'voice'>('ding');
   const [userName, setUserName] = useState('User');
+  const [userFullName, setUserFullName] = useState('User');
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'completed' | 'not-scanned'>('all');
   const [columnWidths, setColumnWidths] = useState({
@@ -157,14 +159,65 @@ export default function PullSheetRedesign({
       const { data: { user } } = await supabase.auth.getUser();
       if (user?.email) {
         setUserName(user.email.split('@')[0]);
+        
+        // Try to get name from user metadata first
+        let fullName = user.user_metadata?.full_name || 
+                       user.user_metadata?.name ||
+                       (user.user_metadata?.first_name && user.user_metadata?.last_name 
+                         ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
+                         : null);
+        
+        // If not in metadata, try profiles table
+        if (!fullName) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('full_name, first_name, last_name')
+            .eq('id', user.id)
+            .maybeSingle();
+          
+          if (profile?.full_name) {
+            fullName = profile.full_name;
+          } else if (profile?.first_name && profile?.last_name) {
+            fullName = `${profile.first_name} ${profile.last_name}`;
+          }
+        }
+        
+        // Fallback to email username
+        setUserFullName(fullName || user.email.split('@')[0]);
       }
     }
     getUser();
   }, []);
 
+  // Calculate progress
   const totalRequested = items.reduce((sum, item) => sum + (item.qty_requested || 0), 0);
   const totalPulled = items.reduce((sum, item) => sum + (item.qty_pulled || 0), 0);
   const progress = totalRequested > 0 ? Math.round((totalPulled / totalRequested) * 100) : 0;
+
+  // Check for completion whenever items change
+  useEffect(() => {
+    // Don't prompt if already finalized
+    if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
+      return;
+    }
+    
+    const allComplete = items.length > 0 && items.every(item => 
+      (item.qty_pulled || 0) >= (item.qty_requested || 0)
+    );
+    
+    if (allComplete && progress === 100) {
+      const sessionKey = `pull-sheet-${pullSheet.id}-prompted`;
+      const hasPrompted = sessionStorage.getItem(sessionKey);
+      if (!hasPrompted) {
+        sessionStorage.setItem(sessionKey, 'true');
+        setTimeout(() => {
+          if (confirm(`All items scanned! Ready to finalize pull sheet?\n\nCompleted by: ${userFullName}`)) {
+            handleFinalize();
+          }
+        }, 500);
+      }
+    }
+  }, [items, progress, pullSheet.id, pullSheet.status, userFullName]);
 
   // Filter items based on search and filter mode
   let filteredItems = items;
@@ -234,22 +287,54 @@ export default function PullSheetRedesign({
   };
 
   const handleFinalize = async () => {
-    const confirmed = window.confirm('Finalize this pull sheet?');
-    if (!confirmed) return;
-
     try {
       setSaving(true);
       const { error } = await supabase
         .from('pull_sheets')
-        .update({ status: 'finalized' } as any)
+        .update({ 
+          status: 'finalized',
+          finalized_by: userFullName,
+          finalized_at: new Date().toISOString()
+        } as any)
         .eq('id', pullSheet.id);
       
       if (error) throw error;
-      alert('Pull sheet finalized!');
-      router.push('/app/warehouse/pull-sheets');
+      onRefresh();
+      alert('Pull sheet finalized successfully!');
     } catch (err) {
       console.error('Failed to finalize:', err);
       alert('Failed to finalize pull sheet');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleReopen = async () => {
+    if (!confirm('Reopen this finalized pull sheet? This will change status back to active.')) {
+      return;
+    }
+    
+    try {
+      setSaving(true);
+      const { error } = await supabase
+        .from('pull_sheets')
+        .update({ 
+          status: 'active',
+          finalized_by: null,
+          finalized_at: null
+        } as any)
+        .eq('id', pullSheet.id);
+      
+      if (error) throw error;
+      
+      // Clear the session storage prompt flag
+      sessionStorage.removeItem(`pull-sheet-${pullSheet.id}-prompted`);
+      
+      onRefresh();
+      alert('Pull sheet reopened successfully!');
+    } catch (err) {
+      console.error('Failed to reopen:', err);
+      alert('Failed to reopen pull sheet');
     } finally {
       setSaving(false);
     }
@@ -284,9 +369,16 @@ export default function PullSheetRedesign({
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-zinc-900 flex flex-col">
+      {/* Finalized Banner */}
+      {(pullSheet.status === 'finalized' || pullSheet.status === 'complete') && (
+        <div className="bg-red-600 text-white px-6 py-3 text-center font-bold border-b-2 border-red-700">
+          FINALIZED BY {(pullSheet as any).finalized_by || 'Unknown'} ON {(pullSheet as any).finalized_at ? new Date((pullSheet as any).finalized_at).toLocaleString() : 'Unknown Date'}
+        </div>
+      )}
+      
       {/* Pull Sheet Header */}
       <div className="bg-zinc-800 border-b border-zinc-700 flex-shrink-0">
-        <div className="flex items-center justify-between px-6 py-2">
+        <div className="flex items-center justify-between px-6 py-2 relative">
           {/* Left: Job Title with Border */}
           <div className="border-2 border-zinc-600 rounded px-4 py-2 bg-zinc-750">
             <h1 className="text-lg font-bold text-white">
@@ -297,6 +389,13 @@ export default function PullSheetRedesign({
             </h1>
           </div>
 
+          {/* Center: Progress Percentage - Fixed Position */}
+          <div className="px-6 py-2 border-2 border-zinc-600 rounded-lg bg-zinc-800">
+            <div className="text-2xl font-bold text-white tabular-nums">
+              {progress}%
+            </div>
+          </div>
+
           {/* Right: Last Scan Header */}
           <div className="flex items-center gap-4">
             <div className="h-8 w-px bg-zinc-600"></div>
@@ -304,23 +403,12 @@ export default function PullSheetRedesign({
           </div>
         </div>
 
-        {/* Progress Bar */}
-        <div className="px-6 pb-2">
-          <div className="flex items-center gap-4">
-            <div className="flex-1 h-6 bg-zinc-700 rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-amber-400 to-amber-500 transition-all duration-500 flex items-center justify-center"
-                style={{ width: `${progress}%` }}
-              >
-                {progress > 10 && (
-                  <span className="text-sm font-bold text-black">{progress}%</span>
-                )}
-              </div>
-            </div>
-            {progress <= 10 && (
-              <span className="text-sm font-bold text-amber-400 min-w-[3rem]">{progress}%</span>
-            )}
-          </div>
+        {/* Blue Progress Bar */}
+        <div className="h-3 bg-zinc-700">
+          <div 
+            className="h-full bg-blue-500 transition-all duration-500 shadow-lg shadow-blue-500/50"
+            style={{ width: `${progress}%` }}
+          />
         </div>
 
         {/* Navigation Tabs */}
@@ -376,28 +464,26 @@ export default function PullSheetRedesign({
               scrollbar-width: none;
             }
           `}</style>
-          {/* Barcode Scanner */}
+          {/* Barcode Scanner or Reopen Button */}
           <div className="p-3 border-b border-zinc-700 bg-zinc-800">
-            <BarcodeScanner
-              pullSheetId={pullSheet.id}
-              soundTheme={soundTheme}
-              onScan={(scan) => {
-                setLastScan(scan);
-                onRefresh();
-                
-                // Check if all items are now complete
-                setTimeout(() => {
-                  const allComplete = items.every(item => 
-                    (item.qty_pulled || 0) >= (item.qty_requested || 0)
-                  );
-                  if (allComplete && items.length > 0) {
-                    if (confirm(`All items scanned! Ready to finalize pull sheet?\n\nCompleted by: ${userName}`)) {
-                      handleFinalize();
-                    }
-                  }
-                }, 500);
-              }}
-            />
+            {(pullSheet.status === 'finalized' || pullSheet.status === 'complete') ? (
+              <button
+                onClick={handleReopen}
+                disabled={saving}
+                className="w-full px-4 py-3 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors disabled:opacity-50"
+              >
+                Reopen Pull Sheet
+              </button>
+            ) : (
+              <BarcodeScanner
+                pullSheetId={pullSheet.id}
+                soundTheme={soundTheme}
+                onScan={(scan) => {
+                  setLastScan(scan);
+                  onRefresh();
+                }}
+              />
+            )}
           </div>
 
           {view === 'pullsheet' && (
@@ -405,14 +491,24 @@ export default function PullSheetRedesign({
               {/* Search, Filter, and Refresh Controls */}
               <div className="p-3 border-b border-zinc-700 bg-zinc-800 flex items-center gap-3">
                 {/* Search Bar */}
-                <div className="flex-1">
+                <div className="flex-1 relative">
                   <input
                     type="text"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     placeholder="Search items, barcodes, notes..."
-                    className="w-full px-3 py-2 bg-zinc-900 border border-zinc-600 rounded text-white text-sm focus:border-amber-400 focus:outline-none"
+                    className="w-full px-3 py-2 pr-8 bg-zinc-900 border border-zinc-600 rounded text-white text-sm focus:border-amber-400 focus:outline-none"
                   />
+                  {searchQuery && (
+                    <button
+                      onClick={() => setSearchQuery('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    >
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  )}
                 </div>
                 
                 {/* Filter Dropdown */}
@@ -593,7 +689,8 @@ export default function PullSheetRedesign({
                                           value={item.notes || ''}
                                           onChange={(e) => handleUpdateNotes(item.id, e.target.value)}
                                           placeholder="Add notes..."
-                                          className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-600 rounded text-white text-xs focus:border-amber-400 focus:outline-none"
+                                          disabled={pullSheet.status === 'finalized' || pullSheet.status === 'complete'}
+                                          className="w-full px-3 py-1.5 bg-zinc-900 border border-zinc-600 rounded text-white text-xs focus:border-amber-400 focus:outline-none disabled:opacity-50 disabled:cursor-not-allowed"
                                         />
                                       </td>
                                       <td 
@@ -628,10 +725,78 @@ export default function PullSheetRedesign({
           )}
 
           {view === 'manifest' && (
-            <div className="p-4">
-              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-8 text-center">
-                <h3 className="text-lg font-semibold text-white mb-2">Manifest Preview</h3>
-                <p className="text-zinc-400 text-sm">PDF preview for client and driver</p>
+            <div className="p-4 space-y-4">
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-xl font-semibold text-white">Pull Sheet Manifest</h3>
+                  <div className="text-sm text-zinc-400">
+                    Job: {pullSheet.jobs?.code || 'N/A'}
+                  </div>
+                </div>
+                
+                <div className="space-y-3">
+                  {items.length === 0 ? (
+                    <p className="text-zinc-400 text-sm text-center py-8">No items on this pull sheet</p>
+                  ) : (
+                    items.map(item => {
+                      const itemName = item.inventory_items?.name || item.item_name || 'Unknown Item';
+                      const barcode = item.inventory_items?.barcode || '';
+                      const pulled = item.qty_pulled || 0;
+                      const requested = item.qty_requested || 0;
+                      const isComplete = pulled >= requested;
+                      
+                      return (
+                        <div 
+                          key={item.id} 
+                          className={`p-4 rounded-lg border-2 transition-colors ${
+                            isComplete 
+                              ? 'bg-green-500/10 border-green-500/50' 
+                              : 'bg-zinc-750 border-zinc-600'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-white text-lg">{itemName}</div>
+                              <div className="text-xs text-zinc-400 font-mono mt-1">{barcode || 'No barcode'}</div>
+                              {item.notes && (
+                                <div className="text-sm text-amber-400 mt-2">
+                                  📝 {item.notes}
+                                </div>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-4">
+                              <div className="text-right">
+                                <div className="text-sm text-zinc-400">Quantity</div>
+                                <div className="text-2xl font-bold font-mono">
+                                  <span className={isComplete ? 'text-green-400' : 'text-white'}>{pulled}</span>
+                                  <span className="text-zinc-500">/</span>
+                                  <span className="text-zinc-400">{requested}</span>
+                                </div>
+                              </div>
+                              {isComplete && (
+                                <div className="text-green-400 text-2xl">✓</div>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+                
+                <div className="mt-6 pt-4 border-t border-zinc-700">
+                  <div className="flex justify-between items-center">
+                    <div className="text-sm text-zinc-400">
+                      Total Items: {items.length}
+                    </div>
+                    <div className="text-sm text-zinc-400">
+                      Scanned: {items.filter(i => (i.qty_pulled || 0) > 0).length} / {items.length}
+                    </div>
+                    <div className="text-sm text-zinc-400">
+                      Progress: {progress}%
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           )}

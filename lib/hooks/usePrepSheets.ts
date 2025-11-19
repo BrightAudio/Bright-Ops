@@ -118,21 +118,28 @@ export async function completePrepSheet(prepSheetId: string) {
 }
 
 export async function finalizePrepSheetByJob(jobId: string) {
+  console.log('🚀 finalizePrepSheetByJob START - Job ID:', jobId);
+  
   try {
-    // Find the prep_sheet for this job
+    // Find the prep_sheet for this job (use latest one if multiple exist)
     const prepRes = await supabase
       .from('prep_sheets')
       .select('*')
       .eq('job_id', jobId)
-      .maybeSingle();
+      .order('created_at', { ascending: false })
+      .limit(1);
+    
+    console.log('📋 Prep sheet query result:', prepRes);
     
     if (prepRes.error) {
       console.error('Error fetching prep sheet:', prepRes.error);
       throw new Error(`Failed to fetch prep sheet: ${prepRes.error.message}`);
     }
     
-    const prep = prepRes.data;
+    const prep = prepRes.data && prepRes.data.length > 0 ? prepRes.data[0] : null;
     if (!prep) throw new Error('Prep sheet not found for job');
+
+    console.log('✅ Found prep sheet:', prep.id);
 
     // Load prep items
     const itemsRes = await supabase
@@ -167,7 +174,7 @@ export async function finalizePrepSheetByJob(jobId: string) {
       .insert([{
         name: pullName,
         job_id: jobId,
-        status: 'draft',
+        status: 'active',  // Set to active so scanning works immediately
         scheduled_out_at: (jobData as any)?.start_at ?? null,
         expected_return_at: (jobData as any)?.end_at ?? null,
         notes: (jobData as any)?.notes ?? null,
@@ -197,6 +204,12 @@ export async function finalizePrepSheetByJob(jobId: string) {
       });
     }
 
+    console.log('=== CREATE PULL SHEET DEBUG ===');
+    console.log('Prep sheet items count:', items.length);
+    console.log('Items to insert:', itemsToInsert);
+    console.log('Pull sheet ID:', createdPull.id);
+    console.log('==============================');
+
     if (itemsToInsert.length > 0) {
       const { error: itemsErr } = await supabase
         .from('pull_sheet_items')
@@ -205,7 +218,11 @@ export async function finalizePrepSheetByJob(jobId: string) {
       if (itemsErr) {
         console.error('Error inserting pull sheet items:', itemsErr);
         throw new Error(`Failed to insert pull sheet items: ${itemsErr.message}`);
+      } else {
+        console.log('✅ Successfully inserted', itemsToInsert.length, 'pull sheet items');
       }
+    } else {
+      console.warn('⚠️ No items to insert into pull sheet!');
     }
 
     return createdPull as any;
