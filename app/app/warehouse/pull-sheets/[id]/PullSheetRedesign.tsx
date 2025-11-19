@@ -478,8 +478,19 @@ export default function PullSheetRedesign({
               <BarcodeScanner
                 pullSheetId={pullSheet.id}
                 soundTheme={soundTheme}
-                onScan={(scan) => {
-                  setLastScan(scan);
+                onScan={async (scan) => {
+                  // Fetch the complete scan with inventory item details
+                  if (scan?.id) {
+                    const { data } = await supabase
+                      .from('pull_sheet_scans')
+                      .select('*, inventory_items(name, barcode, category)')
+                      .eq('id', scan.id)
+                      .single();
+                    
+                    if (data) {
+                      setLastScan(data);
+                    }
+                  }
                   onRefresh();
                 }}
               />
@@ -847,7 +858,16 @@ export default function PullSheetRedesign({
                   {/* Item Details */}
                   <div>
                     <div className="text-sm text-zinc-400 mb-1">Item</div>
-                    <div className="text-lg font-semibold text-white">{lastScan.item_name || 'Unknown'}</div>
+                    <div className="text-lg font-semibold text-white">
+                      {lastScan.inventory_items?.name || 'Unknown'}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-zinc-400 mb-1">Barcode</div>
+                    <div className="text-sm font-mono text-white">
+                      {lastScan.barcode || '-'}
+                    </div>
                   </div>
 
                   <div>
@@ -857,7 +877,9 @@ export default function PullSheetRedesign({
 
                   <div>
                     <div className="text-sm text-zinc-400 mb-1">Scanned</div>
-                    <div className="text-sm text-zinc-300">{new Date().toLocaleTimeString()}</div>
+                    <div className="text-sm text-zinc-300">
+                      {lastScan.created_at ? new Date(lastScan.created_at).toLocaleTimeString() : 'Just now'}
+                    </div>
                   </div>
                 </div>
               ) : (
