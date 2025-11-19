@@ -350,37 +350,67 @@ export default function EditInventoryItemPage() {
 				</div>
 
 				{/* Barcode Preview and Item Image */}
-				{(form.barcode || form.image_url) && (
-					<div className="grid grid-cols-2 gap-4">
-						{form.barcode && (
-							<div>
-								<label className="block text-sm font-medium text-zinc-200 mb-2">
-									Barcode Preview
-								</label>
-								<div className="bg-white p-3 rounded-md border border-zinc-700">
-									<BarcodePreview barcode={form.barcode} itemName={form.name} />
-								</div>
+				<div className="grid grid-cols-2 gap-4">
+					{/* Left Column - Barcode */}
+					{form.barcode && (
+						<div>
+							<label className="block text-sm font-medium text-zinc-200 mb-2">
+								Barcode Preview
+							</label>
+							<div className="bg-white p-3 rounded-md border border-zinc-700">
+								<BarcodePreview barcode={form.barcode} itemName={form.name} />
+							</div>
+						</div>
+					)}
+					
+					{/* Right Column - Item Image and Upload */}
+					<div>
+						<label className="block text-sm font-medium text-zinc-200 mb-2">
+							Item Image
+						</label>
+						{form.image_url ? (
+							<div className="bg-zinc-800 p-3 rounded-md border border-zinc-700 mb-3">
+								<img 
+									src={form.image_url} 
+									alt={form.name}
+									className="w-full h-32 object-contain rounded"
+									onError={(e) => {
+										(e.target as HTMLImageElement).style.display = 'none';
+									}}
+								/>
+							</div>
+						) : (
+							<div className="bg-zinc-800 p-3 rounded-md border border-zinc-700 mb-3 h-32 flex items-center justify-center">
+								<p className="text-zinc-500 text-sm">No image uploaded</p>
 							</div>
 						)}
-						{form.image_url && (
-							<div>
-								<label className="block text-sm font-medium text-zinc-200 mb-2">
-									Item Image
-								</label>
-								<div className="bg-zinc-800 p-3 rounded-md border border-zinc-700">
-									<img 
-										src={form.image_url} 
-										alt={form.name}
-										className="w-full h-32 object-contain rounded"
-										onError={(e) => {
-											(e.target as HTMLImageElement).style.display = 'none';
-										}}
-									/>
-								</div>
-							</div>
-						)}
+						<div className="flex items-center gap-2">
+							<input
+								type="file"
+								accept="image/*"
+								onChange={handleImageUpload}
+								disabled={uploadingImage}
+								className="hidden"
+								id="image-upload"
+							/>
+							<label
+								htmlFor="image-upload"
+								className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-sm ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
+							>
+								{uploadingImage ? "Uploading..." : "Upload Image"}
+							</label>
+							{form.image_url && (
+								<button
+									type="button"
+									onClick={() => setForm(prev => ({ ...prev, image_url: "" }))}
+									className="px-3 py-2 text-sm text-red-400 hover:text-red-300"
+								>
+									Remove
+								</button>
+							)}
+						</div>
 					</div>
-				)}
+				</div>
 				<div className="grid grid-cols-2 gap-4">
 					<div>
 						<label className="block text-sm font-medium text-zinc-200">
