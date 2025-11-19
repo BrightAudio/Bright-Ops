@@ -48,13 +48,15 @@ export default function ClientsPage() {
 
       // Add existing clients from clients table
       existingClients?.forEach((client: any) => {
-        clientMap.set(client.name, {
-          id: client.id,
-          name: client.name,
-          email: client.email,
-          phone: client.phone,
-          job_count: 0
-        });
+        if (client.name) {
+          clientMap.set(client.name, {
+            id: client.id,
+            name: client.name,
+            email: client.email,
+            phone: client.phone,
+            job_count: 0
+          });
+        }
       });
 
       // Count jobs and add clients that only exist in jobs table
@@ -76,7 +78,9 @@ export default function ClientsPage() {
         }
       });
 
-      setClients(Array.from(clientMap.values()).sort((a, b) => a.name.localeCompare(b.name)));
+      setClients(Array.from(clientMap.values()).sort((a, b) => 
+        (a.name || '').localeCompare(b.name || '')
+      ));
     } catch (error) {
       console.error('Error loading clients:', error);
     } finally {
