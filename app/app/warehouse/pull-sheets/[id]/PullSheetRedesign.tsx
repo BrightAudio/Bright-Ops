@@ -348,6 +348,44 @@ export default function PullSheetRedesign({
     }
   };
 
+  // Check if pull sheet is complete and prompt to finalize
+  const checkCompletion = () => {
+    console.log('🔍 checkCompletion called');
+    
+    // Don't prompt if already finalized
+    if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
+      console.log('⏭️ Already finalized/complete');
+      return;
+    }
+    
+    const allComplete = items.length > 0 && items.every(item => 
+      (item.qty_pulled || 0) >= (item.qty_requested || 0)
+    );
+    
+    console.log('📊 Completion status:', {
+      allComplete,
+      progress,
+      totalRequested,
+      totalPulled
+    });
+    
+    if (allComplete && progress === 100) {
+      const sessionKey = `pull-sheet-${pullSheet.id}-prompted`;
+      const hasPrompted = sessionStorage.getItem(sessionKey);
+      console.log('✅ All complete! Has prompted?', hasPrompted);
+      
+      if (!hasPrompted) {
+        sessionStorage.setItem(sessionKey, 'true');
+        setTimeout(() => {
+          console.log('🔔 Showing finalize prompt');
+          if (confirm(`All items scanned! Ready to finalize pull sheet?\n\nCompleted by: ${userFullName}`)) {
+            handleFinalize();
+          }
+        }, 500);
+      }
+    }
+  };
+
   const handleFinalize = async () => {
     try {
       setSaving(true);
@@ -737,6 +775,11 @@ export default function PullSheetRedesign({
                     }
                   }
                   onRefresh();
+                  
+                  // Check if pull sheet is complete after scan
+                  setTimeout(() => {
+                    checkCompletion();
+                  }, 1000);
                 }}
               />
             )}
