@@ -208,21 +208,30 @@ export default function EditInventoryItemPage() {
 		setLocalError(null);
 
 		try {
+			const { supabase } = await import("@/lib/supabaseClient");
+			const { data: { session } } = await supabase.auth.getSession();
+			
+			const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+			if (session?.access_token) {
+				headers['Authorization'] = `Bearer ${session.access_token}`;
+			}
+
 			const response = await fetch('/api/inventory/search-images', {
 				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
+				headers,
 				body: JSON.stringify({ itemName: form.name }),
 			});
 
 			if (!response.ok) {
-				throw new Error('Image search failed');
+				const errorData = await response.json();
+				throw new Error(errorData.error || 'Image search failed');
 			}
 
 			const data = await response.json();
 			if (data.images && data.images.length > 0) {
 				setImageSearchResults(data.images);
 			} else {
-				setLocalError('No images found for this item');
+				setLocalError(data.error || 'No images found. Please configure your Pexels API key in Settings > Account > API Keys');
 			}
 		} catch (err) {
 			setLocalError(err instanceof Error ? err.message : 'Failed to search images');
