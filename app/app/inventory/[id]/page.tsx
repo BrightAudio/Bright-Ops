@@ -67,39 +67,8 @@ export default function EditInventoryItemPage() {
 	const [savingBarcode, setSavingBarcode] = useState(false);
 	const [originalBarcode, setOriginalBarcode] = useState("");
 	const [uploadingImage, setUploadingImage] = useState(false);
-
-	async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
-		const file = e.target.files?.[0];
-		if (!file) return;
-
-		setUploadingImage(true);
-		setLocalError(null);
-
-		try {
-			const { supabase } = await import("@/lib/supabaseClient");
-			const fileExt = file.name.split(".").pop();
-			const fileName = `${id}-${Date.now()}.${fileExt}`;
-			const filePath = `inventory/${fileName}`;
-
-			const { error: uploadError } = await supabase.storage
-				.from("inventory-images")
-				.upload(filePath, file);
-
-			if (uploadError) throw uploadError;
-
-			const { data: { publicUrl } } = supabase.storage
-				.from("inventory-images")
-				.getPublicUrl(filePath);
-
-			setForm((prev) => ({ ...prev, image_url: publicUrl }));
-			setLocalError("Image uploaded successfully!");
-			setTimeout(() => setLocalError(null), 3000);
-		} catch (err) {
-			setLocalError(err instanceof Error ? err.message : "Failed to upload image");
-		} finally {
-			setUploadingImage(false);
-		}
-	}
+	const [searchingImages, setSearchingImages] = useState(false);
+	const [imageSearchResults, setImageSearchResults] = useState<string[]>([]);
 
 	// Populate form when item loads
 	useEffect(() => {
@@ -122,7 +91,7 @@ export default function EditInventoryItemPage() {
 				estimated_jobs_per_year: item.estimated_jobs_per_year ?? 50,
 				residual_value: item.residual_value ?? 0,
 				category: item.category ?? "",
-				subcategory: item.subcategory ?? "",
+				subcategory: item.gear_type ?? "",
 				location: item.location ?? "NEW SOUND Warehouse",
 				tags: (Array.isArray(item.tags) ? item.tags : []) as string[],
 				image_url: item.image_url ?? "",
@@ -221,6 +190,46 @@ export default function EditInventoryItemPage() {
 		} finally {
 			setUploadingImage(false);
 		}
+	}
+
+	async function handleImageSearch() {
+		if (!form.name.trim()) {
+			setLocalError("Please enter an item name first");
+			return;
+		}
+
+		setSearchingImages(true);
+		setLocalError(null);
+
+		try {
+			const response = await fetch('/api/inventory/search-images', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ itemName: form.name }),
+			});
+
+			if (!response.ok) {
+				throw new Error('Image search failed');
+			}
+
+			const data = await response.json();
+			if (data.images && data.images.length > 0) {
+				setImageSearchResults(data.images);
+			} else {
+				setLocalError('No images found for this item');
+			}
+		} catch (err) {
+			setLocalError(err instanceof Error ? err.message : 'Failed to search images');
+		} finally {
+			setSearchingImages(false);
+		}
+	}
+
+	async function handleSelectSearchedImage(imageUrl: string) {
+		setForm((prev) => ({ ...prev, image_url: imageUrl }));
+		setImageSearchResults([]);
+		setLocalError('Image selected! Click Save to update.');
+		setTimeout(() => setLocalError(null), 3000);
 	}
 
 	async function handleSubmit(e: React.FormEvent) {
@@ -384,7 +393,7 @@ export default function EditInventoryItemPage() {
 								<p className="text-zinc-500 text-sm">No image uploaded</p>
 							</div>
 						)}
-						<div className="flex items-center gap-2">
+						<div className="flex items-center gap-2 flex-wrap">
 							<input
 								type="file"
 								accept="image/*"
@@ -397,8 +406,16 @@ export default function EditInventoryItemPage() {
 								htmlFor="image-upload"
 								className={`px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer text-sm ${uploadingImage ? 'opacity-50 cursor-not-allowed' : ''}`}
 							>
-								{uploadingImage ? "Uploading..." : "Upload Image"}
+								{uploadingImage ? "Uploading..." : "Upload"}
 							</label>
+							<button
+								type="button"
+								onClick={handleImageSearch}
+								disabled={searchingImages || !form.name.trim()}
+								className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+							>
+								{searchingImages ? "Searching..." : "Search"}
+							</button>
 							{form.image_url && (
 								<button
 									type="button"
@@ -409,6 +426,38 @@ export default function EditInventoryItemPage() {
 								</button>
 							)}
 						</div>
+						
+						{/* Image Search Results */}
+						{imageSearchResults.length > 0 && (
+							<div className="mt-3 space-y-2">
+								<p className="text-xs font-medium text-zinc-400">Select an image:</p>
+								<div className="grid grid-cols-2 gap-2 max-h-64 overflow-y-auto">
+									{imageSearchResults.map((imageUrl, index) => (
+										<div
+											key={index}
+											onClick={() => handleSelectSearchedImage(imageUrl)}
+											className="cursor-pointer bg-zinc-800 p-2 rounded border border-zinc-700 hover:border-blue-500 transition"
+										>
+											<img
+												src={imageUrl}
+												alt={`Result ${index + 1}`}
+												className="w-full h-20 object-contain rounded"
+												onError={(e) => {
+													(e.target as HTMLImageElement).style.display = 'none';
+												}}
+											/>
+										</div>
+									))}
+								</div>
+								<button
+									type="button"
+									onClick={() => setImageSearchResults([])}
+									className="text-xs text-zinc-500 hover:text-zinc-400"
+								>
+									Clear results
+								</button>
+							</div>
+						)}
 					</div>
 				</div>
 				<div className="grid grid-cols-2 gap-4">
