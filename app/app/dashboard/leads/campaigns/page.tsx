@@ -101,7 +101,7 @@ export default function EmailCampaignsPage() {
         if (recipientsError) throw recipientsError;
 
         // Update campaign total_recipients
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+         
         const { error: updateError } = await supabase
           .from('campaigns')
           // @ts-expect-error - Database type mismatch

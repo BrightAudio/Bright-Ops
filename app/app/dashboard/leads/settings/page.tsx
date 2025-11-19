@@ -18,7 +18,7 @@ export default function LeadSettingsPage() {
   const [confirmPasswordInput, setConfirmPasswordInput] = useState('');
   const [passwordChangeError, setPasswordChangeError] = useState('');
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState(false);
-  let storedPassword = localStorage.getItem('settingsPassword') || SETTINGS_PASSWORD;
+  const storedPassword = localStorage.getItem('settingsPassword') || SETTINGS_PASSWORD;
 
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);

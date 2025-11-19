@@ -240,6 +240,8 @@ export default function PullSheetRedesign({
   useEffect(() => {
     console.log('🔄 Completion useEffect triggered');
     
+    const sessionKey = `pull-sheet-${pullSheet.id}-prompted`;
+    
     // Don't prompt if already finalized
     if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
       console.log('⏭️ Skipping finalize check - already', pullSheet.status);
@@ -258,10 +260,27 @@ export default function PullSheetRedesign({
       totalPulled
     });
     
+    // Clear the prompted flag if not complete anymore
+    if (!allComplete || progress < 100) {
+      const wasPrompted = sessionStorage.getItem(sessionKey);
+      if (wasPrompted) {
+        console.log('🔄 Clearing prompted flag - not complete anymore');
+        sessionStorage.removeItem(sessionKey);
+      }
+      return;
+    }
+    
+    // If complete, check if we should prompt
     if (allComplete && progress === 100) {
-      const sessionKey = `pull-sheet-${pullSheet.id}-prompted`;
       const hasPrompted = sessionStorage.getItem(sessionKey);
       console.log('✅ All complete! Session key:', sessionKey, 'Already prompted?', hasPrompted);
+      console.log('👤 Current userFullName:', userFullName);
+      
+      // Don't prompt if we haven't loaded the user name yet
+      if (userFullName === 'User') {
+        console.log('⏳ Waiting for user name to load...');
+        return;
+      }
       
       if (!hasPrompted) {
         sessionStorage.setItem(sessionKey, 'true');
@@ -351,6 +370,7 @@ export default function PullSheetRedesign({
   // Check if pull sheet is complete and prompt to finalize
   const checkCompletion = () => {
     console.log('🔍 checkCompletion called');
+    console.log('📋 Current pull sheet status:', pullSheet.status);
     
     // Don't prompt if already finalized
     if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
@@ -358,12 +378,15 @@ export default function PullSheetRedesign({
       return;
     }
     
-    const allComplete = items.length > 0 && items.every(item => 
-      (item.qty_pulled || 0) >= (item.qty_requested || 0)
-    );
+    const allComplete = items.length > 0 && items.every(item => {
+      const complete = (item.qty_pulled || 0) >= (item.qty_requested || 0);
+      console.log(`  Item "${item.item_name}": ${item.qty_pulled}/${item.qty_requested} - ${complete ? '✅' : '❌'}`);
+      return complete;
+    });
     
     console.log('📊 Completion status:', {
       allComplete,
+      itemsLength: items.length,
       progress,
       totalRequested,
       totalPulled
@@ -563,6 +586,11 @@ export default function PullSheetRedesign({
   };
 
   const handleItemClick = (itemId: string) => {
+    // Don't allow clicks when finalized
+    if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
+      return;
+    }
+
     const now = Date.now();
     const DOUBLE_TAP_DELAY = 300; // milliseconds
 
@@ -962,14 +990,20 @@ export default function PullSheetRedesign({
                                   const isPrepComplete = pulled >= requested;
                                   const isSelected = selectedItemId === item.id;
 
+                                  const isFinalized = pullSheet.status === 'finalized' || pullSheet.status === 'complete';
+
                                   return (
                                     <tr 
                                       key={item.id} 
                                       onClick={() => handleItemClick(item.id)}
-                                      className={`transition-colors cursor-pointer ${
+                                      className={`transition-colors ${
+                                        isFinalized 
+                                          ? 'cursor-not-allowed opacity-75' 
+                                          : 'cursor-pointer hover:bg-zinc-800/50'
+                                      } ${
                                         isSelected 
                                           ? 'bg-amber-500/20 border-l-4 border-amber-400' 
-                                          : 'hover:bg-zinc-800/50'
+                                          : ''
                                       }`}
                                     >
                                       <td 
@@ -982,14 +1016,14 @@ export default function PullSheetRedesign({
                                             <span className="text-zinc-500">/</span>
                                             <span className="text-zinc-400">{requested}</span>
                                           </div>
-                                          {isSelected && (
+                                          {isSelected && !isFinalized && (
                                             <div className="flex gap-1">
                                               <button
                                                 onClick={(e) => {
                                                   e.stopPropagation();
                                                   handleUndoScan(item.id);
                                                 }}
-                                                disabled={saving || (pulled === 0)}
+                                                disabled={saving || (pulled === 0) || isFinalized}
                                                 className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded disabled:opacity-50 disabled:cursor-not-allowed"
                                                 title="Undo last scan"
                                               >
@@ -1000,8 +1034,8 @@ export default function PullSheetRedesign({
                                                   e.stopPropagation();
                                                   handleSubstitute(item.id);
                                                 }}
-                                                disabled={saving}
-                                                className={`px-2 py-1 text-white text-xs rounded disabled:opacity-50 ${
+                                                disabled={saving || isFinalized}
+                                                className={`px-2 py-1 text-white text-xs rounded disabled:opacity-50 disabled:cursor-not-allowed ${
                                                   substituteMode && substituteItemId === item.id
                                                     ? 'bg-amber-500 hover:bg-amber-600 ring-2 ring-amber-300'
                                                     : 'bg-blue-600 hover:bg-blue-700'

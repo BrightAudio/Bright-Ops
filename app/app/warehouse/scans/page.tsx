@@ -61,7 +61,7 @@ export default function RecentScansPage() {
       // Apply time range filter
       if (timeRange !== 'all') {
         const now = new Date();
-        let startDate = new Date();
+        const startDate = new Date();
         
         if (timeRange === 'today') {
           startDate.setHours(0, 0, 0, 0);

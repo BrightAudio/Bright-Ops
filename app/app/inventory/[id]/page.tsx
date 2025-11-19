@@ -65,6 +65,7 @@ export default function EditInventoryItemPage() {
 	const [generatingBarcode, setGeneratingBarcode] = useState(false);
 	const [savingBarcode, setSavingBarcode] = useState(false);
 	const [originalBarcode, setOriginalBarcode] = useState("");
+	const [uploadingImage, setUploadingImage] = useState(false);
 
 	// Populate form when item loads
 	useEffect(() => {
@@ -154,6 +155,39 @@ export default function EditInventoryItemPage() {
 		}
 	}
 
+	async function handleImageUpload(e: React.ChangeEvent<HTMLInputElement>) {
+		const file = e.target.files?.[0];
+		if (!file || !id) return;
+
+		setUploadingImage(true);
+		setLocalError(null);
+
+		try {
+			const { supabase } = await import("@/lib/supabaseClient");
+			const fileExt = file.name.split(".").pop();
+			const fileName = `${id}-${Date.now()}.${fileExt}`;
+			const filePath = `inventory/${fileName}`;
+
+			const { error: uploadError } = await supabase.storage
+				.from("inventory-images")
+				.upload(filePath, file);
+
+			if (uploadError) throw uploadError;
+
+			const { data: { publicUrl } } = supabase.storage
+				.from("inventory-images")
+				.getPublicUrl(filePath);
+
+			setForm((prev) => ({ ...prev, image_url: publicUrl }));
+			setLocalError("Image uploaded successfully!");
+			setTimeout(() => setLocalError(null), 3000);
+		} catch (err) {
+			setLocalError(err instanceof Error ? err.message : "Failed to upload image");
+		} finally {
+			setUploadingImage(false);
+		}
+	}
+
 	async function handleSubmit(e: React.FormEvent) {
 		e.preventDefault();
 		if (!id) return;
@@ -183,7 +217,7 @@ export default function EditInventoryItemPage() {
 				quantity_on_hand: form.quantity_on_hand,
 				unit_value: form.unit_value,
 				purchase_cost: form.purchase_cost,
-				purchase_date: form.purchase_date ?? undefined,
+				purchase_date: form.purchase_date?.trim() || null,
 				useful_life_years: form.useful_life_years,
 				estimated_jobs_per_year: form.estimated_jobs_per_year,
 				residual_value: form.residual_value,
@@ -406,32 +440,48 @@ export default function EditInventoryItemPage() {
 				<div className="border-t border-zinc-700 pt-4 mt-4">
 					<h3 className="text-lg font-semibold text-white mb-3">Equipment Details</h3>
 					
-					<div>
-						<label className="block text-sm font-medium text-zinc-200">
-							Image URL
-						</label>
+				<div>
+					<label className="block text-sm font-medium text-zinc-200 mb-2">
+						Equipment Image
+					</label>
+					<div className="flex items-center gap-4">
 						<input
-							type="url"
-							value={form.image_url}
-							onChange={(e) => handleChange("image_url", e.target.value)}
-							className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
-							placeholder="https://example.com/image.jpg"
+							type="file"
+							accept="image/*"
+							onChange={handleImageUpload}
+							disabled={uploadingImage}
+							className="hidden"
+							id="image-upload"
 						/>
+						<label
+							htmlFor="image-upload"
+							className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 cursor-pointer disabled:opacity-50"
+						>
+							{uploadingImage ? "Uploading..." : "Upload Image"}
+						</label>
 						{form.image_url && (
-							<div className="mt-2">
-								<img 
-									src={form.image_url} 
-									alt={form.name}
-									className="max-w-xs max-h-48 rounded-md border border-zinc-700"
-									onError={(e) => {
-										(e.target as HTMLImageElement).style.display = 'none';
-									}}
-								/>
-							</div>
+							<button
+								type="button"
+								onClick={() => setForm(prev => ({ ...prev, image_url: "" }))}
+								className="px-3 py-2 text-sm text-red-400 hover:text-red-300"
+							>
+								Remove Image
+							</button>
 						)}
 					</div>
-
-					<div className="grid grid-cols-2 gap-4 mt-4">
+					{form.image_url && (
+						<div className="mt-3">
+							<img 
+								src={form.image_url} 
+								alt={form.name}
+								className="max-w-xs max-h-48 rounded-md border border-zinc-700 object-cover"
+								onError={(e) => {
+									(e.target as HTMLImageElement).style.display = 'none';
+								}}
+							/>
+						</div>
+					)}
+				</div>					<div className="grid grid-cols-2 gap-4 mt-4">
 						<div>
 							<label className="block text-sm font-medium text-zinc-200">
 								Repair Cost ($)

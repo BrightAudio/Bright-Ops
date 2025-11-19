@@ -125,7 +125,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
 
       // Debug: log resolved mode for easier troubleshooting in the browser console
       // (remove or lower verbosity later if noisy).
-      // eslint-disable-next-line no-console
+       
       console.debug('[BarcodeScanner] sheetStatus=', sheetStatus, 'normalized=', normalizedStatus, 'isActivePullMode=', isActivePullMode);
 
       // 3. Check for duplicate scans (unit-level tracking)
@@ -174,7 +174,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
         if (unitScanError) {
           console.warn('Error recording unit scan:', unitScanError);
         }
-        // eslint-disable-next-line no-console
+         
         console.debug('[BarcodeScanner] Recorded unit scan for pull_sheet_item_id=', (resolvedPullSheetItem as any).id);
         // qty_fulfilled / qty_pulled can be updated by triggers or manually below
       }
