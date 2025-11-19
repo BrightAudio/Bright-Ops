@@ -23,7 +23,7 @@ export default function AccountSettingsPage() {
       if (user) {
         const { data: profile } = await supabase
           .from('user_profiles')
-          .select('full_name, company_name')
+          .select('full_name, company_name, pexels_api_key')
           .eq('id', user.id)
           .single();
         
@@ -32,6 +32,11 @@ export default function AccountSettingsPage() {
           companyName: (profile as any)?.company_name || '',
           email: user.email || ''
         });
+
+        // Load API key if exists
+        if ((profile as any)?.pexels_api_key) {
+          setPexelsApiKey((profile as any).pexels_api_key);
+        }
       }
     }
     loadProfile();
@@ -46,6 +51,11 @@ export default function AccountSettingsPage() {
 
   const [passwordError, setPasswordError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
+
+  // API Keys state
+  const [pexelsApiKey, setPexelsApiKey] = useState("");
+  const [isEditingApiKey, setIsEditingApiKey] = useState(false);
+  const [apiKeySuccess, setApiKeySuccess] = useState("");
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -114,6 +124,36 @@ export default function AccountSettingsPage() {
     } catch (error) {
       console.error("Error changing password:", error);
       setPasswordError("Failed to change password");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleApiKeySubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSaving(true);
+    setApiKeySuccess("");
+    setPasswordError("");
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        // Update user profile with Pexels API key
+        const { error } = await supabase
+          .from('user_profiles')
+          .update({
+            pexels_api_key: pexelsApiKey || null
+          } as any)
+          .eq('id', user.id);
+        
+        if (error) throw error;
+        
+        setApiKeySuccess("Pexels API key saved successfully");
+        setIsEditingApiKey(false);
+      }
+    } catch (error) {
+      console.error("Error saving API key:", error);
+      setPasswordError("Failed to save API key");
     } finally {
       setIsSaving(false);
     }
@@ -685,17 +725,178 @@ export default function AccountSettingsPage() {
             }}>
               Active API Keys
             </h3>
+            
+            {apiKeySuccess && (
+              <div style={{
+                padding: "0.75rem",
+                marginBottom: "1rem",
+                backgroundColor: "#d1fae5",
+                border: "1px solid #10b981",
+                borderRadius: "6px",
+                color: "#065f46",
+                fontSize: "0.875rem"
+              }}>
+                <i className="fas fa-check-circle" style={{ marginRight: "0.5rem" }}></i>
+                {apiKeySuccess}
+              </div>
+            )}
+
+            {/* Pexels API Key */}
             <div style={{
               padding: "1rem",
               backgroundColor: "#f9fafb",
               border: "1px solid #e5e7eb",
               borderRadius: "6px",
-              textAlign: "center",
-              color: "#6b7280",
-              fontSize: "0.875rem"
+              marginBottom: "1rem"
             }}>
-              <i className="fas fa-key" style={{ marginRight: "0.5rem", opacity: 0.5 }}></i>
-              No API keys configured yet
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: isEditingApiKey ? "1rem" : "0"
+              }}>
+                <div>
+                  <div style={{
+                    fontWeight: 600,
+                    fontSize: "0.9375rem",
+                    color: "#374151",
+                    marginBottom: "0.25rem"
+                  }}>
+                    Pexels API Key
+                  </div>
+                  <div style={{
+                    fontSize: "0.8125rem",
+                    color: "#6b7280"
+                  }}>
+                    Used for AI-powered image search in inventory
+                  </div>
+                  {pexelsApiKey && !isEditingApiKey && (
+                    <div style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.8125rem",
+                      color: "#059669",
+                      fontFamily: "monospace"
+                    }}>
+                      <i className="fas fa-check-circle" style={{ marginRight: "0.25rem" }}></i>
+                      Key configured ({pexelsApiKey.substring(0, 8)}...{pexelsApiKey.substring(pexelsApiKey.length - 4)})
+                    </div>
+                  )}
+                </div>
+                {!isEditingApiKey && (
+                  <button
+                    onClick={() => setIsEditingApiKey(true)}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: "#fff",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.8125rem",
+                      fontWeight: 500
+                    }}
+                  >
+                    <i className="fas fa-edit" style={{ marginRight: "0.25rem" }}></i>
+                    {pexelsApiKey ? "Edit" : "Configure"}
+                  </button>
+                )}
+              </div>
+
+              {isEditingApiKey && (
+                <form onSubmit={handleApiKeySubmit}>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "#374151"
+                    }}>
+                      API Key
+                    </label>
+                    <input
+                      type="password"
+                      value={pexelsApiKey}
+                      onChange={(e) => setPexelsApiKey(e.target.value)}
+                      placeholder="Enter your Pexels API key"
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "0.875rem",
+                        fontFamily: "monospace"
+                      }}
+                    />
+                    <div style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.75rem",
+                      color: "#6b7280"
+                    }}>
+                      Get your API key from{" "}
+                      <a 
+                        href="https://www.pexels.com/api/" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ color: "#2563eb", textDecoration: "underline" }}
+                      >
+                        pexels.com/api
+                      </a>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#2563eb",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: isSaving ? "not-allowed" : "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        opacity: isSaving ? 0.6 : 1
+                      }}
+                    >
+                      {isSaving ? "Saving..." : "Save Key"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingApiKey(false);
+                        setApiKeySuccess("");
+                      }}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#fff",
+                        color: "#374151",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: 500
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
+            {/* Info section */}
+            <div style={{
+              padding: "0.75rem",
+              backgroundColor: "#eff6ff",
+              border: "1px solid #bfdbfe",
+              borderRadius: "6px",
+              fontSize: "0.8125rem",
+              color: "#1e40af"
+            }}>
+              <i className="fas fa-info-circle" style={{ marginRight: "0.5rem" }}></i>
+              API keys are stored securely and never exposed to the client
             </div>
           </div>
         </div>
