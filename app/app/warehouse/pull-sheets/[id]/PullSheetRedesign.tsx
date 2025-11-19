@@ -149,8 +149,8 @@ export default function PullSheetRedesign({
   const [searchQuery, setSearchQuery] = useState('');
   const [filterMode, setFilterMode] = useState<'all' | 'completed' | 'not-scanned'>('all');
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
-  const [forceScannedItemId, setForceScannedItemId] = useState<string | null>(null);
-  const [forceScanQty, setForceScanQty] = useState(1);
+  const [substituteMode, setSubstituteMode] = useState(false);
+  const [substituteItemId, setSubstituteItemId] = useState<string | null>(null);
   const [lastTapTime, setLastTapTime] = useState<number>(0);
   const [lastTapItemId, setLastTapItemId] = useState<string | null>(null);
   const [columnWidths, setColumnWidths] = useState({
@@ -160,7 +160,7 @@ export default function PullSheetRedesign({
     barcode: 150
   });
 
-  // Get user info
+  // Get user info and fetch scan history
   useEffect(() => {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
@@ -193,8 +193,34 @@ export default function PullSheetRedesign({
         setUserFullName(fullName || user.email.split('@')[0]);
       }
     }
+    
+    async function fetchScanHistory() {
+      const { data } = await supabase
+        .from('pull_sheet_scans')
+        .select(`
+          *,
+          inventory_items (
+            name,
+            barcode,
+            category,
+            gear_type,
+            image_url
+          )
+        `)
+        .eq('pull_sheet_id', pullSheet.id)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (data && data.length > 0) {
+        setScanHistory(data as any);
+        // Set the most recent scan as lastScan if we don't have one
+        setLastScan(data[0] as any);
+      }
+    }
+    
     getUser();
-  }, []);
+    fetchScanHistory();
+  }, [pullSheet.id]);
 
   // Calculate progress
   const totalRequested = items.reduce((sum, item) => sum + (item.qty_requested || 0), 0);
@@ -429,29 +455,26 @@ export default function PullSheetRedesign({
   };
 
   const handleSubstitute = async (itemId: string) => {
+    // Toggle substitute mode
+    if (substituteMode && substituteItemId === itemId) {
+      // Cancel substitute mode
+      setSubstituteMode(false);
+      setSubstituteItemId(null);
+      setSelectedItemId(null);
+    } else {
+      // Enter substitute mode
+      setSubstituteMode(true);
+      setSubstituteItemId(itemId);
+      setSelectedItemId(null);
+    }
+  };
+
+  const handleForceScan = async (itemId: string) => {
     const item = items.find(i => i.id === itemId);
     if (!item) return;
 
-    // TODO: Implement substitute dialog
-    // For now, just show a placeholder
-    alert(`Substitute feature for ${item.inventory_items?.name || item.item_name}\n\nThis will allow you to replace this item with a different one from inventory.`);
-    setSelectedItemId(null);
-  };
-
-  const handleForceScan = async () => {
-    const item = items.find(i => i.id === forceScannedItemId);
-    if (!item || !forceScannedItemId) return;
-
-    const qtyToAdd = forceScanQty;
     const currentPulled = item.qty_pulled || 0;
-    const requested = item.qty_requested || 0;
-    const newTotal = currentPulled + qtyToAdd;
-
-    if (newTotal > requested) {
-      if (!confirm(`This will scan ${qtyToAdd} units, bringing total to ${newTotal}/${requested}.\n\nThis exceeds the requested quantity. Continue?`)) {
-        return;
-      }
-    }
+    const newTotal = currentPulled + 1;
 
     try {
       setSaving(true);
@@ -460,17 +483,19 @@ export default function PullSheetRedesign({
       const { error } = await supabase
         .from('pull_sheet_items')
         .update({ qty_pulled: newTotal } as any)
-        .eq('id', forceScannedItemId);
+        .eq('id', itemId);
       
       if (error) throw error;
 
-      // Close modal and reset
-      setForceScannedItemId(null);
-      setForceScanQty(1);
+      // Play success sound
+      const { playSuccess } = await import('@/lib/utils/sounds');
+      playSuccess(soundTheme);
+
+      setSelectedItemId(null);
       onRefresh();
     } catch (err) {
       console.error('Failed to force scan:', err);
-      alert('Failed to add scans');
+      alert('Failed to add scan');
     } finally {
       setSaving(false);
     }
@@ -482,13 +507,8 @@ export default function PullSheetRedesign({
 
     // Check for double tap
     if (lastTapItemId === itemId && (now - lastTapTime) < DOUBLE_TAP_DELAY) {
-      // Double tap detected - open force scan modal
-      const item = items.find(i => i.id === itemId);
-      if (item) {
-        setForceScannedItemId(itemId);
-        setForceScanQty(1);
-        setSelectedItemId(null); // Close action buttons
-      }
+      // Double tap detected - force scan
+      handleForceScan(itemId);
       setLastTapTime(0);
       setLastTapItemId(null);
     } else {
@@ -501,52 +521,10 @@ export default function PullSheetRedesign({
 
   return (
     <div className="h-[calc(100vh-4rem)] bg-zinc-900 flex flex-col">
-      {/* Force Scan Modal */}
-      {forceScannedItemId && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-zinc-800 border-2 border-amber-400 rounded-lg p-6 max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold text-white mb-4">Force Scan</h2>
-            <div className="mb-4">
-              <div className="text-zinc-300 mb-2">
-                {items.find(i => i.id === forceScannedItemId)?.inventory_items?.name || 
-                 items.find(i => i.id === forceScannedItemId)?.item_name || 'Unknown Item'}
-              </div>
-              <div className="text-sm text-zinc-400">
-                Current: {items.find(i => i.id === forceScannedItemId)?.qty_pulled || 0} / {items.find(i => i.id === forceScannedItemId)?.qty_requested || 0}
-              </div>
-            </div>
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-zinc-400 mb-2">
-                How many units to scan?
-              </label>
-              <input
-                type="number"
-                min="1"
-                value={forceScanQty}
-                onChange={(e) => setForceScanQty(Math.max(1, parseInt(e.target.value) || 1))}
-                className="w-full px-4 py-3 bg-zinc-900 border border-zinc-600 rounded text-white text-lg font-bold focus:border-amber-400 focus:outline-none"
-                autoFocus
-              />
-            </div>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setForceScannedItemId(null);
-                  setForceScanQty(1);
-                }}
-                className="flex-1 px-4 py-3 bg-zinc-700 text-white rounded-lg font-semibold hover:bg-zinc-600 transition-colors"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleForceScan}
-                disabled={saving}
-                className="flex-1 px-4 py-3 bg-amber-400 text-black rounded-lg font-semibold hover:bg-amber-500 transition-colors disabled:opacity-50"
-              >
-                {saving ? 'Scanning...' : 'Scan'}
-              </button>
-            </div>
-          </div>
+      {/* Substitute Mode Banner */}
+      {substituteMode && substituteItemId && (
+        <div className="bg-blue-600 text-white px-6 py-3 text-center font-bold border-b-2 border-blue-700">
+          SUBSTITUTE MODE: Scan item to replace {items.find(i => i.id === substituteItemId)?.inventory_items?.name || items.find(i => i.id === substituteItemId)?.item_name || 'Unknown'} - Click Substitute again to cancel
         </div>
       )}
 
@@ -661,7 +639,65 @@ export default function PullSheetRedesign({
                 soundTheme={soundTheme}
                 onScan={async (scan) => {
                   console.log('🔍 onScan called with:', scan);
-                  // Fetch the complete scan with inventory item details
+                  
+                  // If in substitute mode, handle substitute scan
+                  if (substituteMode && substituteItemId && scan?.inventory_item_id) {
+                    const scannedInventoryId = scan.inventory_item_id;
+                    
+                    // Find the item we're substituting
+                    const substituteItem = items.find(i => i.id === substituteItemId);
+                    if (!substituteItem) {
+                      console.error('Original item not found');
+                      alert('Original item not found');
+                      setSubstituteMode(false);
+                      setSubstituteItemId(null);
+                      return;
+                    }
+                    
+                    // Get the scanned inventory item details
+                    const { data: scannedInvItem } = await supabase
+                      .from('inventory_items')
+                      .select('name')
+                      .eq('id', scannedInventoryId)
+                      .single();
+                    
+                    // Update the pull sheet item to use the scanned inventory item
+                    const { error: updateError } = await supabase
+                      .from('pull_sheet_items')
+                      .update({
+                        inventory_item_id: scannedInventoryId,
+                        item_name: scannedInvItem?.name || 'Unknown',
+                        notes: substituteItem.notes 
+                          ? `${substituteItem.notes}\nSubstituted from ${substituteItem.item_name}`
+                          : `Substituted from ${substituteItem.item_name}`
+                      } as any)
+                      .eq('id', substituteItemId);
+                      
+                    if (updateError) {
+                      console.error('Substitute error:', updateError);
+                      alert('Failed to substitute item');
+                    } else {
+                      // Play success sound
+                      try {
+                        const audio = new Audio('/success.mp3');
+                        audio.play();
+                      } catch (e) {
+                        console.error('Sound error:', e);
+                      }
+                      
+                      console.log(`✅ Substituted ${substituteItem.item_name} → ${(scannedInvItem as any)?.name || 'Unknown'}`);
+                      alert(`Substituted ${substituteItem.item_name} → ${(scannedInvItem as any)?.name || 'Unknown'}`);
+                      onRefresh();
+                    }
+                    
+                    // Reset substitute mode
+                    setSubstituteMode(false);
+                    setSubstituteItemId(null);
+                    setSelectedItemId(null);
+                    return;
+                  }
+                  
+                  // Normal scan processing - fetch the complete scan with inventory item details
                   if (scan?.id) {
                     const { data } = await supabase
                       .from('pull_sheet_scans')
@@ -672,6 +708,8 @@ export default function PullSheetRedesign({
                     console.log('📦 Fetched scan data:', data);
                     if (data) {
                       setLastScan(data);
+                      // Also add to scan history
+                      setScanHistory(prev => [data as any, ...prev]);
                       console.log('✅ Set lastScan to:', data);
                     }
                   }
@@ -897,8 +935,14 @@ export default function PullSheetRedesign({
                                                   handleSubstitute(item.id);
                                                 }}
                                                 disabled={saving}
-                                                className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white text-xs rounded disabled:opacity-50"
-                                                title="Substitute with different item"
+                                                className={`px-2 py-1 text-white text-xs rounded disabled:opacity-50 ${
+                                                  substituteMode && substituteItemId === item.id
+                                                    ? 'bg-amber-500 hover:bg-amber-600 ring-2 ring-amber-300'
+                                                    : 'bg-blue-600 hover:bg-blue-700'
+                                                }`}
+                                                title={substituteMode && substituteItemId === item.id 
+                                                  ? "Substitute mode active - scan to replace" 
+                                                  : "Substitute with different item"}
                                               >
                                                 ⇄ Sub
                                               </button>
@@ -949,11 +993,52 @@ export default function PullSheetRedesign({
           )}
 
           {view === 'scanhistory' && (
-            <div className="p-4">
-              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-8 text-center">
-                <h3 className="text-lg font-semibold text-white mb-2">Scan History</h3>
-                <p className="text-zinc-400 text-sm">Recently scanned items will appear here</p>
-              </div>
+            <div className="p-4 space-y-2">
+              {scanHistory.length === 0 ? (
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-8 text-center">
+                  <h3 className="text-lg font-semibold text-white mb-2">Scan History</h3>
+                  <p className="text-zinc-400 text-sm">No scans yet</p>
+                </div>
+              ) : (
+                scanHistory.map((scan: any) => (
+                  <div key={scan.id} className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <div className="flex items-center gap-4">
+                      {/* Image */}
+                      <div className="w-16 h-16 bg-zinc-700 rounded flex-shrink-0 overflow-hidden">
+                        {scan.inventory_items?.image_url ? (
+                          <img 
+                            src={scan.inventory_items.image_url} 
+                            alt={scan.inventory_items?.name || 'Item'}
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-zinc-500 text-xs">
+                            No img
+                          </div>
+                        )}
+                      </div>
+                      
+                      {/* Details */}
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">
+                          {scan.inventory_items?.name || 'Unknown'}
+                        </div>
+                        <div className="text-xs text-zinc-400 font-mono mt-1">
+                          {scan.barcode || 'No barcode'}
+                        </div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          {new Date(scan.created_at).toLocaleString()}
+                        </div>
+                      </div>
+                      
+                      {/* Scan Type Badge */}
+                      <div className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 font-semibold">
+                        {scan.scan_type || 'SCAN'}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           )}
 
