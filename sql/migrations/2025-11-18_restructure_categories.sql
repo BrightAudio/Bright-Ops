@@ -14,7 +14,7 @@ ALTER TABLE public.inventory_items
 UPDATE public.inventory_items
 SET category = CASE
   -- Audio categories
-  WHEN subcategory IN ('monitor_wedges', 'tops', 'subs', 'column_speakers', 'active_speakers', 'microphones', 'RF', 'compressors', 'EQ', 'interfaces') THEN 'Audio'
+  WHEN subcategory IN ('monitor_wedges', 'tops', 'subs', 'column_speakers', 'active_speakers', 'microphones', 'RF', 'compressors', 'EQ', 'interfaces', 'mixers') THEN 'Audio'
   WHEN subcategory = 'amps' OR subcategory = 'amprack' THEN 'Audio'
   
   -- Lighting categories
