@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { useRouter } from 'next/navigation';
 import BarcodeScanner from '@/components/BarcodeScanner';
+import { generateManifestPDF } from '@/lib/utils/generateManifestPDF';
 
 type Item = {
   id: string;
@@ -605,6 +606,70 @@ export default function PullSheetRedesign({
       setSelectedItemId(selectedItemId === itemId ? null : itemId);
       setLastTapTime(now);
       setLastTapItemId(itemId);
+    }
+  };
+
+  const handlePrintPDF = async () => {
+    try {
+      // First get the full pull sheet data to find job_id
+      const { data: fullSheetData } = await supabase
+        .from('pull_sheets')
+        .select('job_id')
+        .eq('id', pullSheet.id)
+        .single();
+
+      if (!fullSheetData || !(fullSheetData as any).job_id) {
+        alert('No job associated with this pull sheet');
+        return;
+      }
+
+      // Fetch complete data with joins for PDF generation
+      const { data: jobData } = await supabase
+        .from('jobs')
+        .select(`
+          *,
+          clients (
+            name,
+            phone,
+            email
+          ),
+          venues (
+            name,
+            address,
+            city,
+            state,
+            contact_phone
+          )
+        `)
+        .eq('id', (fullSheetData as any).job_id)
+        .single();
+
+      const manifestData = {
+        pullSheet: {
+          id: pullSheet.id,
+          name: pullSheet.name,
+          scheduled_out_at: pullSheet.scheduled_out_at,
+          expected_return_at: pullSheet.expected_return_at,
+          notes: pullSheet.notes
+        },
+        job: jobData as any,
+        client: (jobData as any)?.clients || null,
+        items: items.map(item => ({
+          item_name: item.item_name || 'Unknown',
+          qty_requested: item.qty_requested || 0,
+          qty_pulled: item.qty_pulled || 0,
+          notes: item.notes,
+          inventory_items: item.inventory_items ? {
+            barcode: item.inventory_items.barcode,
+            category: item.inventory_items.category
+          } : null
+        }))
+      };
+
+      generateManifestPDF(manifestData);
+    } catch (error) {
+      console.error('Failed to generate PDF:', error);
+      alert('Failed to generate PDF. Please try again.');
     }
   };
 
@@ -1315,9 +1380,10 @@ export default function PullSheetRedesign({
               View Job
             </button>
             <button
-              className="w-full px-4 py-3 bg-zinc-700 text-white rounded-lg font-medium hover:bg-zinc-600 transition-colors"
+              onClick={handlePrintPDF}
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
             >
-              Download PDF
+              📄 Print Manifest PDF
             </button>
             <button
               className="w-full px-4 py-3 bg-zinc-700 text-white rounded-lg font-medium hover:bg-zinc-600 transition-colors"
