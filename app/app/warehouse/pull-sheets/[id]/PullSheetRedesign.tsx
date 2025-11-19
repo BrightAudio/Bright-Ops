@@ -164,6 +164,7 @@ export default function PullSheetRedesign({
   useEffect(() => {
     async function getUser() {
       const { data: { user } } = await supabase.auth.getUser();
+      console.log('🔐 User data:', user);
       if (user?.email) {
         setUserName(user.email.split('@')[0]);
         
@@ -174,13 +175,17 @@ export default function PullSheetRedesign({
                          ? `${user.user_metadata.first_name} ${user.user_metadata.last_name}` 
                          : null);
         
+        console.log('👤 User metadata fullName:', fullName);
+        
         // If not in metadata, try profiles table
         if (!fullName) {
-          const { data: profile } = await supabase
+          const { data: profile, error } = await supabase
             .from('profiles')
             .select('full_name, first_name, last_name')
             .eq('id', user.id)
             .maybeSingle();
+          
+          console.log('📋 Profile data:', profile, 'Error:', error);
           
           if (profile?.full_name) {
             fullName = profile.full_name;
@@ -189,8 +194,10 @@ export default function PullSheetRedesign({
           }
         }
         
+        const finalName = fullName || user.email.split('@')[0];
+        console.log('✅ Final user name:', finalName);
         // Fallback to email username
-        setUserFullName(fullName || user.email.split('@')[0]);
+        setUserFullName(finalName);
       }
     }
     
