@@ -39,17 +39,24 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
     setScanning(true);
     setShowResult(false);
 
+    console.log('🔍 Starting scan for barcode:', barcode.trim());
+
     try {
       // 1. Find inventory item by barcode
+      console.log('📦 Looking up inventory item...');
       const { data: inventoryItem, error: invError } = await supabase
         .from('inventory_items')
         .select('*')
         .eq('barcode', barcode.trim())
         .maybeSingle();
 
-      if (invError) throw invError;
+      if (invError) {
+        console.error('❌ Inventory lookup error:', invError);
+        throw invError;
+      }
 
       if (!inventoryItem) {
+        console.warn('⚠️ Barcode not found:', barcode.trim());
         setLastScan({
           success: false,
           message: `Barcode ${barcode} not found in inventory`,
@@ -57,10 +64,14 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
         setShowResult(true);
         setBarcode("");
         setScanning(false);
+        playReject(soundTheme);
         return;
       }
 
+      console.log('✅ Found inventory item:', inventoryItem.name);
+
       // 2. Find matching pull sheet item
+      console.log('🔍 Looking for pull sheet item...');
       const { data: pullSheetItem, error: itemError } = await supabase
         .from('pull_sheet_items')
         .select('*')
@@ -69,12 +80,14 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
         .maybeSingle();
 
       // Fetch pull sheet status to determine scan behavior (create-mode vs active pulls)
+      console.log('📋 Fetching pull sheet status...');
       const { data: sheetData } = await supabase
         .from('pull_sheets')
         .select('status')
         .eq('id', pullSheetId)
         .maybeSingle();
       const sheetStatus = (sheetData as any)?.status || 'draft';
+      console.log('📊 Pull sheet status:', sheetStatus);
 
       // If there's no pull sheet item for this inventory unit, create one so scans are attached
       let resolvedPullSheetItem = pullSheetItem as any | null;
@@ -168,6 +181,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
 
       // 5. Record the scan history (always record history regardless of mode)
       // 5. Record the scan history
+      console.log('💾 Recording scan history...');
       const scanData = {
         pull_sheet_id: pullSheetId,
         pull_sheet_item_id: (pullSheetItem as any)?.id || null,
@@ -184,21 +198,34 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
         .select()
         .single();
 
-      if (scanError) throw scanError;
+      if (scanError) {
+        console.error('❌ Scan history error:', scanError);
+        throw scanError;
+      }
+      console.log('✅ Scan history recorded:', scanRecord.id);
 
       // 6. Update pull sheet item qty_pulled if it's an active pull scan
       if (resolvedPullSheetItem && isActivePullMode) {
+        console.log('📈 Updating qty_pulled...');
         const newQtyPulled = ((resolvedPullSheetItem as any).qty_pulled || 0) + 1;
-        await (supabase
+        const { error: updateError } = await (supabase
           .from('pull_sheet_items') as any)
           .update({ qty_pulled: newQtyPulled })
           .eq('id', (resolvedPullSheetItem as any).id);
+          
+        if (updateError) {
+          console.error('❌ Update qty error:', updateError);
+        } else {
+          console.log('✅ Updated qty_pulled to:', newQtyPulled);
+        }
       }
 
       // 7. Play success sound
+      console.log('🔔 Playing success sound');
       playSuccess(soundTheme);
 
       // 8. Show success
+      console.log('✅ Scan complete!');
       setLastScan({
         success: true,
         message: `${(inventoryItem as any).name} scanned successfully`,
@@ -209,6 +236,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
 
       // Call callback if provided
       if (onScan) {
+        console.log('📞 Calling onScan callback');
         onScan(scanRecord);
       }
 
@@ -219,7 +247,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
       }, 3000);
 
     } catch (err: any) {
-      console.error('Scan error:', err);
+      console.error('❌ Scan error:', err);
       playReject();
       setLastScan({
         success: false,
@@ -227,6 +255,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
       });
       setShowResult(true);
     } finally {
+      console.log('🏁 Scan finished, resetting scanning state');
       setScanning(false);
       inputRef.current?.focus();
     }
