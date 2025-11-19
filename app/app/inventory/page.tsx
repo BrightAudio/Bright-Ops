@@ -97,7 +97,7 @@ export default function InventoryPage() {
 				const newPrices = new Map(itemPrices);
 				newPrices.set(id, result);
 				setItemPrices(newPrices);
-				alert(`Found price: $${result.price} (${result.source})`);
+				alert(`eBay Highest Sold Price: $${result.price}\n\nSource: ${result.source}`);
 			} else {
 				alert('No price found for this item');
 			}

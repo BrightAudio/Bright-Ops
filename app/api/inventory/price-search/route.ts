@@ -47,14 +47,16 @@ async function searchWithChatGPT(itemName: string): Promise<number | null> {
   }
 
   try {
-    const prompt = `You are an audio equipment pricing expert. What is the current market retail price for: "${itemName}"?
+    const prompt = `You are an audio equipment pricing expert with access to current eBay sold listings. What is the HIGHEST SOLD PRICE on eBay for: "${itemName}"?
+
+Search eBay's recently sold listings and find the highest price paid for this item in good/excellent condition.
 
 Respond with ONLY a JSON object (no other text):
 {"price": <number only>}
 
 Example: {"price": 2500}
 
-If you cannot determine a price, respond: {"price": null}`;
+If you cannot determine a price from eBay sold listings, respond: {"price": null}`;
 
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -67,7 +69,7 @@ If you cannot determine a price, respond: {"price": null}`;
         messages: [
           {
             role: 'system',
-            content: 'You are an expert in professional audio equipment pricing with knowledge of all major brands and models. Provide accurate current market prices.',
+            content: 'You are an expert in professional audio equipment pricing with access to eBay sold listings data. Provide accurate highest sold prices from eBay for used equipment in good/excellent condition.',
           },
           {
             role: 'user',
@@ -149,7 +151,7 @@ export async function POST(request: NextRequest) {
 
       // Try ChatGPT first
       let price = await searchWithChatGPT(itemName);
-      let source = 'ChatGPT Analysis';
+      let source = 'eBay Highest Sold Price';
       let confidence = 'high';
 
       // Fall back to database
