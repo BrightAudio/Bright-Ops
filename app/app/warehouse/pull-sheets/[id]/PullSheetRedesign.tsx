@@ -234,8 +234,12 @@ export default function PullSheetRedesign({
   const totalPulled = items.reduce((sum, item) => sum + (item.qty_pulled || 0), 0);
   const progress = totalRequested > 0 ? Math.round((totalPulled / totalRequested) * 100) : 0;
 
+  console.log('🔢 Progress calculated:', { totalRequested, totalPulled, progress, itemsLength: items.length });
+
   // Check for completion whenever items change
   useEffect(() => {
+    console.log('🔄 Completion useEffect triggered');
+    
     // Don't prompt if already finalized
     if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
       console.log('⏭️ Skipping finalize check - already', pullSheet.status);
