@@ -146,14 +146,18 @@ export default function AccountSettingsPage() {
           } as any)
           .eq('id', user.id);
         
-        if (error) throw error;
+        if (error) {
+          console.error("Supabase error:", error);
+          setPasswordError(`Failed to save API key: ${error.message || 'Unknown error'}`);
+          return;
+        }
         
         setApiKeySuccess("Pexels API key saved successfully");
         setIsEditingApiKey(false);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving API key:", error);
-      setPasswordError("Failed to save API key");
+      setPasswordError(`Failed to save API key: ${error?.message || 'Unknown error'}`);
     } finally {
       setIsSaving(false);
     }

@@ -287,24 +287,24 @@ export default function InventoryPage() {
 			) : (
 				<>
 					{/* Stats Cards */}
-					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-						<div className="bg-gradient-to-br from-blue-900/40 to-blue-800/20 border border-blue-700/30 rounded-lg p-4">
-							<p className="text-zinc-400 text-sm mb-1">Total Items</p>
-							<p className="text-2xl font-bold text-white">{filteredItems.length}</p>
+					<div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8 pb-6 border-b-2 border-zinc-700/50">
+						<div className="bg-gradient-to-br from-blue-900/60 to-blue-800/30 border-2 border-blue-600/40 rounded-lg p-5 shadow-lg">
+							<p className="text-blue-200 text-sm font-semibold mb-2 uppercase tracking-wide">Total Items</p>
+							<p className="text-3xl font-bold text-white">{filteredItems.length}</p>
 						</div>
-						<div className="bg-gradient-to-br from-green-900/40 to-green-800/20 border border-green-700/30 rounded-lg p-4">
-							<p className="text-zinc-400 text-sm mb-1">Inventory Value</p>
-							<p className="text-2xl font-bold text-green-400">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
+						<div className="bg-gradient-to-br from-green-900/60 to-green-800/30 border-2 border-green-600/40 rounded-lg p-5 shadow-lg">
+							<p className="text-green-200 text-sm font-semibold mb-2 uppercase tracking-wide">Inventory Value</p>
+							<p className="text-3xl font-bold text-green-300">${totalValue.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</p>
 						</div>
-						<div className="bg-gradient-to-br from-purple-900/40 to-purple-800/20 border border-purple-700/30 rounded-lg p-4">
-							<p className="text-zinc-400 text-sm mb-1">In Warehouse</p>
-							<p className="text-2xl font-bold text-purple-400">{filteredItems.filter(i => (i.qty_in_warehouse ?? 0) > 0).length}</p>
+						<div className="bg-gradient-to-br from-purple-900/60 to-purple-800/30 border-2 border-purple-600/40 rounded-lg p-5 shadow-lg">
+							<p className="text-purple-200 text-sm font-semibold mb-2 uppercase tracking-wide">In Warehouse</p>
+							<p className="text-3xl font-bold text-purple-300">{filteredItems.filter(i => (i.qty_in_warehouse ?? 0) > 0).length}</p>
 						</div>
 					</div>
 
 					{/* Inventory Grid */}
 					{filteredItems && filteredItems.length > 0 ? (
-						<div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-4">
+						<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-2">
 							{filteredItems.map((item: InventoryItemWithJob) => {
 								const qty = item.quantity_on_hand ?? 0;
 								const unitValue = item.unit_value ?? 0;
@@ -337,13 +337,13 @@ export default function InventoryPage() {
 								// Determine job status
 								let jobInfo = { display: null as React.ReactNode, isOnJob: false };
 								if (qtyInWarehouse > 0) {
-									jobInfo = { display: <span className="text-zinc-400">In Warehouse</span>, isOnJob: false };
+									jobInfo = { display: <span className="text-zinc-400 text-xs">In Warehouse</span>, isOnJob: false };
 								} else if (item.currentJob) {
 									jobInfo = { 
 										display: (
 											<div>
-												<p className="text-red-400 font-semibold">{item.currentJob.name}</p>
-												<p className="text-red-300 text-xs mt-0.5">Out: {formatDate(item.currentJob.scheduled_out_at)}</p>
+												<p className="text-red-400 font-semibold text-xs">{item.currentJob.name}</p>
+												<p className="text-red-300 text-[10px] mt-0.5">Out: {formatDate(item.currentJob.scheduled_out_at)}</p>
 											</div>
 										), 
 										isOnJob: true 
@@ -354,79 +354,79 @@ export default function InventoryPage() {
 									<div 
 										key={item.id}
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
-										className="group bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 hover:border-zinc-600 rounded-lg p-5 cursor-pointer transition-all hover:shadow-xl hover:shadow-zinc-900/50 hover:-translate-y-1"
+										className="group bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 hover:border-zinc-600 rounded p-2 cursor-pointer transition-all hover:shadow-lg hover:shadow-zinc-900/50 hover:-translate-y-0.5"
 									>
 										{/* Top Section: Status Badge & Category */}
-										<div className="flex justify-between items-start mb-3">
-											<span className={`text-xs font-semibold px-2.5 py-1 rounded border ${status.color}`}>
+										<div className="flex justify-between items-start mb-1.5">
+											<span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${status.color}`}>
 												{status.icon} {status.label}
 											</span>
 											{item.category && (
-												<span className="text-xs text-zinc-500 bg-zinc-900/50 px-2 py-1 rounded">
+												<span className="text-[10px] text-zinc-500 bg-zinc-900/50 px-1.5 py-0.5 rounded">
 													{item.category.replace('_', ' ').toUpperCase()}
 												</span>
 											)}
 										</div>
 
 										{/* Item Name & Barcode */}
-										<div className="mb-4">
-											<h3 className="text-lg font-bold text-white group-hover:text-blue-400 transition">
+										<div className="mb-1.5">
+											<h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition line-clamp-2">
 												{item.name}
 											</h3>
 											{item.barcode && (
-												<p className="text-xs text-zinc-500 mt-1">📦 {item.barcode}</p>
+												<p className="text-[10px] text-zinc-500 mt-0.5">📦 {item.barcode}</p>
 											)}
 										</div>
 
 										{/* Location */}
 										{item.location && (
-											<div className="mb-3 pb-3 border-b border-zinc-700/30">
-												<p className="text-xs text-zinc-500 mb-1">Location</p>
-												<p className="text-sm text-zinc-300">{item.location}</p>
+											<div className="mb-1.5">
+												<p className="text-[10px] text-zinc-500">Location</p>
+												<p className="text-xs text-zinc-300">{item.location}</p>
 											</div>
 										)}
 
 										{/* Job Status */}
-										<div className={`mb-4 pb-4 border-b border-zinc-700/30 ${jobInfo.isOnJob ? 'bg-red-950/40 -mx-5 px-5 py-3 rounded' : ''}`}>
-											<p className="text-xs text-zinc-500 mb-1.5">Job Assignment</p>
+										<div className={`mb-1.5 ${jobInfo.isOnJob ? 'bg-red-950/40 -mx-2 px-2 py-1 rounded' : ''}`}>
+											<p className="text-[10px] text-zinc-500 mb-0.5">Job Assignment</p>
 											{jobInfo.display}
 										</div>
 
 										{/* Quantities */}
-										<div className="grid grid-cols-2 gap-3 mb-4">
-											<div className="bg-zinc-900/50 rounded p-3">
-												<p className="text-xs text-zinc-500 mb-1">On Hand</p>
-												<p className="text-xl font-bold text-white">{qty}</p>
+										<div className="grid grid-cols-2 gap-1.5 mb-1.5">
+											<div className="bg-blue-900/30 border border-blue-700/30 rounded p-1.5">
+												<p className="text-[10px] text-blue-300">On Hand</p>
+												<p className="text-sm font-bold text-white">{qty}</p>
 											</div>
-											<div className="bg-zinc-900/50 rounded p-3">
-												<p className="text-xs text-zinc-500 mb-1">Unit Value</p>
-												<p className="text-xl font-bold text-green-400">${unitValue.toFixed(2)}</p>
+											<div className="bg-emerald-900/30 border border-emerald-700/30 rounded p-1.5">
+												<p className="text-[10px] text-emerald-300">Unit Value</p>
+												<p className="text-sm font-bold text-emerald-400">${unitValue.toFixed(2)}</p>
 											</div>
 										</div>
 
 										{/* Total Value */}
-										<div className="bg-gradient-to-r from-green-900/30 to-green-800/20 border border-green-700/30 rounded p-3 mb-4">
-											<p className="text-xs text-zinc-500 mb-1">Total Value</p>
-											<p className="text-2xl font-bold text-green-400">
+										<div className="bg-gradient-to-r from-green-900/40 to-green-800/30 border border-green-600/40 rounded p-1.5 mb-1.5">
+											<p className="text-[10px] text-green-300">Total Value</p>
+											<p className="text-base font-bold text-green-400">
 												${itemTotal.toFixed(2)}
 											</p>
 										</div>
 
 										{/* Rental Rates (if available) */}
 										{(item.rental_cost_daily || item.rental_cost_weekly) && (
-											<div className="bg-orange-950/40 border border-orange-700/30 rounded p-3 mb-4">
-												<p className="text-xs text-zinc-500 mb-2">Rental Rates</p>
-												<div className="grid grid-cols-2 gap-2">
+											<div className="bg-orange-900/40 border border-orange-600/40 rounded p-1.5 mb-1.5">
+												<p className="text-[10px] text-orange-300 mb-1">Rental Rates</p>
+												<div className="grid grid-cols-2 gap-1.5">
 													{item.rental_cost_daily ? (
 														<div>
-															<p className="text-xs text-zinc-400">Daily</p>
-															<p className="text-lg font-bold text-orange-400">${item.rental_cost_daily.toFixed(2)}</p>
+															<p className="text-[10px] text-orange-200">Daily</p>
+															<p className="text-xs font-bold text-orange-400">${item.rental_cost_daily.toFixed(2)}</p>
 														</div>
 													) : null}
 													{item.rental_cost_weekly ? (
 														<div>
-															<p className="text-xs text-zinc-400">Weekly</p>
-															<p className="text-lg font-bold text-orange-300">${item.rental_cost_weekly.toFixed(2)}</p>
+															<p className="text-[10px] text-orange-200">Weekly</p>
+															<p className="text-xs font-bold text-orange-300">${item.rental_cost_weekly.toFixed(2)}</p>
 														</div>
 													) : null}
 												</div>
@@ -435,12 +435,12 @@ export default function InventoryPage() {
 
 										{/* Price Search Result (if available) */}
 										{itemPrices.has(item.id) && (
-											<div className="bg-blue-950/40 border border-blue-700/30 rounded p-3 mb-4">
-												<p className="text-xs text-zinc-500 mb-1">Market Price</p>
-												<p className="text-lg font-bold text-blue-400">
+											<div className="bg-blue-900/40 border border-blue-600/40 rounded p-1.5 mb-1.5">
+												<p className="text-[10px] text-blue-300">Market Price</p>
+												<p className="text-xs font-bold text-blue-400">
 													${itemPrices.get(item.id).price.toFixed(2)}
 												</p>
-												<p className="text-xs text-zinc-400 mt-1">{itemPrices.get(item.id).source}</p>
+												<p className="text-[10px] text-blue-300 mt-0.5">{itemPrices.get(item.id).source}</p>
 											</div>
 										)}
 
