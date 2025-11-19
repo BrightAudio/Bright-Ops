@@ -238,6 +238,7 @@ export default function PullSheetRedesign({
   useEffect(() => {
     // Don't prompt if already finalized
     if (pullSheet.status === 'finalized' || pullSheet.status === 'complete') {
+      console.log('⏭️ Skipping finalize check - already', pullSheet.status);
       return;
     }
     
@@ -245,19 +246,30 @@ export default function PullSheetRedesign({
       (item.qty_pulled || 0) >= (item.qty_requested || 0)
     );
     
+    console.log('📊 Completion check:', {
+      allComplete,
+      progress,
+      itemsLength: items.length,
+      totalRequested,
+      totalPulled
+    });
+    
     if (allComplete && progress === 100) {
       const sessionKey = `pull-sheet-${pullSheet.id}-prompted`;
       const hasPrompted = sessionStorage.getItem(sessionKey);
+      console.log('✅ All complete! Session key:', sessionKey, 'Already prompted?', hasPrompted);
+      
       if (!hasPrompted) {
         sessionStorage.setItem(sessionKey, 'true');
         setTimeout(() => {
+          console.log('🔔 Showing finalize prompt for:', userFullName);
           if (confirm(`All items scanned! Ready to finalize pull sheet?\n\nCompleted by: ${userFullName}`)) {
             handleFinalize();
           }
         }, 500);
       }
     }
-  }, [items, progress, pullSheet.id, pullSheet.status, userFullName]);
+  }, [items, progress, pullSheet.id, pullSheet.status, userFullName, totalRequested, totalPulled]);
 
   // Filter items based on search and filter mode
   let filteredItems = items;
