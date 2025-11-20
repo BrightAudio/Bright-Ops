@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser } from 'react-icons/fa';
+import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser, FaDollarSign } from 'react-icons/fa';
 
 export default function LeadsLayout({
   children,
@@ -47,6 +47,7 @@ export default function LeadsLayout({
   const menuItems = [
     { href: '/app/dashboard/leads', icon: <FaChartLine />, label: 'Dashboard' },
     { href: '/app/dashboard/leads/campaigns', icon: <FaEnvelope />, label: 'Email Campaigns' },
+    { href: '/app/dashboard/leads/financing', icon: <FaDollarSign />, label: 'Financing' },
     { href: '/app/dashboard/leads/settings', icon: <FaCog />, label: 'Settings' },
   ];
 
