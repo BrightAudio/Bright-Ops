@@ -133,8 +133,8 @@ async function fetchPageContacts(url: string): Promise<{
 
     // Look for contact names near "contact", "director", "manager", "coordinator" keywords
     const namePatterns = [
-      /(?:contact|director|manager|coordinator|events?)\s*:?\s*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
-      /([A-Z][a-z]+\s+[A-Z][a-z]+)[\s,]*(?:event|venue|av|audio|production)\s+(?:manager|director|coordinator)/gi
+      /(?:contact|director|manager|coordinator|events?|pastor|minister|reverend|rabbi|imam)\s*:?\s*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
+      /([A-Z][a-z]+\s+[A-Z][a-z]+)[\s,]*(?:event|venue|av|audio|production|pastor|minister|worship)\s+(?:manager|director|coordinator|leader)/gi
     ];
 
     let contactName = '';
@@ -152,7 +152,8 @@ async function fetchPageContacts(url: string): Promise<{
       /(event\s+(?:manager|director|coordinator|planner))/gi,
       /(venue\s+(?:manager|director))/gi,
       /(av\s+(?:manager|director|coordinator))/gi,
-      /(production\s+(?:manager|director))/gi
+      /(production\s+(?:manager|director))/gi,
+      /(pastor|minister|reverend|rabbi|imam|worship\s+(?:leader|director|coordinator))/gi
     ];
 
     let title = '';
@@ -202,7 +203,8 @@ function extractTitleFromSnippet(snippet: string): string {
     /(venue\s+(?:manager|director))/gi,
     /(av\s+(?:manager|director|coordinator))/gi,
     /(production\s+(?:manager|director))/gi,
-    /(operations\s+(?:manager|director))/gi
+    /(operations\s+(?:manager|director))/gi,
+    /(pastor|minister|reverend|rabbi|imam|worship\s+(?:leader|director|coordinator))/gi
   ];
 
   for (const pattern of titlePatterns) {

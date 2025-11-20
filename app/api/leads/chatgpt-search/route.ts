@@ -108,7 +108,8 @@ function buildSearchPrompt(city: string, state: string, searchType: string): str
 - Event space owners and bookers
 - Banquet hall managers
 - Corporate event space managers
-- Church pastors and event coordinators at churches
+- Churches and houses of worship (pastors, event coordinators, ministry leaders)
+- Religious venue managers and coordinators
 Include their names, email addresses (realistic domain patterns), phone numbers, titles, and venue/business names.`;
   } else if (searchType === 'linkedin') {
     specificPrompt = `Focus on:
@@ -117,7 +118,8 @@ Include their names, email addresses (realistic domain patterns), phone numbers,
 - Wedding Planners
 - Venue Managers
 - Corporate Event Specialists
-- Church pastors and ministry leaders
+- Church pastors, ministry leaders, and worship coordinators
+- Houses of worship event managers
 Generate realistic professional profiles with plausible emails and phone numbers.`;
   } else if (searchType === 'professionals') {
     specificPrompt = `Focus on:
@@ -126,7 +128,8 @@ Generate realistic professional profiles with plausible emails and phone numbers
 - Wedding/Special Events Coordinators
 - Corporate Event Specialists
 - Entertainment Directors
-- Church pastors and event coordinators
+- Church pastors, ministry leaders, and worship coordinators
+- Houses of worship event coordinators and managers
 Include their names, realistic work emails, direct phone numbers, job titles, and company/venue names.`;
   } else {
     specificPrompt = `Include a mix of:
@@ -135,7 +138,8 @@ Include their names, realistic work emails, direct phone numbers, job titles, an
 - Event planning company managers
 - Entertainment venues and their booking managers
 - Entertainment service providers (DJ, catering, audio/visual)
-- Church pastors and event coordinators at local churches
+- Churches and houses of worship (pastors, ministry leaders, worship coordinators, event coordinators)
+- Religious venues and their event managers
 For each, include: name, email, phone, title, and organization/venue name.`;
   }
 

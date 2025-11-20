@@ -46,6 +46,10 @@ function getMockLeads(city: string, state: string) {
     { name: 'Cultural Heritage Museum', email: 'events@culturalheritage.org' },
     { name: 'Premium Wedding Venue', email: 'weddings@premiumvenue.com' },
     { name: 'Urban Arts Center', email: 'contact@urbnartsspace.com' },
+    { name: 'First Community Church', email: 'pastor@firstcommunity.org' },
+    { name: 'Grace Fellowship', email: 'events@gracefellowship.org' },
+    { name: 'Temple Beth Shalom', email: 'coordinator@bethshalom.org' },
+    { name: 'Saint Mary Cathedral', email: 'worship@stmarycathedral.org' },
   ];
 
   const leads = venues.map((v, i) => ({
