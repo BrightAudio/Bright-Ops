@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, memo } from 'react';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -52,13 +52,13 @@ export default function StrategiesPage() {
     }
   }
 
-  async function loadUncontactedLeads() {
+  const loadUncontactedLeads = useCallback(async () => {
     try {
       setLoading(true);
       const supabaseAny = supabase as any;
       const { data, error } = await supabaseAny
         .from('leads')
-        .select('*')
+        .select('id, name, email, phone, org, title, venue, status')
         .eq('status', 'uncontacted')
         .order('created_at', { ascending: false });
 
@@ -69,9 +69,9 @@ export default function StrategiesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  async function saveStrategy() {
+  const saveStrategy = useCallback(async () => {
     if (!selectedLead || messages.length === 0) return;
 
     try {
@@ -99,9 +99,9 @@ export default function StrategiesPage() {
       console.error('Error saving strategy:', err);
       alert('Failed to save strategy. Please try again.');
     }
-  }
+  }, [selectedLead, messages]);
 
-  async function generateStrategy() {
+  const generateStrategy = useCallback(async () => {
     if (!selectedLead) return;
 
     setGenerating(true);
@@ -191,9 +191,9 @@ Provide a complete, ready-to-use outreach script that reflects our values-driven
     } finally {
       setGenerating(false);
     }
-  }
+  }, [selectedLead, messages]);
 
-  async function sendMessage() {
+  const sendMessage = useCallback(async () => {
     if (!input.trim() || !selectedLead) return;
 
     const newMessages: Message[] = [
@@ -233,7 +233,7 @@ Always emphasize measurable revenue/income increases and financial value.`
     } finally {
       setGenerating(false);
     }
-  }
+  }, [input, selectedLead, messages]);
 
   return (
     <div style={{ minHeight: '100vh', background: '#1a1a1a', color: '#e5e5e5' }}>
@@ -335,48 +335,54 @@ Always emphasize measurable revenue/income increases and financial value.`
                         onClick={() => {
                           const phone = selectedLead.phone;
                           
+                          // Copy to clipboard first (while document has focus)
+                          const copyToClipboard = async () => {
+                            try {
+                              await navigator.clipboard.writeText(phone || '');
+                            } catch (err) {
+                              console.error('Clipboard error:', err);
+                            }
+                          };
+
                           // Handle based on user preference
                           if (callingApp === 'copy') {
                             // Just copy to clipboard
-                            navigator.clipboard.writeText(phone || '');
+                            copyToClipboard();
                             alert(`📋 Phone number copied: ${phone}`);
                           } else if (callingApp === 'ask') {
                             // Ask user each time
-                            window.location.href = `tel:${phone}`;
-                            setTimeout(() => {
-                              navigator.clipboard.writeText(phone || '');
-                              const useApp = confirm(
-                                `📞 Calling: ${phone}\n\n` +
-                                `The number has been copied to your clipboard.\n\n` +
-                                `Choose your calling method:\n` +
-                                `✓ OK - Open in default phone app\n` +
-                                `✓ Cancel - Just use copied number`
-                              );
-                              
-                              if (!useApp) {
-                                alert(`📋 Phone number copied: ${phone}\n\nPaste it into your preferred calling app.`);
-                              }
-                            }, 100);
+                            copyToClipboard();
+                            const useApp = confirm(
+                              `📞 Calling: ${phone}\n\n` +
+                              `The number has been copied to your clipboard.\n\n` +
+                              `Choose your calling method:\n` +
+                              `✓ OK - Open in default phone app\n` +
+                              `✓ Cancel - Just use copied number`
+                            );
+                            
+                            if (useApp) {
+                              window.location.href = `tel:${phone}`;
+                            }
                           } else if (callingApp === 'teams') {
                             // Microsoft Teams
+                            copyToClipboard();
                             window.open(`msteams://teams.microsoft.com/l/call/0/0?users=${phone}`, '_blank');
-                            navigator.clipboard.writeText(phone || '');
                           } else if (callingApp === 'skype') {
                             // Skype
+                            copyToClipboard();
                             window.location.href = `skype:${phone}?call`;
-                            navigator.clipboard.writeText(phone || '');
                           } else if (callingApp === 'zoom') {
                             // Zoom Phone
+                            copyToClipboard();
                             window.location.href = `zoomphonecall:${phone}`;
-                            navigator.clipboard.writeText(phone || '');
                           } else if (callingApp === 'google-voice') {
                             // Google Voice
-                            window.open(`https://voice.google.com/u/0/calls?a=nc,%2B${phone.replace(/\D/g, '')}`, '_blank');
-                            navigator.clipboard.writeText(phone || '');
+                            copyToClipboard();
+                            window.open(`https://voice.google.com/u/0/calls?a=nc,%2B${(phone || '').replace(/\D/g, '')}`, '_blank');
                           } else {
                             // Default: use tel: protocol
+                            copyToClipboard();
                             window.location.href = `tel:${phone}`;
-                            navigator.clipboard.writeText(phone || '');
                           }
                         }}
                         style={{
