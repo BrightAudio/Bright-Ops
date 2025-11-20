@@ -36,6 +36,7 @@ export default function LeadSettingsPage() {
   const [aiTone, setAiTone] = useState('professional');
   const [aiTemplate, setAiTemplate] = useState('');
   const [lastRotationDate, setLastRotationDate] = useState<string | null>(null);
+  const [defaultCallingApp, setDefaultCallingApp] = useState('ask');
 
   const supabase = supabaseBrowser();
 
@@ -128,6 +129,7 @@ export default function LeadSettingsPage() {
         setEmailReplyTo((data as any).email_reply_to || '');
         setAiTone((data as any).ai_tone || 'professional');
         setAiTemplate((data as any).ai_template || '');
+        setDefaultCallingApp((data as any).default_calling_app || 'ask');
       }
     } catch (err: any) {
       console.error('Error loading settings:', err);
@@ -165,6 +167,7 @@ export default function LeadSettingsPage() {
         email_reply_to: emailReplyTo || null,
         ai_tone: aiTone || 'professional',
         ai_template: aiTemplate || null,
+        default_calling_app: defaultCallingApp || 'ask',
         updated_at: new Date().toISOString(),
         updated_by: user.id,
       };
@@ -475,7 +478,51 @@ export default function LeadSettingsPage() {
           </div>
         </div>
 
-        {/* AI Settings */}
+        {/* Calling Preferences */}
+        <div className="bg-[#2a2a2a] rounded-lg shadow-sm border border-[#333333] p-6 mb-6">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-purple-500 text-xl">📞</span>
+            <h2 className="text-lg font-semibold text-[#e5e5e5]">Calling Preferences</h2>
+          </div>
+          
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
+                Default Calling App
+              </label>
+              <select 
+                value={defaultCallingApp}
+                onChange={(e) => setDefaultCallingApp(e.target.value)}
+                className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
+              >
+                <option value="ask">Ask Each Time</option>
+                <option value="tel">System Default (tel: protocol)</option>
+                <option value="teams">Microsoft Teams</option>
+                <option value="skype">Skype</option>
+                <option value="zoom">Zoom Phone</option>
+                <option value="google-voice">Google Voice</option>
+                <option value="copy">Just Copy Number</option>
+              </select>
+              <p className="text-xs text-[#9ca3af] mt-2">
+                Choose which app opens when you click the Call button on lead pages. 
+                "Ask Each Time" gives you a dialog to choose, while selecting a specific app will attempt to open that app directly.
+              </p>
+              <div className="mt-3 p-3 bg-[#1a1a1a] border border-[#333333] rounded text-xs text-[#9ca3af]">
+                <p className="font-medium text-[#e5e5e5] mb-1">📱 Supported Apps:</p>
+                <ul className="space-y-1 ml-4">
+                  <li>• <span className="text-[#e5e5e5]">System Default:</span> Uses Windows Phone app, Skype, or whatever handles tel: links</li>
+                  <li>• <span className="text-[#e5e5e5]">Microsoft Teams:</span> Opens in Teams desktop or web app</li>
+                  <li>• <span className="text-[#e5e5e5]">Skype:</span> Direct Skype calling</li>
+                  <li>• <span className="text-[#e5e5e5]">Zoom Phone:</span> For Zoom Phone users</li>
+                  <li>• <span className="text-[#e5e5e5]">Google Voice:</span> Opens Google Voice web interface</li>
+                  <li>• <span className="text-[#e5e5e5]">Just Copy:</span> Only copies number to clipboard, no app opens</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* AI Email Generation */}
         <div className="bg-[#2a2a2a] rounded-lg shadow-sm border border-[#333333] p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <FaRobot className="text-purple-500" size={20} />

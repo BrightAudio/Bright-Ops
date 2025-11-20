@@ -28,10 +28,29 @@ export default function StrategiesPage() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [callingApp, setCallingApp] = useState<string>('ask');
 
   useEffect(() => {
     loadUncontactedLeads();
+    loadCallingPreference();
   }, []);
+
+  async function loadCallingPreference() {
+    try {
+      const supabaseAny = supabase as any;
+      const { data, error } = await supabaseAny
+        .from('leads_settings')
+        .select('default_calling_app')
+        .single();
+
+      if (data && data.default_calling_app) {
+        setCallingApp(data.default_calling_app);
+      }
+    } catch (err) {
+      console.error('Error loading calling preference:', err);
+      // Default to 'ask' if there's an error
+    }
+  }
 
   async function loadUncontactedLeads() {
     try {
@@ -314,27 +333,51 @@ Always emphasize measurable revenue/income increases and financial value.`
                     {selectedLead.phone && (
                       <button
                         onClick={() => {
-                          // Try multiple calling methods
                           const phone = selectedLead.phone;
                           
-                          // Method 1: Use tel: protocol (works with Windows Phone app, Skype, Teams, Zoom)
-                          window.location.href = `tel:${phone}`;
-                          
-                          // Method 2: Fallback - copy to clipboard and show instructions
-                          setTimeout(() => {
+                          // Handle based on user preference
+                          if (callingApp === 'copy') {
+                            // Just copy to clipboard
                             navigator.clipboard.writeText(phone || '');
-                            const useApp = confirm(
-                              `📞 Calling: ${phone}\n\n` +
-                              `The number has been copied to your clipboard.\n\n` +
-                              `Choose your calling method:\n` +
-                              `✓ OK - Open in default phone app (Skype/Teams/Phone)\n` +
-                              `✓ Cancel - Just copy number (already done)`
-                            );
-                            
-                            if (!useApp) {
-                              alert(`📋 Phone number copied: ${phone}\n\nPaste it into:\n• Microsoft Teams\n• Skype\n• Zoom\n• Google Voice\n• Your phone app`);
-                            }
-                          }, 100);
+                            alert(`📋 Phone number copied: ${phone}`);
+                          } else if (callingApp === 'ask') {
+                            // Ask user each time
+                            window.location.href = `tel:${phone}`;
+                            setTimeout(() => {
+                              navigator.clipboard.writeText(phone || '');
+                              const useApp = confirm(
+                                `📞 Calling: ${phone}\n\n` +
+                                `The number has been copied to your clipboard.\n\n` +
+                                `Choose your calling method:\n` +
+                                `✓ OK - Open in default phone app\n` +
+                                `✓ Cancel - Just use copied number`
+                              );
+                              
+                              if (!useApp) {
+                                alert(`📋 Phone number copied: ${phone}\n\nPaste it into your preferred calling app.`);
+                              }
+                            }, 100);
+                          } else if (callingApp === 'teams') {
+                            // Microsoft Teams
+                            window.open(`msteams://teams.microsoft.com/l/call/0/0?users=${phone}`, '_blank');
+                            navigator.clipboard.writeText(phone || '');
+                          } else if (callingApp === 'skype') {
+                            // Skype
+                            window.location.href = `skype:${phone}?call`;
+                            navigator.clipboard.writeText(phone || '');
+                          } else if (callingApp === 'zoom') {
+                            // Zoom Phone
+                            window.location.href = `zoomphonecall:${phone}`;
+                            navigator.clipboard.writeText(phone || '');
+                          } else if (callingApp === 'google-voice') {
+                            // Google Voice
+                            window.open(`https://voice.google.com/u/0/calls?a=nc,%2B${phone.replace(/\D/g, '')}`, '_blank');
+                            navigator.clipboard.writeText(phone || '');
+                          } else {
+                            // Default: use tel: protocol
+                            window.location.href = `tel:${phone}`;
+                            navigator.clipboard.writeText(phone || '');
+                          }
                         }}
                         style={{
                           background: '#10b981',
