@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 
 type Meeting = {
   id: string;
@@ -33,14 +33,43 @@ const STATUS_COLORS = {
 
 export default function CalendarPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [filter, setFilter] = useState<string>('all');
+  const [showNewMeetingModal, setShowNewMeetingModal] = useState(false);
+  const [newMeeting, setNewMeeting] = useState({
+    lead_id: '',
+    lead_name: '',
+    lead_email: '',
+    meeting_date: '',
+    meeting_time: '',
+    meeting_type: 'call',
+    notes: '',
+  });
 
   useEffect(() => {
     loadMeetings();
-  }, []);
+    
+    // Check for lead params from URL
+    const leadId = searchParams.get('leadId');
+    const leadName = searchParams.get('leadName');
+    const leadEmail = searchParams.get('leadEmail');
+    
+    if (leadId && leadName && leadEmail) {
+      setNewMeeting({
+        lead_id: leadId,
+        lead_name: leadName,
+        lead_email: leadEmail,
+        meeting_date: '',
+        meeting_time: '',
+        meeting_type: 'call',
+        notes: '',
+      });
+      setShowNewMeetingModal(true);
+    }
+  }, [searchParams]);
 
   async function loadMeetings() {
     try {
@@ -59,12 +88,57 @@ export default function CalendarPage() {
     }
   }
 
+  async function handleCreateMeeting() {
+    if (!newMeeting.meeting_date || !newMeeting.meeting_time) {
+      alert('Please fill in date and time');
+      return;
+    }
+
+    try {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny
+        .from('scheduled_meetings')
+        .insert([
+          {
+            ...newMeeting,
+            status: 'scheduled'
+          }
+        ]);
+
+      if (error) throw error;
+
+      setShowNewMeetingModal(false);
+      setNewMeeting({
+        lead_id: '',
+        lead_name: '',
+        lead_email: '',
+        meeting_date: '',
+        meeting_time: '',
+        meeting_type: 'call',
+        notes: '',
+      });
+      loadMeetings();
+      alert('Meeting scheduled successfully!');
+    } catch (err) {
+      console.error('Error creating meeting:', err);
+      alert('Failed to create meeting');
+    }
+  }
+
   const getDaysInMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
   };
 
   const getFirstDayOfMonth = (date: Date) => {
     return new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+  };
+
+  const formatTime = (time24: string) => {
+    const [hours, minutes] = time24.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const hour12 = hour % 12 || 12;
+    return `${hour12}:${minutes} ${ampm}`;
   };
 
   const getMeetingsForDate = (day: number) => {
@@ -238,9 +312,9 @@ export default function CalendarPage() {
                             overflow: 'hidden',
                             textOverflow: 'ellipsis'
                           }}
-                          title={m.lead_name}
+                          title={`${m.lead_name} - ${formatTime(m.meeting_time)}`}
                         >
-                          {m.meeting_time}
+                          {formatTime(m.meeting_time)} - {m.lead_name}
                         </div>
                       ))}
                       {dayMeetings.length > 2 && (
@@ -305,7 +379,7 @@ export default function CalendarPage() {
                   </div>
 
                   <div style={{ fontSize: '0.85rem', color: '#e5e5e5', marginBottom: '0.5rem' }}>
-                    📅 {new Date(meeting.meeting_date).toLocaleDateString()} at {meeting.meeting_time}
+                    📅 {new Date(meeting.meeting_date).toLocaleDateString()} at {formatTime(meeting.meeting_time)}
                   </div>
 
                   {meeting.notes && (
@@ -331,6 +405,93 @@ export default function CalendarPage() {
           )}
         </div>
       </div>
+
+      {/* New Meeting Modal */}
+      {showNewMeetingModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[9999] p-4">
+          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-md w-full border border-[#333333]">
+            <div className="p-6 border-b border-[#333333]">
+              <h2 className="text-xl font-bold text-[#e5e5e5]">Schedule Meeting</h2>
+              <p className="text-[#9ca3af] text-sm mt-2">
+                With: <strong>{newMeeting.lead_name}</strong>
+              </p>
+            </div>
+
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Date</label>
+                <input
+                  type="date"
+                  value={newMeeting.meeting_date}
+                  onChange={(e) => setNewMeeting({ ...newMeeting, meeting_date: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Time</label>
+                <input
+                  type="time"
+                  value={newMeeting.meeting_time}
+                  onChange={(e) => setNewMeeting({ ...newMeeting, meeting_time: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Meeting Type</label>
+                <select
+                  value={newMeeting.meeting_type}
+                  onChange={(e) => setNewMeeting({ ...newMeeting, meeting_type: e.target.value })}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                >
+                  <option value="call">Phone Call</option>
+                  <option value="video">Video Call</option>
+                  <option value="meeting">In-Person Meeting</option>
+                  <option value="email">Email Follow-up</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Notes</label>
+                <textarea
+                  value={newMeeting.notes}
+                  onChange={(e) => setNewMeeting({ ...newMeeting, notes: e.target.value })}
+                  placeholder="Add any notes..."
+                  rows={3}
+                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                />
+              </div>
+            </div>
+
+            <div className="p-6 border-t border-[#333333] flex gap-3">
+              <button
+                onClick={() => {
+                  setShowNewMeetingModal(false);
+                  setNewMeeting({
+                    lead_id: '',
+                    lead_name: '',
+                    lead_email: '',
+                    meeting_date: '',
+                    meeting_time: '',
+                    meeting_type: 'call',
+                    notes: '',
+                  });
+                }}
+                className="flex-1 px-4 py-2 bg-[#2a2a2a] text-[#e5e5e5] rounded-lg hover:bg-[#333333]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateMeeting}
+                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700"
+              >
+                Schedule
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

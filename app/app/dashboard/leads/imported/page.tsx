@@ -36,6 +36,7 @@ export default function ImportedLeadsPage() {
   const [filter, setFilter] = useState<string>("all");
   const [search, setSearch] = useState("");
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [mounted, setMounted] = useState(false);
 
   // Modal states
   const [showEmailModal, setShowEmailModal] = useState(false);
@@ -47,6 +48,10 @@ export default function ImportedLeadsPage() {
 
   // Form data
   const [emailData, setEmailData] = useState({ subject: '', body: '' });
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const [scheduleData, setScheduleData] = useState({ date: '', time: '', type: 'call', notes: '' });
 
   useEffect(() => {
@@ -124,16 +129,22 @@ export default function ImportedLeadsPage() {
   }
 
   function handleScheduleMeeting() {
+    console.log('Schedule meeting clicked, selected leads:', selectedLeads.size);
+    console.log('Current showScheduleModal state:', showScheduleModal);
+    
     if (selectedLeads.size === 0) {
       alert('Please select at least one lead');
       return;
     }
     if (selectedLeads.size === 1) {
       const lead = leads.find(l => selectedLeads.has(l.id));
+      console.log('Found lead:', lead);
       if (lead) {
         setSelectedLeadForAction(lead);
         setScheduleData({ date: '', time: '', type: 'call', notes: '' });
+        console.log('About to set showScheduleModal to true');
         setShowScheduleModal(true);
+        console.log('After setting showScheduleModal');
       }
     } else {
       alert('Select one lead at a time for scheduling meetings');
@@ -331,6 +342,33 @@ export default function ImportedLeadsPage() {
         </div>
         <div className="flex gap-2">
           <button
+            onClick={() => router.push('/app/dashboard/leads/strategies')}
+            className="px-4 py-2 rounded-lg"
+            style={{
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer',
+              fontWeight: '500'
+            }}
+            title="AI Strategy Generator"
+          >
+            ✨ Strategies
+          </button>
+          <button
+            onClick={() => router.push('/app/dashboard/leads/training')}
+            className="px-4 py-2 rounded-lg"
+            style={{
+              background: '#10b981',
+              border: 'none',
+              color: 'white',
+              cursor: 'pointer'
+            }}
+            title="View training videos"
+          >
+            🎓 Training
+          </button>
+          <button
             onClick={() => router.push('/app/dashboard/calendar')}
             className="px-4 py-2 rounded-lg"
             style={{
@@ -513,6 +551,7 @@ export default function ImportedLeadsPage() {
             }
             .table-scroll-wrapper::-webkit-scrollbar {
               height: 12px;
+              display: block;
             }
             .table-scroll-wrapper::-webkit-scrollbar-track {
               background: #1a1a1a;
@@ -527,7 +566,7 @@ export default function ImportedLeadsPage() {
             }
           `}</style>
           <div className="table-scroll-wrapper">
-            <table className="w-full" style={{ minWidth: '800px' }}>
+            <table className="w-full" style={{ minWidth: '1200px' }}>
             <thead style={{ background: '#333333', borderBottom: '1px solid #444444' }}>
               <tr>
                 <th className="py-3 text-left" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
@@ -652,7 +691,7 @@ export default function ImportedLeadsPage() {
       )}
 
       {showEmailModal && selectedLeadForAction && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
           <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-2xl w-full border border-[#333333]">
             <div className="p-6 border-b border-[#333333]">
               <h2 className="text-xl font-bold text-[#e5e5e5]">Follow-up Email</h2>
@@ -708,42 +747,55 @@ export default function ImportedLeadsPage() {
 
       {/* Schedule Meeting Modal */}
       {showScheduleModal && selectedLeadForAction && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-md w-full border border-[#333333]">
-            <div className="p-6 border-b border-[#333333]">
-              <h2 className="text-xl font-bold text-[#e5e5e5]">Schedule Meeting</h2>
-              <p className="text-[#9ca3af] text-sm mt-2">
+        <div 
+          className="fixed inset-0 flex items-center justify-center p-4"
+          style={{ 
+            zIndex: 999999, 
+            display: 'flex',
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            position: 'fixed',
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0
+          }}
+        >
+          <div className="bg-white rounded-lg shadow-2xl max-w-md w-full border border-gray-300">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-xl font-bold text-gray-900">Schedule Meeting</h2>
+              <p className="text-gray-600 text-sm mt-2">
                 With: <strong>{selectedLeadForAction.name}</strong>
               </p>
+              <p className="text-gray-500 text-xs">{selectedLeadForAction.email}</p>
             </div>
 
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Date</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Date</label>
                 <input
                   type="date"
                   value={scheduleData.date}
                   onChange={(e) => setScheduleData({ ...scheduleData, date: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Time</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Time</label>
                 <input
                   type="time"
                   value={scheduleData.time}
                   onChange={(e) => setScheduleData({ ...scheduleData, time: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Meeting Type</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Meeting Type</label>
                 <select
                   value={scheduleData.type}
                   onChange={(e) => setScheduleData({ ...scheduleData, type: e.target.value })}
-                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
                 >
                   <option value="call">Phone Call</option>
                   <option value="video">Video Call</option>
@@ -753,30 +805,30 @@ export default function ImportedLeadsPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-[#e5e5e5] mb-2">Notes</label>
+                <label className="block text-sm font-medium text-gray-900 mb-2">Notes</label>
                 <textarea
                   value={scheduleData.notes}
                   onChange={(e) => setScheduleData({ ...scheduleData, notes: e.target.value })}
                   placeholder="Add any notes..."
                   rows={3}
-                  className="w-full px-4 py-2 bg-[#2a2a2a] border border-[#333333] rounded-lg text-[#e5e5e5] focus:ring-2 focus:ring-cyan-500"
+                  className="w-full px-4 py-2 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
-            <div className="p-6 border-t border-[#333333] flex gap-3">
+            <div className="p-6 border-t border-gray-200 flex gap-3">
               <button
                 onClick={() => {
                   setShowScheduleModal(false);
                   setSelectedLeadForAction(null);
                 }}
-                className="flex-1 px-4 py-2 bg-[#2a2a2a] text-[#e5e5e5] rounded-lg hover:bg-[#333333]"
+                className="flex-1 px-4 py-2 bg-gray-200 text-gray-900 rounded-lg hover:bg-gray-300"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSchedule}
-                className="flex-1 px-4 py-2 bg-gradient-to-r from-cyan-600 to-blue-600 text-white rounded-lg hover:from-cyan-700 hover:to-blue-700"
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
               >
                 Schedule
               </button>
@@ -787,7 +839,7 @@ export default function ImportedLeadsPage() {
 
       {/* Add to Campaign Modal */}
       {showCampaignModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4" style={{ zIndex: 99999 }}>
           <div className="bg-[#1a1a1a] rounded-lg shadow-2xl max-w-md w-full border border-[#333333]">
             <div className="p-6 border-b border-[#333333]">
               <h2 className="text-xl font-bold text-[#e5e5e5]">Add to Campaign</h2>

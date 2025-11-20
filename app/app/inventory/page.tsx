@@ -356,20 +356,6 @@ export default function InventoryPage() {
 										onClick={() => window.location.href = `/app/inventory/${item.id}`}
 										className="group bg-gradient-to-br from-zinc-800/50 to-zinc-900/50 border border-zinc-700/50 hover:border-zinc-600 rounded p-2 cursor-pointer transition-all hover:shadow-lg hover:shadow-zinc-900/50 hover:-translate-y-0.5"
 									>
-										{/* Item Image */}
-										{item.image_url && (
-											<div className="mb-1.5 -mx-2 -mt-2">
-												<img 
-													src={item.image_url}
-													alt={item.name}
-													className="w-full h-24 object-cover rounded-t"
-													onError={(e) => {
-														(e.target as HTMLImageElement).style.display = 'none';
-													}}
-												/>
-											</div>
-										)}
-
 										{/* Top Section: Status Badge & Category */}
 										<div className="flex justify-between items-start mb-1.5">
 											<span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${status.color}`}>
@@ -382,13 +368,27 @@ export default function InventoryPage() {
 											)}
 										</div>
 
-										{/* Item Name & Barcode */}
-										<div className="mb-1.5">
-											<h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition line-clamp-2">
-												{item.name}
-											</h3>
-											{item.barcode && (
-												<p className="text-[10px] text-zinc-500 mt-0.5">📦 {item.barcode}</p>
+										{/* Item Name & Image */}
+										<div className="flex gap-2 mb-1.5">
+											<div className="flex-1">
+												<h3 className="text-sm font-bold text-white group-hover:text-blue-400 transition line-clamp-2">
+													{item.name}
+												</h3>
+												{item.barcode && (
+													<p className="text-[10px] text-zinc-500 mt-0.5">📦 {item.barcode}</p>
+												)}
+											</div>
+											{item.image_url && (
+												<div className="w-6 h-6 flex-shrink-0">
+													<img 
+														src={item.image_url}
+														alt={item.name}
+														className="w-full h-full object-cover rounded border border-zinc-700"
+														onError={(e) => {
+															(e.target as HTMLImageElement).style.display = 'none';
+														}}
+													/>
+												</div>
 											)}
 										</div>
 
@@ -448,7 +448,7 @@ export default function InventoryPage() {
 										)}
 
 										{/* Price Search Result (if available) */}
-										{itemPrices.has(item.id) && (
+										{itemPrices.has(item.id) && itemPrices.get(item.id)?.price && (
 											<div className="bg-blue-900/40 border border-blue-600/40 rounded p-1.5 mb-1.5">
 												<p className="text-[10px] text-blue-300">Market Price</p>
 												<p className="text-xs font-bold text-blue-400">
@@ -471,7 +471,7 @@ export default function InventoryPage() {
 												disabled={searchingItemId === item.id}
 												className="flex-1 min-w-0 px-3 py-2 bg-purple-600 hover:bg-purple-700 text-white text-sm font-medium rounded transition disabled:opacity-50"
 											>
-												{searchingItemId === item.id ? '⏳' : '🔍'}
+												{searchingItemId === item.id ? '⏳' : '$'}
 											</button>
 											<button
 												onClick={(e) => handleMaintenance(e, item.id)}
