@@ -25,19 +25,23 @@ export default function ReturnsPage() {
   }, []);
 
   async function loadOverdueJobs() {
-    const today = new Date().toISOString().split('T')[0];
+    const today = new Date();
+    today.setHours(23, 59, 59, 999); // End of today
+    const todayString = today.toISOString();
     
     const { data, error } = await supabase
       .from('jobs')
       .select('id, code, title, expected_return_date, load_out_date, status, venue')
       .not('expected_return_date', 'is', null)
-      .lte('expected_return_date', today)
-      .neq('status', 'completed')
-      .neq('status', 'returned')
+      .lte('expected_return_date', todayString)
+      .or('status.is.null,status.neq.completed,status.neq.returned,status.neq.archived')
       .order('expected_return_date', { ascending: true });
 
     if (!error && data) {
+      console.log('Loaded overdue jobs:', data);
       setOverdueJobs(data);
+    } else if (error) {
+      console.error('Error loading overdue jobs:', error);
     }
     setLoading(false);
   }
@@ -90,11 +94,24 @@ export default function ReturnsPage() {
   return (
     <DashboardLayout>
       <div className="p-6">
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-2">Returns</h1>
-          <p className="text-zinc-400">
-            Jobs past their expected return date requiring equipment returns
-          </p>
+        <div className="mb-6 flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Returns</h1>
+            <p className="text-zinc-400">
+              Jobs past their expected return date requiring equipment returns
+            </p>
+          </div>
+          <button
+            onClick={() => {
+              setLoading(true);
+              loadOverdueJobs();
+            }}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
+            disabled={loading}
+          >
+            <i className={`fas ${loading ? 'fa-spinner fa-spin' : 'fa-sync-alt'} mr-2`}></i>
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
         </div>
 
         {loading ? (
