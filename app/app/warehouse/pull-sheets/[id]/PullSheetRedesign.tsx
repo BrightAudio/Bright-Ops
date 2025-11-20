@@ -164,6 +164,31 @@ export default function PullSheetRedesign({
     notes: 200,
     barcode: 150
   });
+  const [showScanPromptsConfig, setShowScanPromptsConfig] = useState(false);
+  
+  // Scan prompt settings
+  const [scanPrompts, setScanPrompts] = useState({
+    successMessage: 'Scan successful',
+    errorMessage: 'Nope, try again',
+    volume: 0.8,
+    rate: 1.1,
+    pitch: 1.2,
+    enableSuccess: true,
+    enableError: true
+  });
+
+  // Load saved scan prompt settings
+  useEffect(() => {
+    const savedPrompts = localStorage.getItem('scanPromptSettings');
+    if (savedPrompts) {
+      try {
+        const parsed = JSON.parse(savedPrompts);
+        setScanPrompts(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error('Failed to load scan prompt settings:', e);
+      }
+    }
+  }, []);
 
   // Get user info and fetch scan history
   useEffect(() => {
@@ -1406,8 +1431,16 @@ export default function PullSheetRedesign({
 
       {/* Footer - Simplified */}
       <div className="bg-zinc-800 border-t border-zinc-700 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-end gap-6">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600 flex items-center gap-2"
+          >
+            ← Back
+          </button>
+          
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-400">Sound Theme:</span>
             <button
               onClick={() => setSoundTheme(soundTheme === 'ding' ? 'voice' : 'ding')}
@@ -1419,12 +1452,169 @@ export default function PullSheetRedesign({
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-400">Scan Prompts:</span>
-            <button className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600">
+            <button 
+              onClick={() => setShowScanPromptsConfig(true)}
+              className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+            >
               Configure
             </button>
           </div>
+          </div>
         </div>
       </div>
+
+      {/* Scan Prompts Configuration Modal */}
+      {showScanPromptsConfig && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-xl font-semibold text-white mb-4">Scan Prompt Settings</h2>
+            
+            <div className="space-y-4">
+              {/* Success Message */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Success Message</label>
+                <input
+                  type="text"
+                  value={scanPrompts.successMessage}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, successMessage: e.target.value }))}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Scan successful"
+                />
+              </div>
+
+              {/* Error Message */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Error Message</label>
+                <input
+                  type="text"
+                  value={scanPrompts.errorMessage}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, errorMessage: e.target.value }))}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Nope, try again"
+                />
+              </div>
+
+              {/* Volume */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Volume: {Math.round(scanPrompts.volume * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={scanPrompts.volume}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, volume: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Rate/Speed */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Speed: {scanPrompts.rate.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={scanPrompts.rate}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, rate: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Pitch */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Pitch: {scanPrompts.pitch.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={scanPrompts.pitch}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, pitch: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Enable Toggles */}
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={scanPrompts.enableSuccess}
+                    onChange={(e) => setScanPrompts(prev => ({ ...prev, enableSuccess: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Enable success sounds
+                </label>
+                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={scanPrompts.enableError}
+                    onChange={(e) => setScanPrompts(prev => ({ ...prev, enableError: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Enable error sounds
+                </label>
+              </div>
+
+              {/* Preview Button */}
+              <button
+                onClick={() => {
+                  if (soundTheme === 'voice') {
+                    try {
+                      const utterance = new SpeechSynthesisUtterance(scanPrompts.successMessage);
+                      const voices = speechSynthesis.getVoices();
+                      const femaleVoice = voices.find(voice => 
+                        voice.name.toLowerCase().includes('female') || 
+                        voice.name.toLowerCase().includes('woman') ||
+                        voice.name.toLowerCase().includes('samantha') ||
+                        voice.name.toLowerCase().includes('victoria') ||
+                        voice.name.toLowerCase().includes('zira')
+                      );
+                      if (femaleVoice) utterance.voice = femaleVoice;
+                      utterance.rate = scanPrompts.rate;
+                      utterance.pitch = scanPrompts.pitch;
+                      utterance.volume = scanPrompts.volume;
+                      speechSynthesis.speak(utterance);
+                    } catch (e) {
+                      console.error('Voice synthesis failed:', e);
+                    }
+                  }
+                }}
+                className="w-full px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+              >
+                Test Success Sound
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  localStorage.setItem('scanPromptSettings', JSON.stringify(scanPrompts));
+                  setShowScanPromptsConfig(false);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowScanPromptsConfig(false)}
+                className="flex-1 px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

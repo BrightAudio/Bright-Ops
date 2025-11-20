@@ -135,10 +135,10 @@ const playBeep = (type: "success" | "error") => {
   }
 };
 
-const playVoice = (type: "success" | "error") => {
+const playVoice = (type: "success" | "error", config?: { successMessage: string, errorMessage: string, volume: number, rate: number, pitch: number }) => {
   try {
     const utterance = new SpeechSynthesisUtterance(
-      type === "success" ? "Scan successful" : "Nope, try again"
+      type === "success" ? (config?.successMessage || "Scan successful") : (config?.errorMessage || "Nope, try again")
     );
     
     // Try to find a female voice
@@ -155,9 +155,9 @@ const playVoice = (type: "success" | "error") => {
       utterance.voice = femaleVoice;
     }
     
-    utterance.rate = 1.1; // Slightly faster
-    utterance.pitch = 1.2; // Slightly higher pitch
-    utterance.volume = 0.8;
+    utterance.rate = config?.rate || 1.1;
+    utterance.pitch = config?.pitch || 1.2;
+    utterance.volume = config?.volume || 0.8;
     
     speechSynthesis.speak(utterance);
   } catch (e) {
@@ -165,9 +165,13 @@ const playVoice = (type: "success" | "error") => {
   }
 };
 
-const playSound = (type: "success" | "error", soundTheme: 'ding' | 'voice') => {
+const playSound = (type: "success" | "error", soundTheme: 'ding' | 'voice', config?: { successMessage: string, errorMessage: string, volume: number, rate: number, pitch: number, enableSuccess: boolean, enableError: boolean }) => {
+  // Check if the sound is enabled
+  if (type === 'success' && config?.enableSuccess === false) return;
+  if (type === 'error' && config?.enableError === false) return;
+  
   if (soundTheme === 'voice') {
-    playVoice(type);
+    playVoice(type, config);
   } else {
     playBeep(type);
   }
@@ -195,8 +199,20 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
   const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set());
   const [quantityInputItemId, setQuantityInputItemId] = useState<string | null>(null);
   const [quantityInputValue, setQuantityInputValue] = useState('');
+  const [showScanPromptsConfig, setShowScanPromptsConfig] = useState(false);
+  
+  // Scan prompt settings
+  const [scanPrompts, setScanPrompts] = useState({
+    successMessage: 'Scan successful',
+    errorMessage: 'Nope, try again',
+    volume: 0.8,
+    rate: 1.1,
+    pitch: 1.2,
+    enableSuccess: true,
+    enableError: true
+  });
 
-  // Load voices on mount for speech synthesis
+  // Load voices on mount for speech synthesis and load saved scan prompt settings
   useEffect(() => {
     if (typeof window !== 'undefined' && window.speechSynthesis) {
       // Force load voices
@@ -205,6 +221,17 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       speechSynthesis.onvoiceschanged = () => {
         speechSynthesis.getVoices();
       };
+    }
+
+    // Load saved scan prompt settings
+    const savedPrompts = localStorage.getItem('scanPromptSettings');
+    if (savedPrompts) {
+      try {
+        const parsed = JSON.parse(savedPrompts);
+        setScanPrompts(prev => ({ ...prev, ...parsed }));
+      } catch (e) {
+        console.error('Failed to load scan prompt settings:', e);
+      }
     }
   }, []);
 
@@ -340,7 +367,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
         .single();
 
       if (!inventoryItem) {
-        playSound('error', soundTheme);
+        playSound('error', soundTheme, scanPrompts);
         return;
       }
 
@@ -352,12 +379,12 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       );
 
       if (!matchingItem) {
-        playSound('error', soundTheme);
+        playSound('error', soundTheme, scanPrompts);
         return;
       }
 
       if ((matchingItem.qty_returned || 0) >= (matchingItem.qty_requested || 0)) {
-        playSound('error', soundTheme);
+        playSound('error', soundTheme, scanPrompts);
         return;
       }
 
@@ -406,10 +433,10 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       }
 
       setSelectedItemId(matchingItem.id);
-      playSound('success', soundTheme);
+      playSound('success', soundTheme, scanPrompts);
     } catch (err) {
       console.error('Scan error:', err);
-      playSound('error', soundTheme);
+      playSound('error', soundTheme, scanPrompts);
     } finally {
       setSaving(false);
     }
@@ -551,7 +578,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
   }
 
   return (
-    <div className="h-screen flex flex-col bg-zinc-900 text-white">
+    <div className="h-full flex flex-col bg-zinc-900 text-white">
       {/* Top Header */}
       <div className="bg-zinc-800 border-b border-zinc-700 flex-shrink-0">
         <div className="flex items-center justify-between px-6 py-3">
@@ -1059,8 +1086,16 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
 
       {/* Footer */}
       <div className="bg-zinc-800 border-t border-zinc-700 px-6 py-3 flex-shrink-0">
-        <div className="flex items-center justify-end gap-6">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between">
+          <button
+            onClick={() => router.back()}
+            className="px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600 flex items-center gap-2"
+          >
+            ← Back
+          </button>
+          
+          <div className="flex items-center gap-6">
+            <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-400">Sound Theme:</span>
             <button
               onClick={() => setSoundTheme(soundTheme === 'ding' ? 'voice' : 'ding')}
@@ -1072,12 +1107,154 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
 
           <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-400">Scan Prompts:</span>
-            <button className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600">
+            <button 
+              onClick={() => setShowScanPromptsConfig(true)}
+              className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+            >
               Configure
             </button>
           </div>
+          </div>
         </div>
       </div>
+
+      {/* Scan Prompts Configuration Modal */}
+      {showScanPromptsConfig && (
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 w-full max-w-md shadow-xl">
+            <h2 className="text-xl font-semibold text-white mb-4">Scan Prompt Settings</h2>
+            
+            <div className="space-y-4">
+              {/* Success Message */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Success Message</label>
+                <input
+                  type="text"
+                  value={scanPrompts.successMessage}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, successMessage: e.target.value }))}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Scan successful"
+                />
+              </div>
+
+              {/* Error Message */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">Error Message</label>
+                <input
+                  type="text"
+                  value={scanPrompts.errorMessage}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, errorMessage: e.target.value }))}
+                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  placeholder="Nope, try again"
+                />
+              </div>
+
+              {/* Volume */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Volume: {Math.round(scanPrompts.volume * 100)}%
+                </label>
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.1"
+                  value={scanPrompts.volume}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, volume: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Rate/Speed */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Speed: {scanPrompts.rate.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={scanPrompts.rate}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, rate: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Pitch */}
+              <div>
+                <label className="block text-sm text-zinc-400 mb-1">
+                  Pitch: {scanPrompts.pitch.toFixed(1)}x
+                </label>
+                <input
+                  type="range"
+                  min="0.5"
+                  max="2.0"
+                  step="0.1"
+                  value={scanPrompts.pitch}
+                  onChange={(e) => setScanPrompts(prev => ({ ...prev, pitch: parseFloat(e.target.value) }))}
+                  className="w-full"
+                />
+              </div>
+
+              {/* Enable Toggles */}
+              <div className="flex items-center gap-4">
+                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={scanPrompts.enableSuccess}
+                    onChange={(e) => setScanPrompts(prev => ({ ...prev, enableSuccess: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Enable success sounds
+                </label>
+                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                  <input
+                    type="checkbox"
+                    checked={scanPrompts.enableError}
+                    onChange={(e) => setScanPrompts(prev => ({ ...prev, enableError: e.target.checked }))}
+                    className="w-4 h-4"
+                  />
+                  Enable error sounds
+                </label>
+              </div>
+
+              {/* Preview Button */}
+              <button
+                onClick={() => {
+                  if (soundTheme === 'voice') {
+                    playVoice('success', scanPrompts);
+                  } else {
+                    playBeep('success');
+                  }
+                }}
+                className="w-full px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+              >
+                Test Success Sound
+              </button>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="flex gap-3 mt-6">
+              <button
+                onClick={() => {
+                  localStorage.setItem('scanPromptSettings', JSON.stringify(scanPrompts));
+                  setShowScanPromptsConfig(false);
+                }}
+                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500"
+              >
+                Save
+              </button>
+              <button
+                onClick={() => setShowScanPromptsConfig(false)}
+                className="flex-1 px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
