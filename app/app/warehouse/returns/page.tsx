@@ -18,28 +18,55 @@ type JobWithDates = {
 export default function ReturnsPage() {
   const [overdueJobs, setOverdueJobs] = useState<JobWithDates[]>([]);
   const [loading, setLoading] = useState(true);
+  const [archiving, setArchiving] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadOverdueJobs() {
-      const today = new Date().toISOString().split('T')[0];
-      
-      const { data, error } = await supabase
-        .from('jobs')
-        .select('id, code, title, expected_return_date, load_out_date, status, venue')
-        .not('expected_return_date', 'is', null)
-        .lte('expected_return_date', today)
-        .neq('status', 'completed')
-        .neq('status', 'returned')
-        .order('expected_return_date', { ascending: true });
-
-      if (!error && data) {
-        setOverdueJobs(data);
-      }
-      setLoading(false);
-    }
-
     loadOverdueJobs();
   }, []);
+
+  async function loadOverdueJobs() {
+    const today = new Date().toISOString().split('T')[0];
+    
+    const { data, error } = await supabase
+      .from('jobs')
+      .select('id, code, title, expected_return_date, load_out_date, status, venue')
+      .not('expected_return_date', 'is', null)
+      .lte('expected_return_date', today)
+      .neq('status', 'completed')
+      .neq('status', 'returned')
+      .order('expected_return_date', { ascending: true });
+
+    if (!error && data) {
+      setOverdueJobs(data);
+    }
+    setLoading(false);
+  }
+
+  async function archiveReturn(jobId: string) {
+    if (!confirm('Archive this return? This will mark the job as returned and remove it from this list.')) {
+      return;
+    }
+
+    setArchiving(jobId);
+    try {
+      const supabaseAny = supabase as any;
+      const { error } = await supabaseAny
+        .from('jobs')
+        .update({ status: 'returned' })
+        .eq('id', jobId);
+
+      if (error) throw error;
+
+      // Refresh the list
+      await loadOverdueJobs();
+      alert('✅ Return archived successfully!');
+    } catch (err) {
+      console.error('Error archiving return:', err);
+      alert('Failed to archive return. Please try again.');
+    } finally {
+      setArchiving(null);
+    }
+  }
 
   const formatDate = (dateString: string | null) => {
     if (!dateString) return '-';
@@ -136,6 +163,16 @@ export default function ReturnsPage() {
                         <i className="fas fa-clipboard-check mr-2"></i>
                         Process Return
                       </Link>
+                      <button
+                        onClick={() => archiveReturn(job.id)}
+                        disabled={archiving === job.id}
+                        className={`px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold transition-colors ${
+                          archiving === job.id ? 'opacity-50 cursor-not-allowed' : ''
+                        }`}
+                      >
+                        <i className={`fas ${archiving === job.id ? 'fa-spinner fa-spin' : 'fa-check-circle'} mr-2`}></i>
+                        {archiving === job.id ? 'Archiving...' : 'Archive Return'}
+                      </button>
                       <Link
                         href={`/app/jobs/${job.id}`}
                         className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md transition-colors"
