@@ -1,92 +1,150 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useRef } from "react";
-import { supabase } from "@/lib/supabaseClient";
-import { useRouter } from "next/navigation";
-import { Printer, Share2, RefreshCw } from "lucide-react";
+import { useState, useEffect } from 'react';
+import { supabase } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
+import BarcodeScanner from '@/components/BarcodeScanner';
 
-type ReturnItem = {
+type Item = {
   id: string;
-  item_name: string;
-  qty_required: number;
-  qty_returned: number;
-  category: string;
+  inventory_item_id?: string | null;
+  item_name?: string;
+  qty_requested?: number;
+  qty_returned?: number;
   notes?: string | null;
-  barcode?: string;
-  image_url?: string | null;
+  inventory_items?: {
+    barcode?: string;
+    name?: string;
+    category?: string;
+    gear_type?: string;
+    image_url?: string;
+  };
 };
 
 type Job = {
   id: string;
   code: string;
   title: string;
-  expected_return_date: string | null;
 };
 
-type LastScan = {
-  barcode: string;
-  location: string;
-  scanned_at: Date;
+type ScanHistoryItem = {
+  id: string;
   item_name: string;
-  image_url?: string;
+  barcode: string;
+  scanned_at: string;
+  inventory_items?: {
+    name?: string;
+    barcode?: string;
+    category?: string;
+    image_url?: string;
+  };
+  created_at?: string;
 };
 
-const playBeep = (type: "success" | "error") => {
-  try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
+const CATEGORIES = ['AUDIO', 'LIGHTING', 'VIDEO', 'STAGE', 'DECKING', 'PIPE AND DRAPE', 'POWER', 'MISC', 'OTHER'];
 
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
+// Subcategory mappings
+const SUBCATEGORIES: Record<string, string[]> = {
+  'AUDIO': ['Mixers', 'Speakers', 'Tops', 'Subs', 'Wedges', 'Columns', 'Microphones', 'DI Boxes', 'Processors', 'Amplifiers', 'Other Audio'],
+  'LIGHTING': ['Uplights', 'Moving Heads', 'Strobes', 'Party Effects', 'Wash Lights', 'Par Cans', 'LED Panels', 'Hazers', 'Controllers', 'Other Lighting'],
+  'VIDEO': ['Projectors', 'Screens', 'LED Walls', 'Cameras', 'Switchers', 'Scalers', 'Other Video'],
+  'STAGE': ['Stage Decks', 'Stairs', 'Railings', 'Skirting', 'Other Stage'],
+  'DECKING': ['Stage Decks', '4x8 Decks', '4x4 Decks', 'Risers', 'Legs', 'Other Decking'],
+  'PIPE AND DRAPE': ['Uprights', 'Bases', 'Crossbars', 'Drape', 'Other Pipe and Drape'],
+  'POWER': ['Distro', 'Cable', 'Edison', 'Cam-Lok', 'Generators', 'Other Power'],
+  'MISC': ['Cases', 'Stands', 'Cables', 'Adapters', 'Tools', 'Other'],
+  'OTHER': ['Uncategorized']
+};
 
-    if (type === "success") {
-      oscillator.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-    } else {
-      oscillator.frequency.value = 400;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+const getSubcategory = (itemName: string, category: string): string => {
+  const name = itemName.toLowerCase();
+  const subcats = SUBCATEGORIES[category] || [];
+  
+  if (category === 'AUDIO' || category === 'OTHER') {
+    if (name.includes('b1-15') || name.includes('b112') || name.includes('b215') || 
+        name.includes('sb') || name.includes('bass') ||
+        name.includes('cd18') || name.includes('cd-18') || name.includes('cd 18') ||
+        name.includes('subwoofer') || name.match(/\bsub\b/)) {
+      return 'Subs';
     }
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + (type === "success" ? 0.2 : 0.3));
-  } catch (e) {
-    // Silently fail
+    if (name.includes('arcs') || name.includes('kara') || name.includes('ks') || 
+        name.includes('qsc') || name.includes('k12') || name.includes('k10') ||
+        name.includes('srx') || name.includes('vrx') || name.includes('line array') ||
+        name.includes('nexo') || name.includes('ps') || name.includes('geo') ||
+        name.includes('eaw') || name.includes('kf650') || name.includes('kf-650')) {
+      return 'Tops';
+    }
+    if (name.includes('wedge') || name.includes('monitor')) {
+      return 'Wedges';
+    }
   }
+  
+  if (category === 'LIGHTING' || category === 'OTHER') {
+    if (name.includes('uplight') || name.includes('par can') || name.includes('par64')) {
+      return 'Uplights';
+    }
+    if (name.includes('moving head') || name.includes('beam') || name.includes('spot')) {
+      return 'Moving Heads';
+    }
+    if (name.includes('strobe')) {
+      return 'Strobes';
+    }
+    if (name.includes('hazer') || name.includes('haze') || name.includes('fog')) {
+      return 'Hazers';
+    }
+  }
+  
+  for (const subcat of subcats) {
+    if (name.includes(subcat.toLowerCase())) {
+      return subcat;
+    }
+  }
+  
+  if (category === 'AUDIO') return 'Other Audio';
+  if (category === 'LIGHTING') return 'Other Lighting';
+  
+  return subcats[subcats.length - 1] || 'Other';
 };
 
-export default function ReturnManifestClient({ jobId }: { jobId: string }) {
+export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheetId }: { jobId: string, pullSheetId?: string }) {
   const router = useRouter();
   const [job, setJob] = useState<Job | null>(null);
-  const [returnItems, setReturnItems] = useState<ReturnItem[]>([]);
+  const [items, setItems] = useState<Item[]>([]);
   const [loading, setLoading] = useState(true);
-  const [pullSheetId, setPullSheetId] = useState<string | null>(null);
-  const [lastScan, setLastScan] = useState<LastScan | null>(null);
-  const [showScanHistory, setShowScanHistory] = useState(false);
-  const [showManifest, setShowManifest] = useState(false);
-  const [showFinalizePrompt, setShowFinalizePrompt] = useState(false);
-  const [userName, setUserName] = useState("");
-  const [finalizing, setFinalizing] = useState(false);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const [soundTheme, setSoundTheme] = useState<"ding" | "beep">("ding");
-  const scanInputRef = useRef<HTMLInputElement>(null);
+  const [pullSheetId, setPullSheetId] = useState<string | null>(propPullSheetId || null);
+  const [lastScan, setLastScan] = useState<ScanHistoryItem | null>(null);
+  const [scanHistory, setScanHistory] = useState<ScanHistoryItem[]>([]);
+  const [view, setView] = useState<'scanhistory' | 'pullsheet' | 'manifest'>('pullsheet');
+  const [soundTheme, setSoundTheme] = useState<'ding' | 'voice'>('ding');
+  const [pullSheetWidth, setPullSheetWidth] = useState(60);
+  const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [columnWidths, setColumnWidths] = useState({
+    qty: 80,
+    description: 300,
+    notes: 200,
+    barcode: 150
+  });
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadData();
-    // Focus on scan input
-    scanInputRef.current?.focus();
   }, [jobId]);
 
-  const loadData = async () => {
+  useEffect(() => {
+    if (pullSheetId) {
+      fetchScanHistory();
+    }
+  }, [pullSheetId]);
+
+  async function loadData() {
     try {
       setLoading(true);
 
-      // Load job info
       const { data: jobData } = await supabase
         .from("jobs")
-        .select("id, code, title, expected_return_date")
+        .select("id, code, title")
         .eq("id", jobId)
         .single();
 
@@ -94,23 +152,20 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         setJob(jobData as any);
       }
 
-      // Load pull sheets for this job
       const { data: pullSheets } = await supabase
         .from("pull_sheets")
         .select("id")
         .eq("job_id", jobId);
 
       if (!pullSheets || pullSheets.length === 0) {
-        setReturnItems([]);
+        setItems([]);
         setLoading(false);
         return;
       }
 
-      if (pullSheets.length > 0) {
-        setPullSheetId((pullSheets[0] as any).id);
-      }
+      const psId = (pullSheets[0] as any).id;
+      setPullSheetId(psId);
 
-      // Load pull sheet items with inventory item details
       const pullSheetIds = (pullSheets as any[]).map(ps => ps.id);
       const { data: itemsData } = await supabase
         .from("pull_sheet_items")
@@ -121,74 +176,101 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
           category,
           notes,
           inventory_item_id,
-          inventory_items(barcode, name, image_url)
+          inventory_items(barcode, name, image_url, category, gear_type)
         `)
         .in("pull_sheet_id", pullSheetIds);
 
       if (itemsData) {
-        const items: ReturnItem[] = itemsData.map((item: any) => ({
+        const mappedItems: Item[] = itemsData.map((item: any) => ({
           id: item.id,
           item_name: item.item_name || item.inventory_items?.name || 'Unknown',
-          qty_required: item.qty_requested || 0,
+          qty_requested: item.qty_requested || 0,
           qty_returned: 0,
-          category: item.category || 'Other',
           notes: item.notes,
-          barcode: item.inventory_items?.barcode || '',
-          image_url: item.inventory_items?.image_url
+          inventory_item_id: item.inventory_item_id,
+          inventory_items: item.inventory_items
         }));
-        setReturnItems(items);
+        setItems(mappedItems);
+        
+        if (mappedItems.length > 0) {
+          const firstCat = (mappedItems[0].inventory_items?.category || 'OTHER').toUpperCase();
+          setExpandedCategories(new Set([firstCat]));
+        }
       }
     } catch (err) {
       console.error('Error loading data:', err);
     } finally {
       setLoading(false);
     }
-  };
+  }
 
-  const handleBarcodeScan = async (barcode: string) => {
-    if (!barcode.trim()) return;
+  async function fetchScanHistory() {
+    if (!pullSheetId) return;
+    
+    const { data } = await supabase
+      .from('pull_sheet_scans')
+      .select(`
+        *,
+        inventory_items (
+          name,
+          barcode,
+          category,
+          gear_type,
+          image_url
+        )
+      `)
+      .eq('pull_sheet_id', pullSheetId)
+      .eq('scan_type', 'return')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    
+    if (data && data.length > 0) {
+      setScanHistory(data as any);
+      setLastScan(data[0] as any);
+    }
+  }
+
+  async function handleScan(scan: any) {
+    if (!scan?.barcode || !pullSheetId) return;
 
     try {
-      // Find item in inventory by barcode
       const { data: inventoryItem } = await supabase
         .from('inventory_items')
-        .select('id, name, qty_in_warehouse, image_url')
-        .eq('barcode', barcode.trim())
+        .select('id, name, qty_in_warehouse, image_url, barcode, category')
+        .eq('barcode', scan.barcode.trim())
         .single();
 
       if (!inventoryItem) {
-        playBeep('error');
+        console.error('Item not found');
         return;
       }
 
       const invItem = inventoryItem as any;
-
-      // Find matching return item
-      const matchingItem = returnItems.find(item =>
-        item.item_name.toLowerCase() === invItem.name.toLowerCase() ||
-        item.barcode === barcode.trim()
+      const matchingItem = items.find(item =>
+        item.inventory_items?.name?.toLowerCase() === invItem.name.toLowerCase() ||
+        item.inventory_items?.barcode === scan.barcode.trim()
       );
 
       if (!matchingItem) {
-        playBeep('error');
+        console.error('Item not required for this return');
         return;
       }
 
-      if (matchingItem.qty_returned >= matchingItem.qty_required) {
-        playBeep('error');
+      if ((matchingItem.qty_returned || 0) >= (matchingItem.qty_requested || 0)) {
+        console.error('All units already returned');
         return;
       }
 
-      // Update local state
-      setReturnItems(prev =>
+      setSaving(true);
+
+      setItems(prev =>
         prev.map(item =>
           item.id === matchingItem.id
-            ? { ...item, qty_returned: item.qty_returned + 1 }
+            ? { ...item, qty_returned: (item.qty_returned || 0) + 1 }
             : item
         )
       );
 
-      // Update warehouse inventory - RETURN the item to warehouse
       await supabase
         .from('inventory_items')
         .update({
@@ -197,449 +279,592 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         })
         .eq('id', invItem.id);
 
-      // Track scan
-      if (pullSheetId) {
-        await supabase
-          .from('pull_sheet_scans')
-          .insert({
-            pull_sheet_id: pullSheetId,
-            pull_sheet_item_id: matchingItem.id,
-            barcode: barcode.trim(),
-            item_name: matchingItem.item_name,
-            scan_type: 'return'
-          });
+      const { data: scanRecord } = await supabase
+        .from('pull_sheet_scans')
+        .insert({
+          pull_sheet_id: pullSheetId,
+          pull_sheet_item_id: matchingItem.id,
+          barcode: scan.barcode.trim(),
+          item_name: matchingItem.item_name,
+          scan_type: 'return',
+          inventory_item_id: invItem.id
+        })
+        .select(`
+          *,
+          inventory_items (
+            name,
+            barcode,
+            category,
+            image_url
+          )
+        `)
+        .single();
+
+      if (scanRecord) {
+        setLastScan(scanRecord as any);
+        setScanHistory(prev => [scanRecord as any, ...prev]);
       }
 
-      // Update last scan
-      setLastScan({
-        barcode: barcode.trim(),
-        location: job?.title || 'Unknown',
-        scanned_at: new Date(),
-        item_name: matchingItem.item_name,
-        image_url: invItem.image_url
-      });
-
-      playBeep('success');
+      setSelectedItemId(matchingItem.id);
     } catch (err) {
       console.error('Scan error:', err);
-      playBeep('error');
+    } finally {
+      setSaving(false);
     }
+  }
 
-    // Clear input
-    if (scanInputRef.current) {
-      scanInputRef.current.value = '';
+  async function handleUndoScan(itemId: string) {
+    const item = items.find(i => i.id === itemId);
+    if (!item || (item.qty_returned || 0) === 0) return;
+
+    try {
+      setSaving(true);
+
+      const { data: inventoryItem } = await supabase
+        .from('inventory_items')
+        .select('id, qty_in_warehouse')
+        .eq('id', item.inventory_item_id)
+        .single();
+
+      if (inventoryItem) {
+        const invItem = inventoryItem as any;
+        await supabase
+          .from('inventory_items')
+          .update({
+            qty_in_warehouse: Math.max(0, (invItem.qty_in_warehouse || 0) - 1)
+          })
+          .eq('id', invItem.id);
+      }
+
+      setItems(prev =>
+        prev.map(i =>
+          i.id === itemId
+            ? { ...i, qty_returned: Math.max(0, (i.qty_returned || 0) - 1) }
+            : i
+        )
+      );
+    } catch (err) {
+      console.error('Undo error:', err);
+    } finally {
+      setSaving(false);
     }
-  };
+  }
 
-  const handleUpdateNotes = async (itemId: string, notes: string) => {
-    setReturnItems(prev =>
+  async function handleUpdateNotes(itemId: string, notes: string) {
+    setItems(prev =>
       prev.map(item =>
         item.id === itemId ? { ...item, notes } : item
       )
     );
 
-    // Update in database
     await supabase
       .from('pull_sheet_items')
       .update({ notes })
       .eq('id', itemId);
-  };
-
-  async function handleFinalize() {
-    if (!userName.trim()) {
-      alert("Please enter your name");
-      return;
-    }
-
-    setFinalizing(true);
-    try {
-      const signature = canvasRef.current?.toDataURL() || '';
-
-      // Update pull sheets status to 'returned'
-      await supabase
-        .from('pull_sheets')
-        .update({
-          status: 'returned',
-          updated_at: new Date().toISOString()
-        })
-        .eq('job_id', jobId);
-
-      // Archive the job
-      await supabase
-        .from('jobs')
-        .update({
-          archived: true,
-          status: 'completed'
-        })
-        .eq('id', jobId);
-
-      // Store finalization record
-      await supabase
-        .from('return_manifests')
-        .insert({
-          job_id: jobId,
-          finalized_by: userName,
-          finalized_at: new Date().toISOString(),
-          signature: signature,
-          manifest_data: {
-            items: returnItems,
-            total_returned: returnItems.reduce((sum, item) => sum + item.qty_returned, 0),
-            total_required: returnItems.reduce((sum, item) => sum + item.qty_required, 0)
-          }
-        });
-
-      setShowFinalizePrompt(false);
-      alert('Return finalized! Job archived.');
-      router.push('/app/warehouse/returns');
-    } catch (error) {
-      console.error('Error finalizing:', error);
-      alert('Failed to finalize return');
-    } finally {
-      setFinalizing(false);
-    }
   }
 
-  const handlePrint = () => {
-    window.print();
-  };
+  function handleItemClick(itemId: string) {
+    setSelectedItemId(selectedItemId === itemId ? null : itemId);
+  }
+
+  const totalRequested = items.reduce((sum, item) => sum + (item.qty_requested || 0), 0);
+  const totalReturned = items.reduce((sum, item) => sum + (item.qty_returned || 0), 0);
+  const progress = totalRequested > 0 ? Math.round((totalReturned / totalRequested) * 100) : 0;
+
+  const itemsByCategory: Record<string, Record<string, Item[]>> = {};
+  items.forEach(item => {
+    const cat = (item.inventory_items?.category || 'OTHER').toUpperCase();
+    const subcat = getSubcategory(item.inventory_items?.name || item.item_name || '', cat);
+    
+    if (!itemsByCategory[cat]) itemsByCategory[cat] = {};
+    if (!itemsByCategory[cat][subcat]) itemsByCategory[cat][subcat] = [];
+    itemsByCategory[cat][subcat].push(item);
+  });
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-white flex items-center justify-center">
-        <div className="text-gray-600 text-lg">Loading...</div>
+      <div className="h-screen bg-zinc-900 flex items-center justify-center">
+        <div className="text-white text-lg">Loading...</div>
       </div>
     );
   }
 
-  const totalRequired = returnItems.reduce((sum, item) => sum + item.qty_required, 0);
-  const totalReturned = returnItems.reduce((sum, item) => sum + item.qty_returned, 0);
-  const percentComplete = totalRequired > 0 ? Math.round((totalReturned / totalRequired) * 100) : 0;
-  const isComplete = totalRequired > 0 && totalReturned === totalRequired;
-
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Return Manifest - {job?.title}</h1>
-          <div className="flex items-center gap-4 text-sm text-gray-600">
-            <span>Job #{job?.code}</span>
-            <span>•</span>
-            <span>{totalReturned} of {totalRequired} returned</span>
-          </div>
-        </div>
-
-        {/* Progress Bar */}
-        <div className="mb-6 bg-white rounded-lg border border-gray-300 p-4">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-semibold text-gray-700">Return Progress</span>
-            <span className="text-sm font-semibold text-gray-700">{percentComplete}%</span>
-          </div>
-          <div className="w-full bg-gray-200 rounded-full h-4">
-            <div
-              className="bg-green-500 h-4 rounded-full transition-all duration-300"
-              style={{ width: `${percentComplete}%` }}
-            />
-          </div>
-        </div>
-
-        {/* Action Buttons */}
-        <div className="mb-6 flex gap-3 no-print">
-          <button
-            onClick={() => setShowScanHistory(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium"
-          >
-            Scan History
-          </button>
-          <button
-            onClick={() => router.push(`/app/warehouse/pull-sheets/${pullSheetId}`)}
-            className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded font-medium"
-          >
-            Pull Sheet
-          </button>
-          <button
-            onClick={() => setShowManifest(true)}
-            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded font-medium"
-          >
-            Manifest
-          </button>
-          <button
-            onClick={() => router.push(`/app/warehouse/jobs/${jobId}`)}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium"
-          >
-            View Job
-          </button>
-          <button
-            onClick={handlePrint}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium flex items-center gap-2"
-          >
-            <Printer size={18} />
-            Print Manifest PDF
-          </button>
-          <button
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium flex items-center gap-2"
-          >
-            <Share2 size={18} />
-            Share
-          </button>
-          <button
-            onClick={loadData}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded font-medium flex items-center gap-2"
-          >
-            <RefreshCw size={18} />
-            Refresh
-          </button>
-        </div>
-
-        {/* Last Scan Section */}
-        {lastScan && (
-          <div className="mb-6 bg-white rounded-lg border border-gray-300 p-4">
-            <h3 className="text-sm font-semibold text-gray-700 mb-3">Last Scan</h3>
-            <div className="flex items-center gap-4">
-              {lastScan.image_url && (
-                <img
-                  src={lastScan.image_url}
-                  alt={lastScan.item_name}
-                  className="w-24 h-24 object-cover rounded border border-gray-300"
-                />
+    <div className="h-screen flex flex-col bg-zinc-900 text-white">
+      {/* Top Header */}
+      <div className="bg-zinc-800 border-b border-zinc-700 flex-shrink-0">
+        <div className="flex items-center justify-between px-6 py-3">
+          <div className="border-2 border-zinc-600 rounded px-4 py-2 bg-zinc-750">
+            <h1 className="text-lg font-bold text-white">
+              {job?.title || 'Return Manifest'}
+              {job?.code && (
+                <span className="text-sm text-zinc-400 ml-3">Job #{job.code}</span>
               )}
-              <div className="flex-1">
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  <div>
-                    <span className="font-semibold text-gray-600">Item:</span>
-                    <div className="text-gray-900">{lastScan.item_name}</div>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-600">Barcode:</span>
-                    <div className="text-gray-900 font-mono">{lastScan.barcode}</div>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-600">Location:</span>
-                    <div className="text-gray-900">{lastScan.location}</div>
-                  </div>
-                  <div>
-                    <span className="font-semibold text-gray-600">Scanned:</span>
-                    <div className="text-gray-900">{lastScan.scanned_at.toLocaleTimeString()}</div>
-                  </div>
-                </div>
-              </div>
+            </h1>
+          </div>
+
+          <div className="px-6 py-2 border-2 border-zinc-600 rounded-lg bg-zinc-800">
+            <div className="text-2xl font-bold text-white tabular-nums">
+              {progress}%
             </div>
           </div>
-        )}
 
-        {/* Scan Input (Hidden) */}
-        <div className="mb-6 no-print">
-          <input
-            ref={scanInputRef}
-            type="text"
-            placeholder="Scan barcode..."
-            className="w-full px-4 py-3 border-2 border-blue-500 rounded-lg text-lg focus:outline-none focus:border-blue-600"
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                handleBarcodeScan(e.currentTarget.value);
-              }
-            }}
-            autoFocus
+          <div className="flex items-center gap-4">
+            <div className="h-8 w-px bg-zinc-600"></div>
+            <div className="text-white font-semibold text-sm">Last Scan</div>
+          </div>
+        </div>
+
+        <div className="h-3 bg-zinc-700">
+          <div 
+            className="h-full bg-blue-500 transition-all duration-500 shadow-lg shadow-blue-500/50"
+            style={{ width: `${progress}%` }}
           />
         </div>
 
-        {/* Items Table */}
-        <div className="bg-white rounded-lg border border-gray-300 overflow-hidden">
-          <table className="w-full">
-            <thead className="bg-gray-100 border-b border-gray-300">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-32">QTY</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase">DESCRIPTION</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-64">NOTES</th>
-                <th className="px-4 py-3 text-left text-xs font-semibold text-gray-700 uppercase w-40">BARCODE</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {returnItems.map((item) => {
-                const isComplete = item.qty_returned >= item.qty_required;
-                
-                return (
-                  <tr
-                    key={item.id}
-                    className={`hover:bg-gray-50 ${isComplete ? 'bg-green-50' : ''}`}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <span className={`text-lg font-bold font-mono ${isComplete ? 'text-green-600' : 'text-gray-900'}`}>
-                          {item.qty_returned}
-                        </span>
-                        <span className="text-gray-500">/</span>
-                        <span className="text-gray-600 font-mono">{item.qty_required}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="font-medium text-gray-900">{item.item_name}</div>
-                      <div className="text-xs text-gray-500">{item.category}</div>
-                    </td>
-                    <td className="px-4 py-3">
-                      <input
-                        type="text"
-                        value={item.notes || ''}
-                        onChange={(e) => handleUpdateNotes(item.id, e.target.value)}
-                        placeholder="Add notes..."
-                        className="w-full px-2 py-1 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
-                      />
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="font-mono text-sm text-gray-600">{item.barcode || '—'}</span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Bottom Controls */}
-        <div className="mt-6 bg-white rounded-lg border border-gray-300 p-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <div className="mb-2">
-                <label className="text-sm font-semibold text-gray-700 block mb-1">Sound Theme:</label>
-                <select
-                  value={soundTheme}
-                  onChange={(e) => setSoundTheme(e.target.value as any)}
-                  className="px-3 py-2 border border-gray-300 rounded text-sm focus:outline-none focus:border-blue-500"
-                >
-                  <option value="ding">🔔 Ding</option>
-                  <option value="beep">📢 Beep</option>
-                </select>
-              </div>
-              <div>
-                <label className="text-sm font-semibold text-gray-700 block mb-1">Scan Prompts:</label>
-                <button className="px-3 py-2 border border-gray-300 rounded text-sm hover:bg-gray-50">
-                  Configure
-                </button>
-              </div>
-            </div>
-            
-            {isComplete && (
-              <button
-                onClick={() => setShowFinalizePrompt(true)}
-                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-bold rounded-lg"
-              >
-                Finalize Return & Archive Job
-              </button>
-            )}
+        <div className="flex items-center border-t border-zinc-700">
+          <div className="flex gap-2 px-6 py-2">
+            <button
+              onClick={() => setView('scanhistory')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                view === 'scanhistory' 
+                  ? 'bg-amber-400 text-black' 
+                  : 'bg-zinc-700 text-white hover:bg-zinc-600'
+              }`}
+            >
+              Scan History
+            </button>
+            <button
+              onClick={() => setView('pullsheet')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                view === 'pullsheet' 
+                  ? 'bg-amber-400 text-black' 
+                  : 'bg-zinc-700 text-white hover:bg-zinc-600'
+              }`}
+            >
+              Pull Sheet
+            </button>
+            <button
+              onClick={() => setView('manifest')}
+              className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                view === 'manifest' 
+                  ? 'bg-amber-400 text-black' 
+                  : 'bg-zinc-700 text-white hover:bg-zinc-600'
+              }`}
+            >
+              Manifest
+            </button>
           </div>
         </div>
       </div>
 
-      {/* Finalize Modal */}
-      {showFinalizePrompt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6">Finalize Return</h2>
-            
-            <div className="space-y-6">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Your Name *</label>
-                <input
-                  type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder="Enter your full name"
-                  className="w-full border border-gray-300 rounded px-4 py-2 focus:border-blue-500 focus:outline-none"
-                  autoFocus
-                />
-              </div>
+      {/* Main Content Area */}
+      <div className="flex-1 flex overflow-hidden">
+        {/* Left Panel */}
+        <div 
+          className="overflow-y-auto overflow-x-hidden scrollbar-hide"
+          style={{ width: `${pullSheetWidth}%` }}
+        >
+          <style jsx>{`
+            .scrollbar-hide::-webkit-scrollbar {
+              display: none;
+            }
+            .scrollbar-hide {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+          `}</style>
 
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Signature *</label>
-                <canvas
-                  ref={canvasRef}
-                  width={500}
-                  height={150}
-                  className="w-full border-2 border-gray-300 rounded cursor-crosshair bg-white"
-                  onMouseDown={(e) => {
-                    const canvas = canvasRef.current;
-                    if (!canvas) return;
-                    const rect = canvas.getBoundingClientRect();
-                    const ctx = canvas.getContext('2d');
-                    if (!ctx) return;
+          <div className="p-3 border-b border-zinc-700 bg-zinc-800">
+            <BarcodeScanner
+              pullSheetId={pullSheetId || ''}
+              soundTheme={soundTheme}
+              onScan={handleScan}
+            />
+          </div>
+
+          {view === 'pullsheet' && (
+            <div className="p-4 space-y-3">
+              {CATEGORIES.map(category => {
+                const categoryData = itemsByCategory[category];
+                if (!categoryData || Object.keys(categoryData).length === 0) return null;
+
+                const isExpanded = expandedCategories.has(category);
+                const categoryItems = Object.values(categoryData).flat();
+                const catReturned = categoryItems.reduce((sum, item) => sum + (item.qty_returned || 0), 0);
+                const catRequested = categoryItems.reduce((sum, item) => sum + (item.qty_requested || 0), 0);
+
+                return (
+                  <div key={category} className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+                    <button
+                      onClick={() => {
+                        const newExpanded = new Set(expandedCategories);
+                        if (newExpanded.has(category)) {
+                          newExpanded.delete(category);
+                        } else {
+                          newExpanded.add(category);
+                        }
+                        setExpandedCategories(newExpanded);
+                      }}
+                      className="w-full px-4 py-3 flex items-center justify-between bg-zinc-700/50 hover:bg-zinc-700 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-zinc-400">{isExpanded ? '▼' : '▶'}</span>
+                        <span className="text-sm font-bold text-white">{category}</span>
+                      </div>
+                      <div className="text-sm text-zinc-400 font-mono">
+                        {catReturned} / {catRequested}
+                      </div>
+                    </button>
+
+                    {isExpanded && Object.entries(categoryData).map(([subcat, subcatItems]) => {
+                      const subcatKey = `${category}-${subcat}`;
+                      const isSubcatExpanded = expandedSubcategories.has(subcatKey);
+
+                      return (
+                        <div key={subcatKey} className="border-t border-zinc-700">
+                          <button
+                            onClick={() => {
+                              const newExpanded = new Set(expandedSubcategories);
+                              if (newExpanded.has(subcatKey)) {
+                                newExpanded.delete(subcatKey);
+                              } else {
+                                newExpanded.add(subcatKey);
+                              }
+                              setExpandedSubcategories(newExpanded);
+                            }}
+                            className="w-full px-6 py-2 flex items-center justify-between bg-zinc-800 hover:bg-zinc-750 transition-colors"
+                          >
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-zinc-500">{isSubcatExpanded ? '▼' : '▶'}</span>
+                              <span className="text-xs font-semibold text-zinc-300">{subcat}</span>
+                            </div>
+                          </button>
+
+                          {isSubcatExpanded && (
+                            <div className="bg-zinc-900">
+                              <table className="w-full text-sm">
+                                <thead className="bg-zinc-800 border-b border-zinc-700">
+                                  <tr>
+                                    <th 
+                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase border-r border-zinc-600 relative"
+                                      style={{ width: `${columnWidths.qty}px` }}
+                                    >
+                                      QTY
+                                    </th>
+                                    <th 
+                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase border-r border-zinc-600 relative"
+                                      style={{ width: `${columnWidths.description}px` }}
+                                    >
+                                      DESCRIPTION
+                                    </th>
+                                    <th 
+                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase border-r border-zinc-600 relative"
+                                      style={{ width: `${columnWidths.notes}px` }}
+                                    >
+                                      NOTES
+                                    </th>
+                                    <th 
+                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase"
+                                      style={{ width: `${columnWidths.barcode}px` }}
+                                    >
+                                      BARCODE
+                                    </th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-zinc-700">
+                                  {subcatItems.map((item: Item) => {
+                                    const itemName = item.inventory_items?.name || item.item_name || 'Unknown Item';
+                                    const barcode = item.inventory_items?.barcode || '';
+                                    const returned = item.qty_returned || 0;
+                                    const requested = item.qty_requested || 0;
+                                    const isComplete = returned >= requested;
+                                    const isSelected = selectedItemId === item.id;
+
+                                    return (
+                                      <tr 
+                                        key={item.id} 
+                                        onClick={() => handleItemClick(item.id)}
+                                        className={`transition-colors cursor-pointer hover:bg-zinc-800/50 ${
+                                          isSelected ? 'bg-amber-500/20 border-l-4 border-amber-400' : ''
+                                        }`}
+                                      >
+                                        <td 
+                                          className="px-4 py-3 border-r border-zinc-700"
+                                          style={{ width: `${columnWidths.qty}px` }}
+                                        >
+                                          <div className="flex items-center justify-between gap-2">
+                                            <div className="flex items-center gap-1 text-sm font-mono">
+                                              <span className={isComplete ? 'text-green-400 font-bold' : 'text-white font-bold'}>{returned}</span>
+                                              <span className="text-zinc-500">/</span>
+                                              <span className="text-zinc-400">{requested}</span>
+                                            </div>
+                                            {isSelected && returned > 0 && (
+                                              <button
+                                                onClick={(e) => {
+                                                  e.stopPropagation();
+                                                  handleUndoScan(item.id);
+                                                }}
+                                                disabled={saving}
+                                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded disabled:opacity-50"
+                                                title="Undo last scan"
+                                              >
+                                                ↶ Undo
+                                              </button>
+                                            )}
+                                          </div>
+                                        </td>
+                                        <td 
+                                          className="px-4 py-3 border-r border-zinc-700"
+                                          style={{ width: `${columnWidths.description}px` }}
+                                        >
+                                          <div className="text-white font-medium">{itemName}</div>
+                                        </td>
+                                        <td 
+                                          className="px-4 py-3 border-r border-zinc-700"
+                                          style={{ width: `${columnWidths.notes}px` }}
+                                        >
+                                          <input
+                                            type="text"
+                                            value={item.notes || ''}
+                                            onChange={(e) => handleUpdateNotes(item.id, e.target.value)}
+                                            onClick={(e) => e.stopPropagation()}
+                                            placeholder="Add notes..."
+                                            className="w-full bg-transparent border-none text-zinc-300 text-xs focus:outline-none focus:text-white placeholder-zinc-600"
+                                          />
+                                        </td>
+                                        <td 
+                                          className="px-4 py-3"
+                                          style={{ width: `${columnWidths.barcode}px` }}
+                                        >
+                                          <span className="text-zinc-400 text-xs font-mono">{barcode || '—'}</span>
+                                        </td>
+                                      </tr>
+                                    );
+                                  })}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+
+          {view === 'scanhistory' && (
+            <div className="p-4 space-y-3">
+              {scanHistory.length === 0 ? (
+                <div className="text-center text-zinc-500 py-12">
+                  <div className="text-4xl mb-4">📋</div>
+                  <div>No scans yet</div>
+                </div>
+              ) : (
+                scanHistory.map((scan: any) => (
+                  <div key={scan.id} className="bg-zinc-800 border border-zinc-700 rounded-lg p-4">
+                    <div className="flex items-center gap-4">
+                      {scan.inventory_items?.image_url && (
+                        <img 
+                          src={scan.inventory_items.image_url} 
+                          alt={scan.inventory_items.name || 'Item'}
+                          className="w-16 h-16 object-cover rounded border border-zinc-600"
+                        />
+                      )}
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">{scan.inventory_items?.name || scan.item_name}</div>
+                        <div className="text-xs text-zinc-400 font-mono mt-1">{scan.barcode}</div>
+                        <div className="text-xs text-zinc-500 mt-1">
+                          {scan.created_at ? new Date(scan.created_at).toLocaleString() : 'Recently'}
+                        </div>
+                      </div>
+                      <div className="text-xs px-2 py-1 rounded bg-green-500/20 text-green-400 font-semibold">
+                        RETURN
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {view === 'manifest' && (
+            <div className="p-4 space-y-4">
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+                <h3 className="text-xl font-semibold text-white mb-4">Return Manifest</h3>
+                <div className="space-y-3">
+                  {items.map(item => {
+                    const itemName = item.inventory_items?.name || item.item_name || 'Unknown';
+                    const barcode = item.inventory_items?.barcode || '';
+                    const returned = item.qty_returned || 0;
+                    const requested = item.qty_requested || 0;
+                    const isComplete = returned >= requested;
                     
-                    const startX = (e.clientX - rect.left) * (canvas.width / rect.width);
-                    const startY = (e.clientY - rect.top) * (canvas.height / rect.height);
-                    
-                    ctx.beginPath();
-                    ctx.moveTo(startX, startY);
-                    ctx.lineWidth = 2;
-                    ctx.strokeStyle = '#000';
-                    
-                    const handleMouseMove = (moveEvent: MouseEvent) => {
-                      const x = (moveEvent.clientX - rect.left) * (canvas.width / rect.width);
-                      const y = (moveEvent.clientY - rect.top) * (canvas.height / rect.height);
-                      ctx.lineTo(x, y);
-                      ctx.stroke();
-                    };
-                    
-                    const handleMouseUp = () => {
-                      ctx.closePath();
-                      document.removeEventListener('mousemove', handleMouseMove);
-                      document.removeEventListener('mouseup', handleMouseUp);
-                    };
-                    
-                    document.addEventListener('mousemove', handleMouseMove);
-                    document.addEventListener('mouseup', handleMouseUp);
-                  }}
-                />
-                <button
-                  onClick={() => {
-                    const canvas = canvasRef.current;
-                    if (canvas) {
-                      const ctx = canvas.getContext('2d');
-                      if (ctx) {
-                        ctx.clearRect(0, 0, canvas.width, canvas.height);
-                      }
-                    }
-                  }}
-                  className="mt-2 text-sm text-blue-600 hover:text-blue-700 underline"
-                >
-                  Clear Signature
-                </button>
+                    return (
+                      <div 
+                        key={item.id} 
+                        className={`p-4 rounded-lg border-2 transition-colors ${
+                          isComplete 
+                            ? 'bg-green-500/10 border-green-500/50' 
+                            : 'bg-zinc-750 border-zinc-600'
+                        }`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <div className="font-medium text-white text-lg">{itemName}</div>
+                            <div className="text-xs text-zinc-400 font-mono mt-1">{barcode || 'No barcode'}</div>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm text-zinc-400">Quantity</div>
+                            <div className="text-2xl font-bold font-mono">
+                              <span className={isComplete ? 'text-green-400' : 'text-white'}>{returned}</span>
+                              <span className="text-zinc-500">/</span>
+                              <span className="text-zinc-400">{requested}</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
+          )}
+        </div>
 
-            <div className="flex gap-3 mt-8">
-              <button
-                onClick={() => setShowFinalizePrompt(false)}
-                disabled={finalizing}
-                className="flex-1 bg-gray-300 hover:bg-gray-400 text-gray-800 px-4 py-2 rounded-lg font-medium disabled:opacity-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleFinalize}
-                disabled={finalizing || !userName.trim()}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium disabled:opacity-50"
-              >
-                {finalizing ? "Finalizing..." : "Finalize & Archive"}
-              </button>
+        {/* Resize Divider */}
+        <div 
+          className="w-px bg-zinc-600 hover:bg-amber-400 cursor-col-resize transition-colors relative group"
+          onMouseDown={(e) => {
+            const startX = e.clientX;
+            const startWidth = pullSheetWidth;
+            
+            const handleMouseMove = (e: MouseEvent) => {
+              const delta = e.clientX - startX;
+              const newWidth = Math.max(30, Math.min(70, startWidth + (delta / window.innerWidth) * 100));
+              setPullSheetWidth(newWidth);
+            };
+            
+            const handleMouseUp = () => {
+              document.removeEventListener('mousemove', handleMouseMove);
+              document.removeEventListener('mouseup', handleMouseUp);
+            };
+            
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+          }}
+        >
+          <div className="absolute inset-y-0 -left-1 -right-1 w-2"></div>
+          <div className="w-1 h-12 bg-zinc-500 group-hover:bg-amber-300 rounded-full"></div>
+        </div>
+
+        {/* Right Panel: Last Scan */}
+        <div className="flex-1 flex flex-col">
+          <div className="flex-1 p-6 overflow-y-auto">
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+              {lastScan ? (
+                <div className="space-y-4">
+                  <div className="w-full aspect-square bg-zinc-700 rounded-lg flex items-center justify-center overflow-hidden">
+                    {lastScan.inventory_items?.image_url ? (
+                      <img 
+                        src={lastScan.inventory_items.image_url} 
+                        alt={lastScan.inventory_items?.name || 'Item'}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <div className="text-center text-zinc-500">
+                        <div className="text-sm">No Image Available</div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-zinc-400 mb-1">Item</div>
+                    <div className="text-lg font-semibold text-white">
+                      {lastScan.inventory_items?.name || lastScan.item_name || 'Unknown'}
+                    </div>
+                  </div>
+                  
+                  <div>
+                    <div className="text-sm text-zinc-400 mb-1">Barcode</div>
+                    <div className="text-sm font-mono text-white">
+                      {lastScan.barcode || '-'}
+                    </div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-zinc-400 mb-1">Location</div>
+                    <div className="text-lg font-semibold text-white">{job?.title || 'Return'}</div>
+                  </div>
+
+                  <div>
+                    <div className="text-sm text-zinc-400 mb-1">Scanned</div>
+                    <div className="text-sm text-zinc-300">
+                      {lastScan.created_at ? new Date(lastScan.created_at).toLocaleTimeString() : 'Just now'}
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center text-zinc-500 py-12">
+                  <div className="text-4xl mb-4">🔍</div>
+                  <div>No scans yet</div>
+                  <div className="text-sm mt-2">Scan an item to see details</div>
+                </div>
+              )}
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Scan History Modal */}
-      {showScanHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 max-w-3xl w-full mx-4 max-h-[80vh] overflow-y-auto">
-            <h2 className="text-xl font-bold mb-4">Scan History</h2>
-            <p className="text-gray-600 mb-4">Recent scans will appear here...</p>
+          {/* Action Buttons */}
+          <div className="p-6 space-y-3 border-t border-zinc-700">
             <button
-              onClick={() => setShowScanHistory(false)}
-              className="w-full bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg font-medium"
+              onClick={() => router.push(`/app/warehouse/jobs/${jobId}`)}
+              className="w-full px-4 py-3 bg-zinc-700 text-white rounded-lg font-medium hover:bg-zinc-600 transition-colors"
             >
-              Close
+              View Job
+            </button>
+            <button
+              className="w-full px-4 py-3 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              📄 Print Manifest PDF
+            </button>
+            <button
+              className="w-full px-4 py-3 bg-zinc-700 text-white rounded-lg font-medium hover:bg-zinc-600 transition-colors"
+            >
+              Share
+            </button>
+            <button
+              onClick={loadData}
+              className="w-full px-4 py-3 bg-amber-400 text-black rounded-lg font-semibold hover:bg-amber-500 transition-colors"
+            >
+              ↻ Refresh
             </button>
           </div>
         </div>
-      )}
+      </div>
+
+      {/* Footer */}
+      <div className="bg-zinc-800 border-t border-zinc-700 px-6 py-3 flex-shrink-0">
+        <div className="flex items-center justify-end gap-6">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-zinc-400">Sound Theme:</span>
+            <button
+              onClick={() => setSoundTheme(soundTheme === 'ding' ? 'voice' : 'ding')}
+              className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+            >
+              {soundTheme === 'ding' ? '🔔 Ding' : '🗣️ Voice'}
+            </button>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-zinc-400">Scan Prompts:</span>
+            <button className="px-3 py-1 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600">
+              Configure
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
