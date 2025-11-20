@@ -12,12 +12,14 @@ type Item = {
   qty_requested?: number;
   qty_returned?: number;
   notes?: string | null;
+  scanned_barcodes?: string[]; // Track all scanned barcodes for this item
   inventory_items?: {
     barcode?: string;
     name?: string;
     category?: string;
     gear_type?: string;
     image_url?: string;
+    is_quantity_item?: boolean;
   };
 };
 
@@ -122,11 +124,12 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
   const [columnWidths, setColumnWidths] = useState({
     qty: 80,
     description: 300,
-    notes: 200,
-    barcode: 150
+    notes: 200
   });
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
   const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set());
+  const [quantityInputItemId, setQuantityInputItemId] = useState<string | null>(null);
+  const [quantityInputValue, setQuantityInputValue] = useState('');
 
   useEffect(() => {
     loadData();
@@ -176,11 +179,29 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
           category,
           notes,
           inventory_item_id,
-          inventory_items(barcode, name, image_url, category, gear_type)
+          inventory_items(barcode, name, image_url, category, gear_type, is_quantity_item)
         `)
         .in("pull_sheet_id", pullSheetIds);
 
       if (itemsData) {
+        // Load scanned barcodes for each item from pull_sheet_scans
+        const { data: scansData } = await supabase
+          .from('pull_sheet_scans')
+          .select('pull_sheet_item_id, barcode, scan_type')
+          .eq('pull_sheet_id', psId)
+          .eq('scan_type', 'pull');
+        
+        // Group barcodes by item
+        const barcodesByItem: Record<string, string[]> = {};
+        if (scansData) {
+          scansData.forEach((scan: any) => {
+            if (!barcodesByItem[scan.pull_sheet_item_id]) {
+              barcodesByItem[scan.pull_sheet_item_id] = [];
+            }
+            barcodesByItem[scan.pull_sheet_item_id].push(scan.barcode);
+          });
+        }
+
         const mappedItems: Item[] = itemsData.map((item: any) => ({
           id: item.id,
           item_name: item.item_name || item.inventory_items?.name || 'Unknown',
@@ -188,7 +209,8 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
           qty_returned: 0,
           notes: item.notes,
           inventory_item_id: item.inventory_item_id,
-          inventory_items: item.inventory_items
+          inventory_items: item.inventory_items,
+          scanned_barcodes: barcodesByItem[item.id] || []
         }));
         setItems(mappedItems);
         
@@ -236,7 +258,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
     try {
       const { data: inventoryItem } = await supabase
         .from('inventory_items')
-        .select('id, name, qty_in_warehouse, image_url, barcode, category')
+        .select('id, name, qty_in_warehouse, image_url, barcode, category, is_quantity_item')
         .eq('barcode', scan.barcode.trim())
         .single();
 
@@ -246,13 +268,14 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       }
 
       const invItem = inventoryItem as any;
+      
+      // Find matching item - must have this barcode in scanned_barcodes
       const matchingItem = items.find(item =>
-        item.inventory_items?.name?.toLowerCase() === invItem.name.toLowerCase() ||
-        item.inventory_items?.barcode === scan.barcode.trim()
+        item.scanned_barcodes?.includes(scan.barcode.trim())
       );
 
       if (!matchingItem) {
-        console.error('Item not required for this return');
+        console.error('This barcode was not pulled for this job - cannot return');
         return;
       }
 
@@ -308,6 +331,65 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       setSelectedItemId(matchingItem.id);
     } catch (err) {
       console.error('Scan error:', err);
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleQuantityReturn(itemId: string, quantity: number) {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !item.inventory_items?.is_quantity_item) return;
+
+    const maxReturn = (item.qty_requested || 0) - (item.qty_returned || 0);
+    const qtyToReturn = Math.min(quantity, maxReturn);
+
+    if (qtyToReturn <= 0) return;
+
+    try {
+      setSaving(true);
+
+      setItems(prev =>
+        prev.map(i =>
+          i.id === itemId
+            ? { ...i, qty_returned: (i.qty_returned || 0) + qtyToReturn }
+            : i
+        )
+      );
+
+      // Update warehouse inventory
+      const { data: inventoryItem } = await supabase
+        .from('inventory_items')
+        .select('id, qty_in_warehouse')
+        .eq('id', item.inventory_item_id)
+        .single();
+
+      if (inventoryItem) {
+        const invItem = inventoryItem as any;
+        await supabase
+          .from('inventory_items')
+          .update({
+            qty_in_warehouse: (invItem.qty_in_warehouse || 0) + qtyToReturn,
+            location: 'Warehouse'
+          })
+          .eq('id', invItem.id);
+      }
+
+      // Record the return
+      await supabase
+        .from('pull_sheet_scans')
+        .insert({
+          pull_sheet_id: pullSheetId,
+          pull_sheet_item_id: itemId,
+          barcode: `QUANTITY-${qtyToReturn}`,
+          item_name: item.item_name,
+          scan_type: 'return',
+          inventory_item_id: item.inventory_item_id
+        });
+
+      setQuantityInputItemId(null);
+      setQuantityInputValue('');
+    } catch (err) {
+      console.error('Quantity return error:', err);
     } finally {
       setSaving(false);
     }
@@ -495,7 +577,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                 const catRequested = categoryItems.reduce((sum, item) => sum + (item.qty_requested || 0), 0);
 
                 return (
-                  <div key={category} className="bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+                  <div key={category} className="bg-zinc-800 rounded-lg overflow-hidden border border-zinc-700">
                     <button
                       onClick={() => {
                         const newExpanded = new Set(expandedCategories);
@@ -559,31 +641,32 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                                       DESCRIPTION
                                     </th>
                                     <th 
-                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase border-r border-zinc-600 relative"
+                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase"
                                       style={{ width: `${columnWidths.notes}px` }}
                                     >
                                       NOTES
-                                    </th>
-                                    <th 
-                                      className="px-4 py-3 text-xs font-semibold text-zinc-400 uppercase"
-                                      style={{ width: `${columnWidths.barcode}px` }}
-                                    >
-                                      BARCODE
                                     </th>
                                   </tr>
                                 </thead>
                                 <tbody className="divide-y divide-zinc-700">
                                   {subcatItems.map((item: Item) => {
                                     const itemName = item.inventory_items?.name || item.item_name || 'Unknown Item';
-                                    const barcode = item.inventory_items?.barcode || '';
                                     const returned = item.qty_returned || 0;
                                     const requested = item.qty_requested || 0;
                                     const isComplete = returned >= requested;
                                     const isSelected = selectedItemId === item.id;
+                                    const isQuantityItem = item.inventory_items?.is_quantity_item;
+                                    const showQuantityInput = quantityInputItemId === item.id;
 
                                     return (
                                       <tr 
                                         key={item.id} 
+                                        onDoubleClick={() => {
+                                          if (isQuantityItem && !isComplete) {
+                                            setQuantityInputItemId(item.id);
+                                            setQuantityInputValue('');
+                                          }
+                                        }}
                                         onClick={() => handleItemClick(item.id)}
                                         className={`transition-colors cursor-pointer hover:bg-zinc-800/50 ${
                                           isSelected ? 'bg-amber-500/20 border-l-4 border-amber-400' : ''
@@ -593,35 +676,65 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                                           className="px-4 py-3 border-r border-zinc-700"
                                           style={{ width: `${columnWidths.qty}px` }}
                                         >
-                                          <div className="flex items-center justify-between gap-2">
-                                            <div className="flex items-center gap-1 text-sm font-mono">
-                                              <span className={isComplete ? 'text-green-400 font-bold' : 'text-white font-bold'}>{returned}</span>
-                                              <span className="text-zinc-500">/</span>
-                                              <span className="text-zinc-400">{requested}</span>
+                                          {showQuantityInput ? (
+                                            <input
+                                              type="number"
+                                              value={quantityInputValue}
+                                              onChange={(e) => setQuantityInputValue(e.target.value)}
+                                              onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                  const qty = parseInt(quantityInputValue);
+                                                  if (qty > 0) {
+                                                    handleQuantityReturn(item.id, qty);
+                                                  }
+                                                } else if (e.key === 'Escape') {
+                                                  setQuantityInputItemId(null);
+                                                  setQuantityInputValue('');
+                                                }
+                                              }}
+                                              onBlur={() => {
+                                                setQuantityInputItemId(null);
+                                                setQuantityInputValue('');
+                                              }}
+                                              onClick={(e) => e.stopPropagation()}
+                                              autoFocus
+                                              className="w-16 px-2 py-1 bg-zinc-700 border border-amber-400 rounded text-white text-sm font-mono focus:outline-none"
+                                              placeholder="Qty"
+                                            />
+                                          ) : (
+                                            <div className="flex items-center justify-between gap-2">
+                                              <div className="flex items-center gap-1 text-sm font-mono">
+                                                <span className={isComplete ? 'text-green-400 font-bold' : 'text-white font-bold'}>{returned}</span>
+                                                <span className="text-zinc-500">/</span>
+                                                <span className="text-zinc-400">{requested}</span>
+                                              </div>
+                                              {isSelected && returned > 0 && (
+                                                <button
+                                                  onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    handleUndoScan(item.id);
+                                                  }}
+                                                  disabled={saving}
+                                                  className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded disabled:opacity-50"
+                                                  title="Undo last scan"
+                                                >
+                                                  ↶ Undo
+                                                </button>
+                                              )}
                                             </div>
-                                            {isSelected && returned > 0 && (
-                                              <button
-                                                onClick={(e) => {
-                                                  e.stopPropagation();
-                                                  handleUndoScan(item.id);
-                                                }}
-                                                disabled={saving}
-                                                className="px-2 py-1 bg-red-600 hover:bg-red-700 text-white text-xs rounded disabled:opacity-50"
-                                                title="Undo last scan"
-                                              >
-                                                ↶ Undo
-                                              </button>
-                                            )}
-                                          </div>
+                                          )}
                                         </td>
                                         <td 
                                           className="px-4 py-3 border-r border-zinc-700"
                                           style={{ width: `${columnWidths.description}px` }}
                                         >
                                           <div className="text-white font-medium">{itemName}</div>
+                                          {isQuantityItem && (
+                                            <div className="text-xs text-amber-400 mt-0.5">Double-tap to enter qty</div>
+                                          )}
                                         </td>
                                         <td 
-                                          className="px-4 py-3 border-r border-zinc-700"
+                                          className="px-4 py-3"
                                           style={{ width: `${columnWidths.notes}px` }}
                                         >
                                           <input
@@ -632,12 +745,6 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                                             placeholder="Add notes..."
                                             className="w-full bg-transparent border-none text-zinc-300 text-xs focus:outline-none focus:text-white placeholder-zinc-600"
                                           />
-                                        </td>
-                                        <td 
-                                          className="px-4 py-3"
-                                          style={{ width: `${columnWidths.barcode}px` }}
-                                        >
-                                          <span className="text-zinc-400 text-xs font-mono">{barcode || '—'}</span>
                                         </td>
                                       </tr>
                                     );
@@ -691,32 +798,50 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
           )}
 
           {view === 'manifest' && (
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-4 overflow-y-auto">
               <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
                 <h3 className="text-xl font-semibold text-white mb-4">Return Manifest</h3>
+                <div className="text-sm text-zinc-400 mb-4">
+                  Showing all barcodes that were scanned when pulling this job
+                </div>
                 <div className="space-y-3">
                   {items.map(item => {
                     const itemName = item.inventory_items?.name || item.item_name || 'Unknown';
-                    const barcode = item.inventory_items?.barcode || '';
                     const returned = item.qty_returned || 0;
                     const requested = item.qty_requested || 0;
                     const isComplete = returned >= requested;
+                    const scannedBarcodes = item.scanned_barcodes || [];
                     
                     return (
                       <div 
                         key={item.id} 
-                        className={`p-4 rounded-lg border-2 transition-colors ${
+                        className={`p-4 rounded-lg border transition-colors ${
                           isComplete 
                             ? 'bg-green-500/10 border-green-500/50' 
                             : 'bg-zinc-750 border-zinc-600'
                         }`}
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between mb-2">
                           <div className="flex-1">
                             <div className="font-medium text-white text-lg">{itemName}</div>
-                            <div className="text-xs text-zinc-400 font-mono mt-1">{barcode || 'No barcode'}</div>
+                            <div className="text-xs text-zinc-500 mt-1">
+                              {scannedBarcodes.length > 0 ? (
+                                <div className="flex flex-wrap gap-1 mt-2">
+                                  {scannedBarcodes.map((barcode, idx) => (
+                                    <span 
+                                      key={idx} 
+                                      className="px-2 py-1 bg-zinc-700 rounded font-mono text-xs text-zinc-300"
+                                    >
+                                      {barcode}
+                                    </span>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span className="text-zinc-500">No barcodes scanned</span>
+                              )}
+                            </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-right ml-4">
                             <div className="text-sm text-zinc-400">Quantity</div>
                             <div className="text-2xl font-bold font-mono">
                               <span className={isComplete ? 'text-green-400' : 'text-white'}>{returned}</span>
@@ -761,8 +886,17 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
         </div>
 
         {/* Right Panel: Last Scan */}
-        <div className="flex-1 flex flex-col">
-          <div className="flex-1 p-6 overflow-y-auto">
+        <div className="flex-1 flex flex-col overflow-hidden">
+          <div className="flex-1 p-6 overflow-y-auto scrollbar-hide">
+            <style jsx>{`
+              .scrollbar-hide::-webkit-scrollbar {
+                display: none;
+              }
+              .scrollbar-hide {
+                -ms-overflow-style: none;
+                scrollbar-width: none;
+              }
+            `}</style>
             <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
               {lastScan ? (
                 <div className="space-y-4">
