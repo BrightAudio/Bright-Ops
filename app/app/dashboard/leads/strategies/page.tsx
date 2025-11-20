@@ -312,8 +312,30 @@ Always emphasize measurable revenue/income increases and financial value.`
                   </div>
                   <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
                     {selectedLead.phone && (
-                      <a
-                        href={`tel:${selectedLead.phone}`}
+                      <button
+                        onClick={() => {
+                          // Try multiple calling methods
+                          const phone = selectedLead.phone;
+                          
+                          // Method 1: Use tel: protocol (works with Windows Phone app, Skype, Teams, Zoom)
+                          window.location.href = `tel:${phone}`;
+                          
+                          // Method 2: Fallback - copy to clipboard and show instructions
+                          setTimeout(() => {
+                            navigator.clipboard.writeText(phone || '');
+                            const useApp = confirm(
+                              `📞 Calling: ${phone}\n\n` +
+                              `The number has been copied to your clipboard.\n\n` +
+                              `Choose your calling method:\n` +
+                              `✓ OK - Open in default phone app (Skype/Teams/Phone)\n` +
+                              `✓ Cancel - Just copy number (already done)`
+                            );
+                            
+                            if (!useApp) {
+                              alert(`📋 Phone number copied: ${phone}\n\nPaste it into:\n• Microsoft Teams\n• Skype\n• Zoom\n• Google Voice\n• Your phone app`);
+                            }
+                          }, 100);
+                        }}
                         style={{
                           background: '#10b981',
                           color: 'white',
@@ -327,7 +349,7 @@ Always emphasize measurable revenue/income increases and financial value.`
                         }}
                       >
                         📞 Call
-                      </a>
+                      </button>
                     )}
                     <a
                       href={`mailto:${selectedLead.email}`}
