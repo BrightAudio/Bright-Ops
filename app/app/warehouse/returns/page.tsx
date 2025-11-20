@@ -26,28 +26,33 @@ export default function ReturnsPage() {
 
   async function loadOverdueJobs() {
     const today = new Date();
-    today.setHours(23, 59, 59, 999); // End of today
+    today.setHours(0, 0, 0, 0); // Start of today
     const todayString = today.toISOString();
     
-    const { data, error } = await supabase
+    const supabaseAny = supabase as any;
+    const { data, error } = await supabaseAny
       .from('jobs')
       .select('id, code, title, expected_return_date, load_out_date, status, venue')
       .not('expected_return_date', 'is', null)
-      .lte('expected_return_date', todayString)
-      .or('status.is.null,status.neq.completed,status.neq.returned,status.neq.archived')
-      .order('expected_return_date', { ascending: true });
+      .lte('expected_return_date', todayString);
 
     if (!error && data) {
-      console.log('Loaded overdue jobs:', data);
-      setOverdueJobs(data);
+      // Filter out completed/returned/archived jobs on client side for more control
+      const filtered = data.filter((job: JobWithDates) => {
+        const status = job.status?.toLowerCase();
+        return !status || (status !== 'completed' && status !== 'returned' && status !== 'archived');
+      });
+      console.log('All overdue jobs from DB:', data);
+      console.log('Filtered overdue jobs:', filtered);
+      setOverdueJobs(filtered);
     } else if (error) {
       console.error('Error loading overdue jobs:', error);
     }
     setLoading(false);
   }
 
-  async function archiveReturn(jobId: string) {
-    if (!confirm('Archive this return? This will mark the job as returned and remove it from this list.')) {
+  async function archiveReturn(jobId: string, jobTitle: string) {
+    if (!confirm(`Archive "${jobTitle}"?\n\nThis will mark the job as archived and move it to the jobs archive.`)) {
       return;
     }
 
@@ -56,17 +61,25 @@ export default function ReturnsPage() {
       const supabaseAny = supabase as any;
       const { error } = await supabaseAny
         .from('jobs')
-        .update({ status: 'returned' })
+        .update({ 
+          status: 'archived',
+          updated_at: new Date().toISOString()
+        })
         .eq('id', jobId);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Archive error:', error);
+        throw error;
+      }
 
+      console.log('Job archived successfully:', jobId);
+      
       // Refresh the list
       await loadOverdueJobs();
-      alert('✅ Return archived successfully!');
+      alert('✅ Job archived successfully and moved to archive!');
     } catch (err) {
       console.error('Error archiving return:', err);
-      alert('Failed to archive return. Please try again.');
+      alert(`Failed to archive job: ${err}`);
     } finally {
       setArchiving(null);
     }
@@ -181,14 +194,14 @@ export default function ReturnsPage() {
                         Process Return
                       </Link>
                       <button
-                        onClick={() => archiveReturn(job.id)}
+                        onClick={() => archiveReturn(job.id, job.title)}
                         disabled={archiving === job.id}
                         className={`px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold transition-colors ${
                           archiving === job.id ? 'opacity-50 cursor-not-allowed' : ''
                         }`}
                       >
-                        <i className={`fas ${archiving === job.id ? 'fa-spinner fa-spin' : 'fa-check-circle'} mr-2`}></i>
-                        {archiving === job.id ? 'Archiving...' : 'Archive Return'}
+                        <i className={`fas ${archiving === job.id ? 'fa-spinner fa-spin' : 'fa-archive'} mr-2`}></i>
+                        {archiving === job.id ? 'Archiving...' : 'Archive Job'}
                       </button>
                       <Link
                         href={`/app/jobs/${job.id}`}
