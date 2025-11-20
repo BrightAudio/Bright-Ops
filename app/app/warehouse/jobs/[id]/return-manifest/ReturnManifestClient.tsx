@@ -229,13 +229,19 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         .order("scanned_at", { ascending: false })
         .limit(50);
 
-      if (error) throw error;
+      if (error) {
+        console.warn("Scan history not available (table may not exist):", error);
+        setScanHistory([]);
+        setShowScanHistory(false);
+        return;
+      }
 
       setScanHistory((data as any[]) || []);
       setShowScanHistory(true);
     } catch (error) {
-      console.error("Error loading scan history:", error);
-      alert("Failed to load scan history");
+      console.warn("Scan history not available:", error);
+      setScanHistory([]);
+      setShowScanHistory(false);
     } finally {
       setLoadingScanHistory(false);
     }
@@ -251,6 +257,19 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
     try {
       // Get signature from canvas
       const signature = canvasRef.current?.toDataURL() || '';
+
+      // Update pull sheets status to 'returned'
+      const { error: pullSheetError } = await ((supabase as any)
+        .from('pull_sheets')
+        .update({
+          status: 'returned',
+          updated_at: new Date().toISOString()
+        }) as any)
+        .eq('job_id', jobId);
+
+      if (pullSheetError) {
+        console.error('Error updating pull sheets:', pullSheetError);
+      }
 
       // Archive the job
       const { error: jobError } = await ((supabase as any)
@@ -318,36 +337,38 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
   const isComplete = totalRequired > 0 && totalReturned === totalRequired;
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-zinc-900">
       {/* Navigation & Scanner */}
-      <div className="no-print bg-white border-b border-gray-200 p-4">
+      <div className="no-print bg-zinc-800 border-b border-zinc-700 p-4">
         <div className="max-w-7xl mx-auto">
           <div className="flex items-center justify-between mb-4">
             <button
               onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+              className="flex items-center gap-2 text-zinc-300 hover:text-white"
             >
               <ArrowLeft size={20} />
               <span>Back</span>
             </button>
-            <button
-              onClick={handlePrint}
-              className="flex items-center gap-2 bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 font-semibold"
-            >
-              <Printer size={18} />
-              Print
-            </button>
-            <button
-              onClick={loadScanHistory}
-              disabled={loadingScanHistory}
-              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold disabled:opacity-50"
-            >
-              {loadingScanHistory ? "Loading..." : "Scan History"}
-            </button>
+            <div className="flex gap-2">
+              <button
+                onClick={loadScanHistory}
+                disabled={loadingScanHistory}
+                className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 font-semibold disabled:opacity-50"
+              >
+                {loadingScanHistory ? "Loading..." : "Scan History"}
+              </button>
+              <button
+                onClick={handlePrint}
+                className="flex items-center gap-2 bg-zinc-600 text-white px-4 py-2 rounded hover:bg-zinc-700 font-semibold"
+              >
+                <Printer size={18} />
+                Print
+              </button>
+            </div>
           </div>
 
           {scanError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded text-sm text-red-800">
+            <div className="mb-4 p-3 bg-red-900/50 border border-red-700 rounded text-sm text-red-200">
               {scanError}
             </div>
           )}
@@ -357,22 +378,43 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
       </div>
 
       {/* Return Manifest */}
-      <div className="max-w-7xl mx-auto p-8 bg-white my-6 shadow-lg print:shadow-none print:my-0">
+      <div className="max-w-7xl mx-auto p-8">
         {/* Header */}
-        <div className="border-b-2 border-gray-800 pb-4 mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">RETURN MANIFEST</h1>
-          <div className="grid grid-cols-2 gap-4 text-sm">
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 mb-6">
+          <div className="flex items-start justify-between">
             <div>
-              <div className="font-semibold">Job Code: <span className="text-red-600">{job?.code}</span></div>
-              <div className="text-lg font-semibold mt-1">{job?.title}</div>
-            </div>
-            <div className="text-right">
-              <div className="text-xs text-gray-500">Return Date: {new Date().toLocaleDateString()}</div>
-              <div className={`inline-block px-3 py-1 rounded text-xs font-semibold mt-1 ${
-                isComplete ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'
-              }`}>
-                {isComplete ? 'COMPLETE' : 'IN PROGRESS'}
+              <h1 className="text-3xl font-bold text-white mb-2">Return Manifest</h1>
+              <div className="text-zinc-400 mb-3">
+                <span className="font-semibold text-amber-400">{job?.code}</span> - {job?.title}
               </div>
+              <div className="text-sm text-zinc-500">
+                Return Date: {new Date().toLocaleDateString()}
+              </div>
+            </div>
+            <div className={`px-4 py-2 rounded-lg font-semibold text-sm ${
+              isComplete 
+                ? 'bg-green-900/30 border-2 border-green-500 text-green-300' 
+                : 'bg-yellow-900/30 border-2 border-yellow-500 text-yellow-300'
+            }`}>
+              {isComplete ? '✓ COMPLETE' : 'IN PROGRESS'}
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          <div className="mt-4">
+            <div className="flex justify-between text-sm mb-2">
+              <span className="text-zinc-400">Progress</span>
+              <span className="text-white font-semibold">
+                {totalReturned} / {totalRequired} Items
+              </span>
+            </div>
+            <div className="w-full bg-zinc-700 rounded-full h-3">
+              <div
+                className={`h-3 rounded-full transition-all ${
+                  isComplete ? 'bg-green-500' : 'bg-amber-500'
+                }`}
+                style={{ width: `${totalRequired > 0 ? (totalReturned / totalRequired) * 100 : 0}%` }}
+              />
             </div>
           </div>
         </div>
@@ -380,69 +422,95 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
         {/* Items by Category */}
         {allCategories.map(category => {
           const categoryItems = itemsByCategory[category] || [];
+          const categoryReturned = categoryItems.reduce((sum, item) => sum + item.qty_returned, 0);
+          const categoryRequired = categoryItems.reduce((sum, item) => sum + item.qty_required, 0);
+          const categoryComplete = categoryReturned === categoryRequired;
+
           return (
-            <div key={category} className="mb-8 break-inside-avoid">
-              <div className="bg-gray-800 text-white px-3 py-2 font-bold text-sm mb-0">
-                {category.toUpperCase()}
+            <div key={category} className="mb-6 bg-zinc-800 border border-zinc-700 rounded-lg overflow-hidden">
+              <div className="bg-zinc-700 px-4 py-3 flex items-center justify-between">
+                <h2 className="text-white font-bold text-sm uppercase">{category}</h2>
+                <div className="flex items-center gap-3">
+                  <span className="text-zinc-400 text-sm">
+                    {categoryReturned} / {categoryRequired}
+                  </span>
+                  {categoryComplete && (
+                    <span className="text-green-400 font-bold">✓</span>
+                  )}
+                </div>
               </div>
 
-              <table className="w-full text-xs border-collapse border border-gray-300">
-                <thead>
-                  <tr className="border-b border-gray-300 bg-gray-100">
-                    <th className="text-left py-2 px-2 font-semibold border-r border-gray-300">ITEM</th>
-                    <th className="text-center py-2 px-2 font-semibold w-20 border-r border-gray-300">REQ</th>
-                    <th className="text-center py-2 px-2 font-semibold w-20 border-r border-gray-300">RET</th>
-                    <th className="no-print text-center py-2 px-2 font-semibold w-16">STATUS</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {categoryItems.map((item, idx) => {
-                    const isItemComplete = item.qty_returned >= item.qty_required;
-                    return (
-                      <tr key={item.id} className={`border-b border-gray-200 ${idx % 2 === 0 ? 'bg-white' : 'bg-gray-50'}`}>
-                        <td className="py-2 px-2 border-r border-gray-200 font-medium">{item.item_name}</td>
-                        <td className="py-2 px-2 text-center border-r border-gray-200 font-semibold">{item.qty_required}</td>
-                        <td className="py-2 px-2 text-center border-r border-gray-200 font-bold text-amber-600">{item.qty_returned}</td>
-                        <td className="no-print py-2 px-2 text-center">
-                          {isItemComplete ? (
-                            <span className="text-green-600 font-bold">✓</span>
-                          ) : (
-                            <span className="text-gray-400 text-xs">{item.qty_required - item.qty_returned} left</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="text-left text-xs uppercase tracking-wide text-zinc-400 border-b border-zinc-700">
+                      <th className="px-4 py-3 font-semibold">Item</th>
+                      <th className="px-4 py-3 font-semibold text-center w-24">Required</th>
+                      <th className="px-4 py-3 font-semibold text-center w-24">Returned</th>
+                      <th className="no-print px-4 py-3 font-semibold text-center w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {categoryItems.map((item, idx) => {
+                      const isItemComplete = item.qty_returned >= item.qty_required;
+                      return (
+                        <tr 
+                          key={item.id} 
+                          className={`border-b border-zinc-700/50 ${idx % 2 === 0 ? 'bg-zinc-800' : 'bg-zinc-750'} hover:bg-zinc-700/50 transition-colors`}
+                        >
+                          <td className="px-4 py-3 text-zinc-200 font-medium">{item.item_name}</td>
+                          <td className="px-4 py-3 text-center text-zinc-300 font-semibold">{item.qty_required}</td>
+                          <td className="px-4 py-3 text-center">
+                            <span className={`font-bold ${isItemComplete ? 'text-green-400' : 'text-amber-400'}`}>
+                              {item.qty_returned}
+                            </span>
+                          </td>
+                          <td className="no-print px-4 py-3 text-center">
+                            {isItemComplete ? (
+                              <span className="inline-flex items-center px-2 py-1 rounded bg-green-900/30 border border-green-500 text-green-300 text-xs font-semibold">
+                                ✓ Done
+                              </span>
+                            ) : (
+                              <span className="text-zinc-500 text-xs">
+                                {item.qty_required - item.qty_returned} left
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
             </div>
           );
         })}
 
         {/* Summary */}
-        <div className="border-t-2 border-gray-800 pt-4 mt-6">
-          <div className="flex justify-between items-center mb-6">
-            <div className="text-gray-600">
-              <div className="text-sm">Total Categories: {allCategories.length}</div>
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+          <div className="flex justify-between items-center">
+            <div className="text-zinc-400">
+              <div className="text-sm mb-1">Total Categories</div>
+              <div className="text-2xl font-bold text-white">{allCategories.length}</div>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold">
-                {totalReturned} / {totalRequired} Items Returned
-              </div>
-              <div className={`text-sm font-semibold mt-1 ${isComplete ? 'text-green-600' : 'text-amber-600'}`}>
-                {isComplete ? '✓ Return Complete' : `${totalRequired - totalReturned} items remaining`}
+              <div className="text-sm text-zinc-400 mb-1">Total Items</div>
+              <div className="text-3xl font-bold text-white">
+                <span className={isComplete ? 'text-green-400' : 'text-amber-400'}>{totalReturned}</span>
+                <span className="text-zinc-600"> / </span>
+                {totalRequired}
               </div>
             </div>
           </div>
 
           {/* Finalize Button - Only show if complete */}
           {isComplete && (
-            <div className="flex gap-2 justify-end no-print">
+            <div className="mt-6 pt-6 border-t border-zinc-700">
               <button
                 onClick={() => setShowFinalizePrompt(true)}
-                className="bg-green-600 text-white px-6 py-2 rounded hover:bg-green-700 font-semibold"
+                className="w-full bg-green-600 text-white px-6 py-3 rounded-lg hover:bg-green-700 font-bold text-lg transition-colors"
               >
-                Finalize Return
+                ✓ Finalize Return & Archive Job
               </button>
             </div>
           )}
@@ -451,30 +519,30 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
 
       {/* Scan History Modal */}
       {showScanHistory && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
-          <div className="bg-white rounded-lg p-6 max-w-2xl w-full mx-4 shadow-lg max-h-[80vh] overflow-y-auto">
-            <h2 className="text-lg font-bold mb-4 text-gray-900">Return Scan History</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 no-print">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 max-w-2xl w-full mx-4 shadow-lg max-h-[80vh] overflow-y-auto">
+            <h2 className="text-lg font-bold mb-4 text-white">Return Scan History</h2>
             
             {scanHistory.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
+              <div className="text-center py-8 text-zinc-400">
                 No scans recorded for this return yet.
               </div>
             ) : (
               <div className="overflow-x-auto">
                 <table className="w-full text-sm">
-                  <thead className="bg-gray-100">
+                  <thead className="bg-zinc-700">
                     <tr>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Item Name</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Barcode</th>
-                      <th className="px-4 py-2 text-left font-medium text-gray-700">Scanned At</th>
+                      <th className="px-4 py-2 text-left font-medium text-zinc-300">Item Name</th>
+                      <th className="px-4 py-2 text-left font-medium text-zinc-300">Barcode</th>
+                      <th className="px-4 py-2 text-left font-medium text-zinc-300">Scanned At</th>
                     </tr>
                   </thead>
                   <tbody>
                     {scanHistory.map((scan: any) => (
-                      <tr key={scan.id} className="border-t border-gray-200 hover:bg-gray-50">
-                        <td className="px-4 py-2 text-gray-900">{scan.item_name}</td>
-                        <td className="px-4 py-2 text-gray-600 font-mono text-xs">{scan.barcode}</td>
-                        <td className="px-4 py-2 text-gray-600 text-xs">
+                      <tr key={scan.id} className="border-t border-zinc-700 hover:bg-zinc-700/50">
+                        <td className="px-4 py-2 text-white">{scan.item_name}</td>
+                        <td className="px-4 py-2 text-zinc-400 font-mono text-xs">{scan.barcode}</td>
+                        <td className="px-4 py-2 text-zinc-400 text-xs">
                           {new Date(scan.scanned_at).toLocaleString()}
                         </td>
                       </tr>
@@ -487,7 +555,7 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => setShowScanHistory(false)}
-                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium"
+                className="flex-1 bg-zinc-700 text-white px-4 py-2 rounded hover:bg-zinc-600 font-medium"
               >
                 Close
               </button>
@@ -498,33 +566,33 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
 
       {/* Finalize Return Modal */}
       {showFinalizePrompt && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 no-print">
-          <div className="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 shadow-lg max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-bold mb-6 text-gray-900">Finalize Return Manifest</h2>
+        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 no-print">
+          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-8 max-w-2xl w-full mx-4 shadow-lg max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-bold mb-6 text-white">Finalize Return Manifest</h2>
             
             <div className="space-y-6">
               {/* User Name Input */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Your Name *</label>
+                <label className="block text-sm font-semibold text-zinc-300 mb-2">Your Name *</label>
                 <input
                   type="text"
                   value={userName}
                   onChange={(e) => setUserName(e.target.value)}
                   placeholder="Enter your full name"
-                  className="w-full border border-gray-300 rounded px-4 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-900 border border-zinc-600 rounded px-4 py-2 text-sm text-white focus:outline-none focus:border-blue-500"
                   autoFocus
                 />
               </div>
 
               {/* Signature Pad */}
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Signature *</label>
-                <div className="border border-gray-300 rounded bg-white p-2">
+                <label className="block text-sm font-semibold text-zinc-300 mb-2">Signature *</label>
+                <div className="border border-zinc-600 rounded bg-zinc-900 p-2">
                   <canvas
                     ref={canvasRef}
                     width={500}
                     height={150}
-                    className="w-full border border-gray-200 rounded cursor-crosshair bg-white"
+                    className="w-full border border-zinc-700 rounded cursor-crosshair bg-white"
                     onMouseDown={(e) => {
                       const canvas = canvasRef.current;
                       if (!canvas) return;
@@ -566,20 +634,20 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
                       }
                     }
                   }}
-                  className="mt-2 text-xs text-blue-600 hover:text-blue-700 underline"
+                  className="mt-2 text-xs text-blue-400 hover:text-blue-300 underline"
                 >
                   Clear Signature
                 </button>
               </div>
 
               {/* Summary */}
-              <div className="bg-gray-50 p-4 rounded">
-                <h3 className="font-semibold text-gray-900 mb-2">Return Summary</h3>
-                <div className="text-sm text-gray-700 space-y-1">
-                  <div>Job Code: <span className="font-semibold">{job?.code}</span></div>
-                  <div>Job Title: <span className="font-semibold">{job?.title}</span></div>
-                  <div>Items Returned: <span className="font-semibold">{totalReturned} / {totalRequired}</span></div>
-                  <div>Status: <span className="font-semibold text-green-600">Complete</span></div>
+              <div className="bg-zinc-900 border border-zinc-700 p-4 rounded">
+                <h3 className="font-semibold text-white mb-2">Return Summary</h3>
+                <div className="text-sm text-zinc-300 space-y-1">
+                  <div>Job Code: <span className="font-semibold text-amber-400">{job?.code}</span></div>
+                  <div>Job Title: <span className="font-semibold text-white">{job?.title}</span></div>
+                  <div>Items Returned: <span className="font-semibold text-green-400">{totalReturned} / {totalRequired}</span></div>
+                  <div>Status: <span className="font-semibold text-green-400">Complete</span></div>
                 </div>
               </div>
             </div>
@@ -588,7 +656,7 @@ export default function ReturnManifestClient({ jobId }: { jobId: string }) {
               <button
                 onClick={() => setShowFinalizePrompt(false)}
                 disabled={finalizing}
-                className="flex-1 bg-gray-200 text-gray-800 px-4 py-2 rounded hover:bg-gray-300 font-medium disabled:opacity-50"
+                className="flex-1 bg-zinc-700 text-white px-4 py-2 rounded hover:bg-zinc-600 font-medium disabled:opacity-50"
               >
                 Cancel
               </button>

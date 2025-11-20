@@ -10,8 +10,8 @@ type PullSheetWithDates = {
   job_id: string;
   job_code: string | null;
   job_title: string | null;
-  expected_return_date: string | null;
-  is_finalized: boolean;
+  expected_return_at: string | null;
+  finalized_at: string | null;
   created_at: string;
   venue: string | null;
 };
@@ -36,8 +36,8 @@ export default function ReturnsPage() {
       .select(`
         id,
         job_id,
-        expected_return_date,
-        is_finalized,
+        expected_return_at,
+        finalized_at,
         created_at,
         jobs!inner (
           code,
@@ -45,10 +45,11 @@ export default function ReturnsPage() {
           venue
         )
       `)
-      .eq('is_finalized', true)
-      .not('expected_return_date', 'is', null)
-      .lt('expected_return_date', todayString)
-      .order('expected_return_date', { ascending: true });
+      .not('finalized_at', 'is', null)
+      .neq('status', 'returned')
+      .not('expected_return_at', 'is', null)
+      .lt('expected_return_at', todayString)
+      .order('expected_return_at', { ascending: true });
 
     if (!error && data) {
       const formatted = data.map((ps: any) => ({
@@ -56,8 +57,8 @@ export default function ReturnsPage() {
         job_id: ps.job_id,
         job_code: ps.jobs?.code || null,
         job_title: ps.jobs?.title || null,
-        expected_return_date: ps.expected_return_date,
-        is_finalized: ps.is_finalized,
+        expected_return_at: ps.expected_return_at,
+        finalized_at: ps.finalized_at,
         created_at: ps.created_at,
         venue: ps.jobs?.venue || null
       }));
@@ -156,83 +157,73 @@ export default function ReturnsPage() {
             <p className="text-zinc-400">No finalized pull sheets currently overdue for returns</p>
           </div>
         ) : (
-          <div className="space-y-4">
-            {overduePullSheets.map((pullSheet) => {
-              const daysOverdue = getDaysOverdue(pullSheet.expected_return_date);
-              
-              return (
-                <div
-                  key={pullSheet.id}
-                  className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 hover:border-zinc-600 transition-colors"
-                >
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-3 mb-2">
-                        <h3 className="text-xl font-semibold text-white">{pullSheet.job_title || 'Untitled Job'}</h3>
-                        <span className="text-sm font-mono text-amber-400">{pullSheet.job_code || 'N/A'}</span>
+          <div className="overflow-x-auto rounded-xl border border-gray-300 bg-gray-400 shadow-lg">
+            <table className="min-w-full">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
+                  <th className="px-6 py-4">Job Code</th>
+                  <th className="px-6 py-4">Job Title</th>
+                  <th className="px-6 py-4">Venue</th>
+                  <th className="px-6 py-4">Expected Return</th>
+                  <th className="px-6 py-4">Days Overdue</th>
+                  <th className="px-6 py-4 text-right">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="text-sm bg-white">
+                {overduePullSheets.map((pullSheet) => {
+                  const daysOverdue = getDaysOverdue(pullSheet.expected_return_at);
+                  
+                  return (
+                    <tr key={pullSheet.id} className="border-t border-gray-300 hover:bg-amber-50 transition-colors">
+                      <td className="px-6 py-4 font-semibold text-gray-900">
+                        {pullSheet.job_code || 'N/A'}
+                      </td>
+                      <td className="px-6 py-4 text-gray-900 font-medium">
+                        {pullSheet.job_title || 'Untitled Job'}
+                      </td>
+                      <td className="px-6 py-4 text-gray-700">
+                        {pullSheet.venue || '—'}
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="text-gray-900 font-semibold">
+                          {formatDate(pullSheet.expected_return_at)}
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          Created: {formatDate(pullSheet.created_at)}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
                         {daysOverdue > 0 && (
-                          <span className={`px-2 py-1 rounded text-xs font-semibold ${
+                          <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold ${
                             daysOverdue > 7 
-                              ? 'bg-red-900 text-red-200' 
-                              : 'bg-yellow-900 text-yellow-200'
+                              ? 'bg-red-500/20 text-red-700 border border-red-400/40' 
+                              : 'bg-yellow-500/20 text-yellow-700 border border-yellow-400/40'
                           }`}>
-                            {daysOverdue} day{daysOverdue !== 1 ? 's' : ''} overdue
+                            {daysOverdue} day{daysOverdue !== 1 ? 's' : ''}
                           </span>
                         )}
-                      </div>
-
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-sm mt-4">
-                        <div>
-                          <div className="text-zinc-400 mb-1">Expected Return</div>
-                          <div className="text-white font-semibold">
-                            {formatDate(pullSheet.expected_return_date)}
-                          </div>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <div className="flex justify-end gap-2">
+                          <Link
+                            href={`/app/warehouse/jobs/${pullSheet.job_id}/return-manifest`}
+                            className="px-4 py-2 rounded-lg border-2 border-purple-600 text-purple-700 font-semibold bg-purple-50 hover:bg-purple-600 hover:text-white transition-all"
+                          >
+                            Process Return
+                          </Link>
+                          <Link
+                            href={`/app/jobs/${pullSheet.job_id}`}
+                            className="px-4 py-2 rounded-lg border-2 border-gray-700 text-gray-900 font-semibold hover:bg-amber-400 hover:border-amber-500 transition-all"
+                          >
+                            View Job
+                          </Link>
                         </div>
-                        <div>
-                          <div className="text-zinc-400 mb-1">Pull Sheet Created</div>
-                          <div className="text-white">
-                            {formatDate(pullSheet.created_at)}
-                          </div>
-                        </div>
-                        {pullSheet.venue && (
-                          <div>
-                            <div className="text-zinc-400 mb-1">Venue</div>
-                            <div className="text-white">{pullSheet.venue}</div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    <div className="flex gap-2">
-                      <Link
-                        href={`/app/warehouse/pull-sheets/${pullSheet.id}`}
-                        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-semibold transition-colors"
-                      >
-                        <i className="fas fa-clipboard-list mr-2"></i>
-                        View Pull Sheet
-                      </Link>
-                      <button
-                        onClick={() => archiveReturn(pullSheet.id, pullSheet.job_title || 'Pull Sheet')}
-                        disabled={archiving === pullSheet.id}
-                        className={`px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md font-semibold transition-colors ${
-                          archiving === pullSheet.id ? 'opacity-50 cursor-not-allowed' : ''
-                        }`}
-                      >
-                        <i className={`fas ${archiving === pullSheet.id ? 'fa-spinner fa-spin' : 'fa-archive'} mr-2`}></i>
-                        {archiving === pullSheet.id ? 'Archiving...' : 'Mark Returned'}
-                      </button>
-                      <Link
-                        href={`/app/jobs/${pullSheet.job_id}`}
-                        className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md transition-colors"
-                      >
-                        <i className="fas fa-eye mr-2"></i>
-                        View Job
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
