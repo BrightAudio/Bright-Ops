@@ -108,6 +108,71 @@ const getSubcategory = (itemName: string, category: string): string => {
   return subcats[subcats.length - 1] || 'Other';
 };
 
+// Sound feedback functions
+const playBeep = (type: "success" | "error") => {
+  try {
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+
+    if (type === "success") {
+      oscillator.frequency.value = 800;
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
+    } else {
+      oscillator.frequency.value = 400;
+      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
+    }
+
+    oscillator.start(audioContext.currentTime);
+    oscillator.stop(audioContext.currentTime + (type === "success" ? 0.2 : 0.3));
+  } catch (e) {
+    // Silently fail if audio not available
+  }
+};
+
+const playVoice = (type: "success" | "error") => {
+  try {
+    const utterance = new SpeechSynthesisUtterance(
+      type === "success" ? "Scan successful" : "Nope, try again"
+    );
+    
+    // Try to find a female voice
+    const voices = speechSynthesis.getVoices();
+    const femaleVoice = voices.find(voice => 
+      voice.name.toLowerCase().includes('female') || 
+      voice.name.toLowerCase().includes('woman') ||
+      voice.name.toLowerCase().includes('samantha') ||
+      voice.name.toLowerCase().includes('victoria') ||
+      voice.name.toLowerCase().includes('zira')
+    );
+    
+    if (femaleVoice) {
+      utterance.voice = femaleVoice;
+    }
+    
+    utterance.rate = 1.1; // Slightly faster
+    utterance.pitch = 1.2; // Slightly higher pitch
+    utterance.volume = 0.8;
+    
+    speechSynthesis.speak(utterance);
+  } catch (e) {
+    console.error('Voice synthesis failed:', e);
+  }
+};
+
+const playSound = (type: "success" | "error", soundTheme: 'ding' | 'voice') => {
+  if (soundTheme === 'voice') {
+    playVoice(type);
+  } else {
+    playBeep(type);
+  }
+};
+
 export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheetId }: { jobId: string, pullSheetId?: string }) {
   const router = useRouter();
   const [job, setJob] = useState<Job | null>(null);
@@ -130,6 +195,18 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
   const [expandedSubcategories, setExpandedSubcategories] = useState<Set<string>>(new Set());
   const [quantityInputItemId, setQuantityInputItemId] = useState<string | null>(null);
   const [quantityInputValue, setQuantityInputValue] = useState('');
+
+  // Load voices on mount for speech synthesis
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      // Force load voices
+      speechSynthesis.getVoices();
+      // Some browsers need this event
+      speechSynthesis.onvoiceschanged = () => {
+        speechSynthesis.getVoices();
+      };
+    }
+  }, []);
 
   useEffect(() => {
     loadData();
@@ -263,7 +340,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
         .single();
 
       if (!inventoryItem) {
-        console.error('Item not found');
+        playSound('error', soundTheme);
         return;
       }
 
@@ -275,12 +352,12 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       );
 
       if (!matchingItem) {
-        console.error('This barcode was not pulled for this job - cannot return');
+        playSound('error', soundTheme);
         return;
       }
 
       if ((matchingItem.qty_returned || 0) >= (matchingItem.qty_requested || 0)) {
-        console.error('All units already returned');
+        playSound('error', soundTheme);
         return;
       }
 
@@ -329,8 +406,10 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       }
 
       setSelectedItemId(matchingItem.id);
+      playSound('success', soundTheme);
     } catch (err) {
       console.error('Scan error:', err);
+      playSound('error', soundTheme);
     } finally {
       setSaving(false);
     }
