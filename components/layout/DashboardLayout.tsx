@@ -86,9 +86,16 @@ export default function DashboardLayout({
   const notificationsRef = useRef<HTMLDivElement>(null);
   const { currentLocation } = useLocation();
 
-  // Fetch user profile
+  // Fetch user profile (optimized with caching)
   useEffect(() => {
     async function fetchUserProfile() {
+      // Check cache first
+      const cached = sessionStorage.getItem('user_profile');
+      if (cached) {
+        setUserProfile(JSON.parse(cached));
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase
@@ -97,11 +104,15 @@ export default function DashboardLayout({
           .eq('id', user.id)
           .single();
         
-        setUserProfile({
+        const profileData = {
           full_name: (profile as any)?.full_name || 'User',
           company_name: (profile as any)?.company_name || null,
           email: user.email || ''
-        });
+        };
+        
+        setUserProfile(profileData);
+        // Cache for session
+        sessionStorage.setItem('user_profile', JSON.stringify(profileData));
       }
     }
     fetchUserProfile();
