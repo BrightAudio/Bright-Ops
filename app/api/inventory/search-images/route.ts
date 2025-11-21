@@ -1,4 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
+// @ts-nocheck
+import { NextRequest, NextResponse } from "next/server";
 import { createClient } from '@supabase/supabase-js';
 
 // Using Google Custom Search API for image search

@@ -133,7 +133,7 @@ export default function ShortagesPage() {
               {loading
                 ? "..."
                 : filteredShortages.reduce(
-                    (sum, item) => sum + Math.abs(item.qty_in_warehouse),
+                    (sum, item) => sum + Math.abs(item.qty_in_warehouse ?? 0),
                     0
                   )}
             </p>
@@ -288,7 +288,7 @@ export default function ShortagesPage() {
                     style={{
                       borderBottom: "1px solid #333333",
                       backgroundColor:
-                        item.qty_in_warehouse < -5
+                        (item.qty_in_warehouse ?? 0) < -5
                           ? "rgba(255, 107, 107, 0.1)"
                           : "transparent",
                     }}

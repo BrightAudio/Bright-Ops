@@ -21,7 +21,7 @@ const nextConfig = {
   // Experimental optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['react-icons'],
+    optimizePackageImports: ['react-icons', '@supabase/supabase-js'],
   },
   
   // Production optimizations
@@ -30,6 +30,67 @@ const nextConfig = {
   
   // Compression
   compress: true,
+  
+  // Webpack optimizations to fix large string serialization warning
+  webpack: (config, { dev, isServer }) => {
+    // Optimize cache for better performance
+    if (config.cache && !isServer) {
+      config.cache.compression = 'gzip';
+    }
+    
+    // Split chunks for better caching
+    if (!dev && !isServer) {
+      config.optimization = {
+        ...config.optimization,
+        splitChunks: {
+          chunks: 'all',
+          cacheGroups: {
+            default: false,
+            vendors: false,
+            // Vendor chunk
+            vendor: {
+              name: 'vendor',
+              chunks: 'all',
+              test: /node_modules/,
+              priority: 20,
+            },
+            // Common chunk
+            common: {
+              name: 'common',
+              minChunks: 2,
+              chunks: 'all',
+              priority: 10,
+              reuseExistingChunk: true,
+              enforce: true,
+            },
+            // Supabase chunk (large library)
+            supabase: {
+              name: 'supabase',
+              test: /[\\/]node_modules[\\/]@supabase[\\/]/,
+              chunks: 'all',
+              priority: 30,
+            },
+            // Stripe chunk
+            stripe: {
+              name: 'stripe',
+              test: /[\\/]node_modules[\\/](stripe|@stripe)[\\/]/,
+              chunks: 'all',
+              priority: 30,
+            },
+            // React icons chunk
+            icons: {
+              name: 'icons',
+              test: /[\\/]node_modules[\\/]react-icons[\\/]/,
+              chunks: 'all',
+              priority: 25,
+            },
+          },
+        },
+      };
+    }
+    
+    return config;
+  },
 };
 
 export default nextConfig;

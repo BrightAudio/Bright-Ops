@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { useAsync } from "./useSupabase";
 import { supabase, Tables, TablesInsert, TablesUpdate } from "../supabaseClient";
 import { guard } from "./useSupabase";

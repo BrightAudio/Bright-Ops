@@ -43,7 +43,7 @@ function findPriceInDatabase(itemName: string): number | null {
 
 async function searchWithChatGPT(itemName: string): Promise<{ price: number | null; source: string | null }> {
   if (!OPENAI_API_KEY) {
-    return null;
+    return { price: null, source: null };
   }
 
   try {
@@ -89,7 +89,7 @@ If you cannot determine a price, respond: {"price": null, "source": null}`;
 
     if (!response.ok) {
       console.error('OpenAI API error');
-      return null;
+      return { price: null, source: null };
     }
 
     const data = await response.json();
@@ -109,7 +109,7 @@ If you cannot determine a price, respond: {"price": null, "source": null}`;
       // Try to extract JSON object
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (!jsonMatch) {
-        return null;
+        return { price: null, source: null };
       }
       priceData = JSON.parse(jsonMatch[0]);
     }

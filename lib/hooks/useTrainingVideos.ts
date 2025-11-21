@@ -179,7 +179,6 @@ export async function updateTrainingVideo(id: string, updates: Partial<TrainingV
 
   const { data, error } = await (supabase
     .from("training_videos")
-    // @ts-expect-error - Supabase type inference issue
     .update(updateData)
     .eq("id", id)
     .select()
@@ -210,7 +209,6 @@ export async function incrementViewCount(id: string): Promise<void> {
     if (video) {
       await (supabase
         .from("training_videos")
-        // @ts-expect-error - Supabase type inference issue
         .update({ view_count: (video as any).view_count || 0 + 1 })
         .eq("id", id));
     }

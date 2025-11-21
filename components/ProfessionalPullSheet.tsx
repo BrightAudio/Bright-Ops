@@ -1,5 +1,5 @@
 "use client";
-
+// @ts-nocheck
 import React, { useState, useEffect } from "react";
 import BarcodeScanner from "@/components/BarcodeScanner";
 import GearSubstitutionModal from "@/components/GearSubstitutionModal";

@@ -82,7 +82,6 @@ export default function PipelinePage() {
       // Update in database
       const { error: updateError } = (await supabase
         .from('leads')
-        // @ts-expect-error - Database type mismatch
         .update({ status: newStatus })
         .eq('id', draggedLead.id)) as any;
 

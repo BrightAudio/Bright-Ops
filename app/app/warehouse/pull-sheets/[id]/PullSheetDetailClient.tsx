@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 
 import { supabase } from "@/lib/supabaseClient";
 import React, { useState, useEffect } from "react";

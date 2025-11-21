@@ -18,7 +18,22 @@ interface FinancialData {
   campaignsCost: number;
 }
 
+interface InventoryDepreciation {
+  id: string;
+  name: string;
+  purchase_cost: number;
+  purchase_date: string;
+  useful_life_years: number;
+  residual_value: number;
+  current_book_value: number;
+  annual_depreciation: number;
+  total_depreciation: number;
+  category: string;
+  location: string;
+}
+
 export default function FinancialPage() {
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'depreciation'>('dashboard');
   const [financial, setFinancial] = useState<FinancialData>({
     totalInventoryValue: 0,
     totalRepairCosts: 0,
@@ -33,6 +48,7 @@ export default function FinancialPage() {
     campaignsCost: 0,
   });
   const [loading, setLoading] = useState(true);
+  const [depreciationItems, setDepreciationItems] = useState<InventoryDepreciation[]>([]);
 
   useEffect(() => {
     const fetchFinancialData = async () => {
@@ -40,7 +56,7 @@ export default function FinancialPage() {
         // Fetch inventory data
         const { data: inventoryData } = await (supabase as any)
           .from("inventory_items")
-          .select("qty_in_warehouse, unit_value, repair_cost, maintenance_status");
+          .select("id, name, qty_in_warehouse, unit_value, repair_cost, maintenance_status, purchase_cost, purchase_date, useful_life_years, residual_value, category, location");
 
         // Fetch jobs data
         const { data: jobsData } = await (supabase as any)
@@ -56,6 +72,7 @@ export default function FinancialPage() {
         let totalRepairCosts = 0;
         let itemsNeedingRepair = 0;
         let shortageValue = 0;
+        const depreciation: InventoryDepreciation[] = [];
 
         if (inventoryData) {
           inventoryData.forEach((item: any) => {
@@ -76,8 +93,39 @@ export default function FinancialPage() {
             ) {
               itemsNeedingRepair++;
             }
+
+            // Calculate depreciation for items with purchase info
+            if (item.purchase_cost && item.purchase_date && item.useful_life_years) {
+              const purchaseCost = parseFloat(item.purchase_cost) || 0;
+              const residualValue = parseFloat(item.residual_value) || 0;
+              const usefulLifeYears = parseFloat(item.useful_life_years) || 5;
+              const depreciableAmount = purchaseCost - residualValue;
+              const annualDepreciation = depreciableAmount / usefulLifeYears;
+              
+              const purchaseDate = new Date(item.purchase_date);
+              const now = new Date();
+              const yearsElapsed = (now.getTime() - purchaseDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000);
+              const totalDepreciation = Math.min(annualDepreciation * yearsElapsed, depreciableAmount);
+              const currentBookValue = Math.max(purchaseCost - totalDepreciation, residualValue);
+
+              depreciation.push({
+                id: item.id,
+                name: item.name,
+                purchase_cost: purchaseCost,
+                purchase_date: item.purchase_date,
+                useful_life_years: usefulLifeYears,
+                residual_value: residualValue,
+                current_book_value: currentBookValue,
+                annual_depreciation: annualDepreciation,
+                total_depreciation: totalDepreciation,
+                category: item.category || 'Uncategorized',
+                location: item.location || 'Unknown'
+              });
+            }
           });
         }
+
+        setDepreciationItems(depreciation);
 
         let jobsIncome = 0;
         let jobsLaborCost = 0;
@@ -163,17 +211,32 @@ export default function FinancialPage() {
             {/* Navigation to Goals */}
             <div style={{ marginTop: "1rem", display: "flex", gap: "1rem" }}>
               <a
-                href="/app/warehouse/financial"
+                onClick={() => setActiveTab('dashboard')}
                 style={{
                   fontSize: "0.875rem",
                   fontWeight: 600,
-                  color: "#999999",
+                  color: activeTab === 'dashboard' ? "#4ade80" : "#999999",
                   textDecoration: "none",
-                  borderBottom: "2px solid #4ade80",
+                  borderBottom: activeTab === 'dashboard' ? "2px solid #4ade80" : "none",
                   paddingBottom: "0.25rem",
+                  cursor: "pointer",
                 }}
               >
                 Dashboard
+              </a>
+              <a
+                onClick={() => setActiveTab('depreciation')}
+                style={{
+                  fontSize: "0.875rem",
+                  fontWeight: 600,
+                  color: activeTab === 'depreciation' ? "#4ade80" : "#999999",
+                  textDecoration: "none",
+                  borderBottom: activeTab === 'depreciation' ? "2px solid #4ade80" : "none",
+                  paddingBottom: "0.25rem",
+                  cursor: "pointer",
+                }}
+              >
+                Depreciation
               </a>
               <a
                 href="/app/warehouse/financial/goals"
@@ -200,8 +263,11 @@ export default function FinancialPage() {
           </div>
         </div>
 
-        {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && (
+          <>
+            {/* Key Metrics */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
           {/* Net Profit */}
           <div
             style={{
@@ -659,7 +725,229 @@ export default function FinancialPage() {
             </div>
           </div>
         </div>
+          </>
+        )}
+
+        {/* Depreciation Tab */}
+        {activeTab === 'depreciation' && (
+          <div>
+            <div style={{ marginBottom: '1.5rem' }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 600, marginBottom: '0.5rem', color: '#e5e5e5' }}>
+                Equipment Depreciation Tracking
+              </h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px' }}>
+                Track asset depreciation for tax reporting and financial planning
+              </p>
+            </div>
+
+            {/* Depreciation Summary Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                border: '1px solid #8b5cf6',
+                borderRadius: '0.5rem',
+                padding: '1.5rem'
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#999999', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Total Purchase Cost
+                </p>
+                <p style={{ fontSize: '2rem', fontWeight: 700, color: '#8b5cf6' }}>
+                  {loading ? "..." : `$${depreciationItems.reduce((sum, item) => sum + item.purchase_cost, 0).toFixed(2)}`}
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                border: '1px solid #ef4444',
+                borderRadius: '0.5rem',
+                padding: '1.5rem'
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#999999', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Total Depreciation
+                </p>
+                <p style={{ fontSize: '2rem', fontWeight: 700, color: '#ef4444' }}>
+                  {loading ? "..." : `$${depreciationItems.reduce((sum, item) => sum + item.total_depreciation, 0).toFixed(2)}`}
+                </p>
+              </div>
+
+              <div style={{
+                backgroundColor: '#2a2a2a',
+                border: '1px solid #4ade80',
+                borderRadius: '0.5rem',
+                padding: '1.5rem'
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#999999', marginBottom: '0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Current Book Value
+                </p>
+                <p style={{ fontSize: '2rem', fontWeight: 700, color: '#4ade80' }}>
+                  {loading ? "..." : `$${depreciationItems.reduce((sum, item) => sum + item.current_book_value, 0).toFixed(2)}`}
+                </p>
+              </div>
+            </div>
+
+            {/* Depreciation Items Table */}
+            {loading ? (
+              <p style={{ color: '#9ca3af', textAlign: 'center', padding: '3rem' }}>Loading depreciation data...</p>
+            ) : depreciationItems.length === 0 ? (
+              <div style={{
+                background: '#2a2a2a',
+                border: '1px solid #3a3a3a',
+                borderRadius: '12px',
+                padding: '3rem',
+                textAlign: 'center'
+              }}>
+                <p style={{ color: '#9ca3af', fontSize: '18px' }}>No depreciation data available</p>
+                <p style={{ color: '#6b7280', fontSize: '14px', marginTop: '0.5rem' }}>
+                  Items need purchase cost, purchase date, and useful life years to calculate depreciation
+                </p>
+              </div>
+            ) : (
+              <div style={{
+                background: '#2a2a2a',
+                border: '1px solid #3a3a3a',
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}>
+                <div style={{ overflowX: 'auto' }}>
+                  <table style={{ width: '100%', fontSize: '14px' }}>
+                    <thead>
+                      <tr style={{ background: '#1a1a1a', borderBottom: '2px solid #3a3a3a' }}>
+                        <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Item Name</th>
+                        <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Category</th>
+                        <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Location</th>
+                        <th style={{ textAlign: 'right', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Purchase Cost</th>
+                        <th style={{ textAlign: 'right', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Book Value</th>
+                        <th style={{ textAlign: 'right', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Annual Depreciation</th>
+                        <th style={{ textAlign: 'right', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Total Depreciation</th>
+                        <th style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Life (Years)</th>
+                        <th style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Purchase Date</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {depreciationItems.map((item) => {
+                        const depreciationPercent = ((item.total_depreciation / (item.purchase_cost - item.residual_value)) * 100).toFixed(1);
+                        return (
+                          <tr key={item.id} style={{ borderBottom: '1px solid #2a2a2a' }}>
+                            <td style={{ padding: '1rem', color: '#e5e5e5', fontWeight: 500 }}>
+                              <a href={`/app/inventory/${item.id}`} style={{ color: '#667eea', textDecoration: 'none' }}>
+                                {item.name}
+                              </a>
+                            </td>
+                            <td style={{ padding: '1rem', color: '#9ca3af' }}>{item.category}</td>
+                            <td style={{ padding: '1rem', color: '#9ca3af' }}>{item.location}</td>
+                            <td style={{ textAlign: 'right', padding: '1rem', color: '#8b5cf6', fontWeight: 600 }}>
+                              ${item.purchase_cost.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '1rem', color: '#4ade80', fontWeight: 600 }}>
+                              ${item.current_book_value.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '1rem', color: '#fbbf24' }}>
+                              ${item.annual_depreciation.toLocaleString()}
+                            </td>
+                            <td style={{ textAlign: 'right', padding: '1rem', color: '#ef4444', fontWeight: 600 }}>
+                              ${item.total_depreciation.toLocaleString()}
+                              <span style={{ fontSize: '12px', color: '#9ca3af', marginLeft: '0.5rem' }}>
+                                ({depreciationPercent}%)
+                              </span>
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af' }}>
+                              {item.useful_life_years}
+                            </td>
+                            <td style={{ textAlign: 'center', padding: '1rem', color: '#9ca3af' }}>
+                              {new Date(item.purchase_date).toLocaleDateString()}
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Summary Row */}
+                <div style={{
+                  background: '#1a1a1a',
+                  borderTop: '2px solid #3a3a3a',
+                  padding: '1rem',
+                  display: 'flex',
+                  justifyContent: 'space-between',
+                  alignItems: 'center'
+                }}>
+                  <div style={{ fontWeight: 600, color: '#e5e5e5' }}>
+                    Total ({depreciationItems.length} items)
+                  </div>
+                  <div style={{ display: 'flex', gap: '2rem', fontSize: '14px' }}>
+                    <div>
+                      <span style={{ color: '#9ca3af' }}>Purchase: </span>
+                      <span style={{ color: '#8b5cf6', fontWeight: 600 }}>
+                        ${depreciationItems.reduce((sum, item) => sum + item.purchase_cost, 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#9ca3af' }}>Book Value: </span>
+                      <span style={{ color: '#4ade80', fontWeight: 600 }}>
+                        ${depreciationItems.reduce((sum, item) => sum + item.current_book_value, 0).toLocaleString()}
+                      </span>
+                    </div>
+                    <div>
+                      <span style={{ color: '#9ca3af' }}>Total Depreciation: </span>
+                      <span style={{ color: '#ef4444', fontWeight: 600 }}>
+                        ${depreciationItems.reduce((sum, item) => sum + item.total_depreciation, 0).toLocaleString()}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Annual Depreciation by Category */}
+            {depreciationItems.length > 0 && (
+              <div style={{
+                marginTop: '1.5rem',
+                background: '#2a2a2a',
+                border: '1px solid #3a3a3a',
+                borderRadius: '12px',
+                padding: '1.5rem'
+              }}>
+                <h3 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '1rem', color: '#e5e5e5' }}>
+                  Annual Depreciation by Category
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {Object.entries(
+                    depreciationItems.reduce((acc, item) => {
+                      const category = item.category || 'Uncategorized';
+                      if (!acc[category]) {
+                        acc[category] = { annual: 0, total: 0, count: 0 };
+                      }
+                      acc[category].annual += item.annual_depreciation;
+                      acc[category].total += item.total_depreciation;
+                      acc[category].count += 1;
+                      return acc;
+                    }, {} as Record<string, { annual: number; total: number; count: number }>)
+                  ).map(([category, data]) => (
+                    <div key={category} style={{
+                      background: '#1a1a1a',
+                      borderRadius: '8px',
+                      padding: '1rem',
+                      border: '1px solid #3a3a3a'
+                    }}>
+                      <div style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                        {category} ({data.count} items)
+                      </div>
+                      <div style={{ fontSize: '20px', fontWeight: 600, color: '#fbbf24', marginBottom: '0.25rem' }}>
+                        ${data.annual.toLocaleString()}/yr
+                      </div>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
+                        Total: ${data.total.toLocaleString()}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </DashboardLayout>
   );
 }
+

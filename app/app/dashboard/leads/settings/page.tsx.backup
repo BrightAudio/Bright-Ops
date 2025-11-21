@@ -514,7 +514,7 @@ export default function LeadSettingsPage() {
           </div>
         </div>
 
-        {/* 3-Month API Key Rotation Reminder */}
+        {/* 3-Month API Key Rotation Reminder */
         <div className="bg-amber-900/20 border border-amber-600 rounded-lg p-6 mb-6">
           <div className="flex gap-4">
             <div className="text-3xl flex-shrink-0">⚠️</div>

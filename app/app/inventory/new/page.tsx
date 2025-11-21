@@ -138,7 +138,7 @@ export default function NewInventoryItemPage() {
 				useful_life_years: form.useful_life_years,
 			estimated_jobs_per_year: form.estimated_jobs_per_year,
 			residual_value: form.residual_value,
-			category: form.category || null,
+			category: form.category || undefined,
 			subcategory: form.subcategory || null,
 			location: form.location,
 				tags: form.tags,

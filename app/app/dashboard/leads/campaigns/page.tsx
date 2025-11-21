@@ -104,7 +104,6 @@ export default function EmailCampaignsPage() {
          
         const { error: updateError } = await supabase
           .from('campaigns')
-          // @ts-expect-error - Database type mismatch
           .update({ total_recipients: leads.length })
           .eq('id', (newCampaign as any).id);
 

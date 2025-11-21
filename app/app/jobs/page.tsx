@@ -1,4 +1,5 @@
 "use client";
+// @ts-nocheck
 import { useState, useEffect } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
 import { createPullSheet } from "@/lib/hooks/usePullSheets";

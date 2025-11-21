@@ -18,7 +18,6 @@ export async function POST(request: NextRequest) {
     }
 
     // Call the scoring function
-    // @ts-expect-error - Database type mismatch
     const { data, error } = await supabase.rpc('calculate_lead_score', {
       lead_id_param: leadId
     });
@@ -65,7 +64,6 @@ export async function PUT(request: NextRequest) {
     let updated = 0;
     for (const lead of (leads as any) || []) {
       try {
-        // @ts-expect-error - Database type mismatch
         await supabase.rpc('calculate_lead_score', {
           lead_id_param: lead.id
         });

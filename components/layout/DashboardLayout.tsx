@@ -744,6 +744,25 @@ export default function DashboardLayout({
                   </Link>
                   
                   <Link 
+                    href="/app/settings/payments"
+                    onClick={() => setProfileOpen(false)}
+                    style={{ 
+                      display: 'flex', 
+                      alignItems: 'center', 
+                      gap: '0.75rem',
+                      padding: '0.625rem 1rem', 
+                      color: 'rgba(255, 255, 255, 0.85)', 
+                      textDecoration: 'none',
+                      transition: 'background 0.15s'
+                    }}
+                    onMouseEnter={(e) => e.currentTarget.style.backgroundColor = 'rgba(255, 255, 255, 0.08)'}
+                    onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
+                  >
+                    <i className="fas fa-credit-card" style={{ width: '1.125rem', textAlign: 'center' }}></i>
+                    <span>Payment Settings</span>
+                  </Link>
+                  
+                  <Link 
                     href="/app/crew"
                     onClick={() => setProfileOpen(false)}
                     style={{ 
