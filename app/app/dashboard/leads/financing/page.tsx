@@ -2,12 +2,12 @@
 // @ts-nocheck
 
 import { useState, useEffect } from 'react';
-import { FaDollarSign, FaCalculator, FaFileSignature, FaChartLine, FaCog, FaUniversity, FaBell, FaCreditCard } from 'react-icons/fa';
+import { FaDollarSign, FaCalculator, FaFileSignature, FaChartLine, FaCog, FaUniversity, FaBell, FaCreditCard, FaArchive } from 'react-icons/fa';
 import { supabase } from '@/lib/supabaseClient';
 import { loadStripe } from '@stripe/stripe-js';
 
 export default function FinancingPage() {
-  const [activeTab, setActiveTab] = useState<'calculator' | 'applications' | 'active' | 'payments' | 'section179'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'applications' | 'active' | 'payments' | 'section179' | 'archive'>('calculator');
   
   // Calculator state
   const [financeAmount, setFinanceAmount] = useState('50000');
@@ -670,7 +670,7 @@ export default function FinancingPage() {
   async function createEquipment() {
     // Validation
     if (!newEquipment.financing_id) {
-      alert('Please select a financing account');
+      alert('Please select a leasing account');
       return;
     }
     if (!newEquipment.description.trim()) {
@@ -1748,7 +1748,8 @@ export default function FinancingPage() {
             { id: 'applications', label: 'Applications', icon: <FaFileSignature /> },
             { id: 'active', label: 'Active Leases', icon: <FaChartLine /> },
             { id: 'payments', label: 'Payments', icon: <FaDollarSign /> },
-            { id: 'section179', label: 'Section 179', icon: <FaCog /> }
+            { id: 'section179', label: 'Section 179', icon: <FaCog /> },
+            { id: 'archive', label: 'Archive', icon: <FaArchive /> }
           ].map((tab) => (
             <button
               key={tab.id}
@@ -3232,17 +3233,69 @@ export default function FinancingPage() {
                   
                   <button
                     onClick={async () => {
-                      if (confirm(`Cancel financing for ${loan.client_name}? This will permanently delete all records.`)) {
-                        const { error } = await supabase
-                          .from('financing_applications')
-                          .delete()
-                          .eq('id', loan.id);
-                        
-                        if (!error) {
-                          alert('Financing cancelled successfully');
+                      if (confirm(`Cancel lease for ${loan.client_name}? Equipment will be archived and FMV recalculated based on actual lease term.`)) {
+                        try {
+                          // Calculate actual lease term in months
+                          const startDate = new Date(loan.start_date);
+                          const endDate = new Date();
+                          const actualTermMonths = Math.round((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24 * 30));
+                          
+                          // Get all equipment for this lease
+                          const { data: equipment, error: equipError } = await supabase
+                            .from('equipment_items')
+                            .select('*')
+                            .eq('financing_id', loan.id);
+                          
+                          if (equipError) throw equipError;
+                          
+                          // Recalculate FMV for each equipment based on actual term
+                          if (equipment && equipment.length > 0) {
+                            for (const item of equipment) {
+                              // Calculate new FMV based on actual lease term
+                              let baseResidual = parseFloat(item.residual_percentage) || 15;
+                              let termAdjustment = 0;
+                              
+                              // Adjust residual based on actual term (shorter term = higher FMV)
+                              if (actualTermMonths <= 12) {
+                                termAdjustment = 10; // +10% for early cancellation
+                              } else if (actualTermMonths <= 24) {
+                                termAdjustment = 5; // +5% for mid-term cancellation
+                              } else if (actualTermMonths >= 36) {
+                                termAdjustment = -5; // -5% for longer term
+                              }
+                              
+                              const adjustedResidual = baseResidual + termAdjustment;
+                              const newFMV = parseFloat(item.purchase_cost) * (adjustedResidual / 100);
+                              
+                              // Update equipment with new FMV and archive status
+                              await supabase
+                                .from('equipment_items')
+                                .update({
+                                  calculated_fmv: newFMV,
+                                  fmv_calculation_date: new Date().toISOString(),
+                                  status: 'archived',
+                                  notes: `Archived on lease cancellation. Actual lease term: ${actualTermMonths} months. FMV recalculated from ${baseResidual}% to ${adjustedResidual}% = $${newFMV.toFixed(2)}`
+                                })
+                                .eq('id', item.id);
+                            }
+                          }
+                          
+                          // Update financing application status to cancelled
+                          const { error: updateError } = await supabase
+                            .from('financing_applications')
+                            .update({
+                              status: 'cancelled',
+                              cancelled_date: new Date().toISOString(),
+                              actual_term_months: actualTermMonths
+                            })
+                            .eq('id', loan.id);
+                          
+                          if (updateError) throw updateError;
+                          
+                          alert(`Lease cancelled successfully. ${equipment?.length || 0} equipment items archived with recalculated FMV based on ${actualTermMonths} month term.`);
                           loadActiveFinancing();
                           loadApplications();
-                        } else {
+                        } catch (error: any) {
                           alert('Error: ' + error.message);
                         }
                       }
@@ -3257,7 +3310,7 @@ export default function FinancingPage() {
                       cursor: 'pointer'
                     }}
                   >
-                    Cancel Financing
+                    Cancel Lease
                   </button>
                 </div>
               </div>
@@ -3697,7 +3750,7 @@ export default function FinancingPage() {
                   <table style={{ width: '100%', fontSize: '14px' }}>
                     <thead>
                       <tr style={{ background: '#1a1a1a', borderBottom: '2px solid #3a3a3a' }}>
-                        <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Financing Account</th>
+                        <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Leasing Account</th>
                         <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Asset Tag</th>
                         <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Description</th>
                         <th style={{ textAlign: 'right', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Cost</th>
@@ -3724,7 +3777,7 @@ export default function FinancingPage() {
                           const bonusPercent = item.bonus_depreciation_percentage || 0;
                           const fmv = item.calculated_fmv || null;
                           
-                          // Find financing account
+                          // Find leasing account
                           const financing = activeFinancing.find((f: any) => f.id === item.financing_id);
                           
                           return (
@@ -4140,10 +4193,10 @@ export default function FinancingPage() {
             </div>
 
             <div style={{ padding: '1.5rem', display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-              {/* Financing Account Selector */}
+              {/* Leasing Account Selector */}
               <div>
                 <label style={{ display: 'block', marginBottom: '0.5rem', color: '#e5e5e5', fontWeight: 500 }}>
-                  Financing Account *
+                  Leasing Account *
                 </label>
                 <select
                   value={newEquipment.financing_id}
@@ -4634,6 +4687,110 @@ export default function FinancingPage() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Archive Tab */}
+      {activeTab === 'archive' && (
+        <div>
+          <div style={{ 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '2rem' 
+          }}>
+            <div>
+              <h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '0.5rem' }}>📦 Archived Equipment</h2>
+              <p style={{ color: '#9ca3af', fontSize: '14px' }}>
+                Equipment from cancelled leases with recalculated Fair Market Value based on actual lease term
+              </p>
+            </div>
+          </div>
+
+          {/* Archived Equipment Table */}
+          <div style={{
+            background: '#2a2a2a',
+            borderRadius: '12px',
+            border: '1px solid #3a3a3a',
+            overflow: 'hidden'
+          }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#1a1a1a', borderBottom: '1px solid #3a3a3a' }}>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Equipment</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Lease Account</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Purchase Cost</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Calculated FMV</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Actual Term</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Archived Date</th>
+                  <th style={{ textAlign: 'left', padding: '1rem', color: '#9ca3af', fontWeight: 600 }}>Notes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {equipmentItems
+                  .filter(item => item.status === 'archived')
+                  .map((item) => {
+                    // Find the associated financing application
+                    const financing = applications.find(app => app.id === item.financing_id);
+                    
+                    return (
+                      <tr key={item.id} style={{ borderBottom: '1px solid #3a3a3a' }}>
+                        <td style={{ padding: '1rem', color: '#e5e5e5' }}>
+                          <div style={{ fontWeight: 600 }}>{item.description}</div>
+                          {item.serial_number && (
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '0.25rem' }}>
+                              SN: {item.serial_number}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', color: '#e5e5e5' }}>
+                          {financing ? (
+                            <div>
+                              <div style={{ fontWeight: 500 }}>{financing.client_name}</div>
+                              <div style={{ fontSize: '12px', color: '#9ca3af' }}>{financing.business_name}</div>
+                            </div>
+                          ) : (
+                            <span style={{ color: '#9ca3af' }}>N/A</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', color: '#e5e5e5' }}>
+                          ${parseFloat(item.purchase_cost).toLocaleString()}
+                        </td>
+                        <td style={{ padding: '1rem' }}>
+                          <div style={{ color: '#4ade80', fontWeight: 600 }}>
+                            ${item.calculated_fmv ? parseFloat(item.calculated_fmv).toLocaleString() : 'N/A'}
+                          </div>
+                          {item.fmv_calculation_date && (
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '0.25rem' }}>
+                              Calc: {new Date(item.fmv_calculation_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', color: '#e5e5e5' }}>
+                          {financing?.actual_term_months ? (
+                            <span>{financing.actual_term_months} months</span>
+                          ) : (
+                            <span style={{ color: '#9ca3af' }}>N/A</span>
+                          )}
+                        </td>
+                        <td style={{ padding: '1rem', color: '#9ca3af' }}>
+                          {item.updated_at ? new Date(item.updated_at).toLocaleDateString() : 'N/A'}
+                        </td>
+                        <td style={{ padding: '1rem', color: '#9ca3af', fontSize: '12px', maxWidth: '300px' }}>
+                          {item.notes || 'No notes'}
+                        </td>
+                      </tr>
+                    );
+                  })}
+              </tbody>
+            </table>
+
+            {equipmentItems.filter(item => item.status === 'archived').length === 0 && (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+                No archived equipment yet
+              </div>
+            )}
           </div>
         </div>
       )}
