@@ -107,8 +107,9 @@ export async function POST(request: NextRequest) {
             remaining_balance: newBalance,
             total_paid: newTotalPaid,
             last_payment_date: new Date().toISOString(),
-        })
-        .eq('id', applicationId);
+          })
+          .eq('id', applicationId);
+      }
 
       // Send receipt email
       await sendReceiptEmail({
@@ -119,7 +120,7 @@ export async function POST(request: NextRequest) {
         confirmationNumber: `CONF-${Date.now()}`,
         paymentMethod: application.payment_method_type === 'us_bank_account' ? 'Bank Account' : 'Card',
         paymentLast4: application.payment_method_last4,
-        remainingBalance: newBalance,
+        remainingBalance: !isDownPayment ? newBalance : application.remaining_balance,
         application: application,
         payment: payment,
       });
