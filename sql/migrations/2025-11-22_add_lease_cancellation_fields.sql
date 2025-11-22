@@ -5,7 +5,7 @@
 -- This prevents constraint violation errors
 UPDATE financing_applications 
 SET status = 'active' 
-WHERE status NOT IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled');
+WHERE status NOT IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled', 'rejected');
 
 -- Add cancelled status to financing_applications
 ALTER TABLE financing_applications
@@ -13,7 +13,7 @@ DROP CONSTRAINT IF EXISTS financing_applications_status_check;
 
 ALTER TABLE financing_applications
 ADD CONSTRAINT financing_applications_status_check 
-CHECK (status IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled'));
+CHECK (status IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled', 'rejected'));
 
 -- Add archived status to equipment_items if not already present
 DO $$
