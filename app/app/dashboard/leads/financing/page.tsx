@@ -57,6 +57,7 @@ export default function FinancingPage() {
     client_name: '',
     client_email: '',
     client_phone: '',
+    drivers_license_number: '',
     business_name: '',
     business_address: '',
     business_ein: '',
@@ -309,9 +310,20 @@ export default function FinancingPage() {
   }
 
   async function sendApplicationSMS(phoneNumber: string, clientName: string) {
-    if (!phoneNumber) {
-      alert('Please enter a phone number first');
-      return;
+    // Prompt for phone number if not provided
+    let phone = phoneNumber;
+    if (!phone) {
+      phone = prompt('Enter customer phone number (for SMS):') || '';
+      if (!phone) {
+        alert('Phone number is required to send SMS');
+        return;
+      }
+    }
+
+    // Prompt for client name if not provided
+    let name = clientName;
+    if (!name) {
+      name = prompt('Enter customer name (optional):') || 'valued customer';
     }
 
     // Generate application link (in production, this would be a unique URL)
@@ -322,20 +334,25 @@ export default function FinancingPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
-          phoneNumber, 
-          clientName,
+          phoneNumber: phone, 
+          clientName: name,
           applicationUrl 
         })
       });
 
+      console.log('Response status:', response.status, response.statusText);
+      
       const result = await response.json();
+      console.log('Response data:', result);
       
       if (result.success) {
-        alert(`✅ Lease-to-Own application sent to ${phoneNumber}`);
+        alert(`✅ Lease-to-Own application sent to ${phone}`);
       } else {
+        // Show actual error from API
+        console.error('SMS Error Details:', result);
+        alert(`❌ SMS Failed: ${result.error || 'Unknown error'}\n\nCheck browser console for details.`);
         // Fallback: copy link to clipboard
         navigator.clipboard.writeText(applicationUrl);
-        alert(`SMS service unavailable. Application link copied to clipboard:\n\n${applicationUrl}\n\nYou can manually text this to ${phoneNumber}`);
       }
     } catch (error: any) {
       // Fallback: copy link to clipboard
@@ -397,6 +414,7 @@ export default function FinancingPage() {
         client_name: '',
         client_email: '',
         client_phone: '',
+        drivers_license_number: '',
         business_name: '',
         business_address: '',
         business_ein: '',
@@ -2458,6 +2476,18 @@ export default function FinancingPage() {
                     }}
                   />
                   <input
+                    placeholder="Driver's License / ID Number"
+                    value={newApp.drivers_license_number}
+                    onChange={(e) => setNewApp({...newApp, drivers_license_number: e.target.value})}
+                    style={{
+                      padding: '0.75rem',
+                      background: '#1a1a1a',
+                      border: '1px solid #3a3a3a',
+                      borderRadius: '8px',
+                      color: '#e5e5e5'
+                    }}
+                  />
+                  <input
                     placeholder="Business Name"
                     value={newApp.business_name}
                     onChange={(e) => setNewApp({...newApp, business_name: e.target.value})}
@@ -2750,16 +2780,15 @@ export default function FinancingPage() {
                   <div style={{ display: 'flex', gap: '1rem', marginTop: '1rem' }}>
                     <button
                       onClick={() => sendApplicationSMS(newApp.client_phone, newApp.client_name)}
-                      disabled={!newApp.client_phone || !newApp.client_name}
                       style={{
                         flex: 1,
                         padding: '0.75rem',
-                        background: newApp.client_phone && newApp.client_name ? 'linear-gradient(135deg, #10b981 0%, #059669 100%)' : '#3a3a3a',
+                        background: 'linear-gradient(135deg, #10b981 0%, #059669 100%)',
                         border: 'none',
                         borderRadius: '8px',
-                        color: newApp.client_phone && newApp.client_name ? 'white' : '#6b7280',
+                        color: 'white',
                         fontWeight: 600,
-                        cursor: newApp.client_phone && newApp.client_name ? 'pointer' : 'not-allowed',
+                        cursor: 'pointer',
                         opacity: newApp.client_phone && newApp.client_name ? 1 : 0.5,
                         display: 'flex',
                         alignItems: 'center',
@@ -2784,7 +2813,7 @@ export default function FinancingPage() {
                         opacity: newApp.terms_accepted ? 1 : 0.5
                       }}
                     >
-                      Create Application
+                      Submit Application
                     </button>
                     <button
                       onClick={() => setShowNewAppForm(false)}
@@ -3060,7 +3089,20 @@ export default function FinancingPage() {
                   </div>
                   <div>
                     <div style={{ color: '#9ca3af', fontSize: '14px' }}>Monthly Payment</div>
-                    <div style={{ fontWeight: 600 }}>${parseFloat(loan.monthly_payment).toFixed(2)}</div>
+                    <div style={{ fontWeight: 600 }}>
+                      ${(() => {
+                        const basePayment = parseFloat(loan.monthly_payment);
+                        const taxRate = parseFloat(loan.sales_tax_rate || 0) / 100;
+                        const salesTax = basePayment * taxRate;
+                        const totalPayment = basePayment + salesTax;
+                        return totalPayment.toFixed(2);
+                      })()}
+                      {loan.sales_tax_rate && parseFloat(loan.sales_tax_rate) > 0 && (
+                        <div style={{ fontSize: '11px', color: '#9ca3af', fontWeight: 'normal', marginTop: '2px' }}>
+                          (${parseFloat(loan.monthly_payment).toFixed(2)} + ${(parseFloat(loan.monthly_payment) * parseFloat(loan.sales_tax_rate) / 100).toFixed(2)} tax)
+                        </div>
+                      )}
+                    </div>
                   </div>
                   <div>
                     <div style={{ color: '#9ca3af', fontSize: '14px' }}>Missed Payments</div>

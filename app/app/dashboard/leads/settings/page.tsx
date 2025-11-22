@@ -39,9 +39,9 @@ export default function LeadSettingsPage() {
   const [defaultCallingApp, setDefaultCallingApp] = useState('ask');
   const [stripePublishableKey, setStripePublishableKey] = useState('');
   const [stripeSecretKey, setStripeSecretKey] = useState('');
-  const [twilioAccountSid, setTwilioAccountSid] = useState('');
-  const [twilioAuthToken, setTwilioAuthToken] = useState('');
-  const [twilioMessagingServiceSid, setTwilioMessagingServiceSid] = useState('');
+  const [vonageApiKey, setVonageApiKey] = useState('');
+  const [vonageApiSecret, setVonageApiSecret] = useState('');
+  const [vonageFromNumber, setVonageFromNumber] = useState('');
 
   const supabase = supabaseBrowser();
 
@@ -137,9 +137,9 @@ export default function LeadSettingsPage() {
         setDefaultCallingApp((data as any).default_calling_app || 'ask');
         setStripePublishableKey((data as any).stripe_publishable_key || '');
         setStripeSecretKey((data as any).stripe_secret_key || '');
-        setTwilioAccountSid((data as any).twilio_account_sid || '');
-        setTwilioAuthToken((data as any).twilio_auth_token || '');
-        setTwilioMessagingServiceSid((data as any).twilio_messaging_service_sid || '');
+        setVonageApiKey((data as any).vonage_api_key || '');
+        setVonageApiSecret((data as any).vonage_api_secret || '');
+        setVonageFromNumber((data as any).vonage_from_number || '');
       }
     } catch (err: any) {
       console.error('Error loading settings:', err);
@@ -180,9 +180,9 @@ export default function LeadSettingsPage() {
         default_calling_app: defaultCallingApp || 'ask',
         stripe_publishable_key: stripePublishableKey || null,
         stripe_secret_key: stripeSecretKey || null,
-        twilio_account_sid: twilioAccountSid || null,
-        twilio_auth_token: twilioAuthToken || null,
-        twilio_messaging_service_sid: twilioMessagingServiceSid || null,
+        vonage_api_key: vonageApiKey || null,
+        vonage_api_secret: vonageApiSecret || null,
+        vonage_from_number: vonageFromNumber || null,
         updated_at: new Date().toISOString(),
         updated_by: user.id,
       };
@@ -434,43 +434,43 @@ export default function LeadSettingsPage() {
           </div>
         </div>
 
-        {/* Twilio SMS Settings */}
+        {/* Vonage SMS Settings */}
         <div className="bg-[#2a2a2a] rounded-lg shadow-sm border border-[#333333] p-6 mb-6">
           <div className="flex items-center gap-3 mb-4">
             <div className="text-2xl">📱</div>
-            <h2 className="text-lg font-semibold text-[#e5e5e5]">Twilio SMS Settings</h2>
+            <h2 className="text-lg font-semibold text-[#e5e5e5]">Vonage SMS Settings</h2>
           </div>
           
           <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
-                Twilio Account SID
+                Vonage API Key
               </label>
               <input
                 type="text"
-                value={twilioAccountSid}
-                onChange={(e) => setTwilioAccountSid(e.target.value)}
+                value={vonageApiKey}
+                onChange={(e) => setVonageApiKey(e.target.value)}
                 className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
-                placeholder="ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                placeholder="Your Vonage API Key"
               />
               <p className="text-xs text-[#9ca3af] mt-1">
-                Used for sending lease-to-own applications via SMS. Get your SID from{' '}
-                <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
-                  Twilio Console
+                Used for sending lease-to-own applications via SMS. Get your API Key from{' '}
+                <a href="https://dashboard.nexmo.com/" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                  Vonage Dashboard
                 </a>
               </p>
             </div>
 
             <div>
               <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
-                Twilio Auth Token
+                Vonage API Secret
               </label>
               <input
                 type="password"
-                value={twilioAuthToken}
-                onChange={(e) => setTwilioAuthToken(e.target.value)}
+                value={vonageApiSecret}
+                onChange={(e) => setVonageApiSecret(e.target.value)}
                 className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
-                placeholder="Your Twilio Auth Token"
+                placeholder="Your Vonage API Secret"
               />
               <p className="text-xs text-[#9ca3af] mt-1">
                 Keep this secret! Never share or commit to version control.
@@ -479,19 +479,19 @@ export default function LeadSettingsPage() {
 
             <div>
               <label className="block text-sm font-medium text-[#e5e5e5] mb-2">
-                Messaging Service SID
+                From Phone Number
               </label>
               <input
                 type="text"
-                value={twilioMessagingServiceSid}
-                onChange={(e) => setTwilioMessagingServiceSid(e.target.value)}
+                value={vonageFromNumber}
+                onChange={(e) => setVonageFromNumber(e.target.value)}
                 className="w-full px-4 py-2 bg-[#1a1a1a] border border-[#333333] rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent text-[#e5e5e5]"
-                placeholder="MGxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+                placeholder="15551234567 or BrightAudio"
               />
               <p className="text-xs text-[#9ca3af] mt-1">
-                Your Twilio Messaging Service SID (starts with MG). Get it from{' '}
-                <a href="https://console.twilio.com/us1/develop/sms/services" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
-                  Messaging Services
+                Your Vonage phone number (no + or dashes) or alphanumeric sender ID. Get it from{' '}
+                <a href="https://dashboard.nexmo.com/your-numbers" target="_blank" rel="noopener noreferrer" className="text-purple-400 hover:underline">
+                  Your Numbers
                 </a>
               </p>
             </div>
@@ -500,13 +500,13 @@ export default function LeadSettingsPage() {
               <div className="flex gap-3">
                 <div className="text-xl flex-shrink-0">ℹ️</div>
                 <div className="flex-1">
-                  <h4 className="text-sm font-semibold text-blue-400 mb-2">Getting Started with Twilio</h4>
+                  <h4 className="text-sm font-semibold text-blue-400 mb-2">Getting Started with Vonage</h4>
                   <ol className="text-xs text-blue-300/90 space-y-1 list-decimal list-inside">
-                    <li>Sign up for a Twilio account at <a href="https://www.twilio.com/try-twilio" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">twilio.com/try-twilio</a></li>
-                    <li>Create a Messaging Service at <a href="https://console.twilio.com/us1/develop/sms/services" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Messaging Services</a> and add a phone number to it</li>
-                    <li>Copy your Account SID and Auth Token from the <a href="https://console.twilio.com/" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Console Dashboard</a></li>
-                    <li>Copy your Messaging Service SID (starts with MG)</li>
-                    <li>Enter your credentials here and save</li>
+                    <li>Sign up for a Vonage account at <a href="https://dashboard.nexmo.com/sign-up" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">dashboard.nexmo.com/sign-up</a></li>
+                    <li>Your API Key and API Secret will be shown on the dashboard immediately after signup</li>
+                    <li>Buy a phone number at <a href="https://dashboard.nexmo.com/buy-numbers" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">Buy Numbers</a></li>
+                    <li>Enter your credentials and phone number here (digits only, no + or dashes)</li>
+                    <li>Click Save Settings and test!</li>
                   </ol>
                 </div>
               </div>

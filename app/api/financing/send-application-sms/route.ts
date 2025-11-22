@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
+import { Vonage } from '@vonage/server-sdk';
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
@@ -15,71 +16,67 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Get Twilio credentials from settings
+    // Get Vonage credentials from settings
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const { data: settings, error: settingsError } = await supabase
       .from('leads_settings')
-      .select('twilio_account_sid, twilio_auth_token, twilio_messaging_service_sid')
+      .select('vonage_api_key, vonage_api_secret, vonage_from_number')
       .single();
 
     if (settingsError || !settings) {
       return NextResponse.json(
-        { success: false, error: 'Twilio settings not configured' },
+        { success: false, error: 'Vonage settings not configured' },
         { status: 500 }
       );
     }
 
-    const { twilio_account_sid, twilio_auth_token, twilio_messaging_service_sid } = settings;
+    const { vonage_api_key, vonage_api_secret, vonage_from_number } = settings;
 
-    if (!twilio_account_sid || !twilio_auth_token || !twilio_messaging_service_sid) {
+    if (!vonage_api_key || !vonage_api_secret || !vonage_from_number) {
       return NextResponse.json(
-        { success: false, error: 'Twilio credentials incomplete. Please configure in settings.' },
+        { success: false, error: 'Vonage credentials incomplete. Please configure in settings.' },
         { status: 500 }
       );
     }
+
+    // Initialize Vonage client
+    const vonage = new Vonage({
+      apiKey: vonage_api_key,
+      apiSecret: vonage_api_secret
+    });
 
     // Format phone number to E.164 if needed
     let formattedPhone = phoneNumber.replace(/\D/g, '');
     if (!formattedPhone.startsWith('1') && formattedPhone.length === 10) {
       formattedPhone = '1' + formattedPhone;
     }
-    formattedPhone = '+' + formattedPhone;
+
+    console.log('Phone formatting:', { original: phoneNumber, formatted: formattedPhone });
 
     // Prepare message
-    const message = `Hi ${clientName || 'there'}! 👋\n\nYou've been invited to apply for a lease-to-own program with Bright Audio.\n\nComplete your application here:\n${applicationUrl}\n\nQuestions? Reply to this message.`;
+    const text = `Hi ${clientName || 'there'}! 👋\n\nYou've been invited to apply for a lease-to-own program with Bright Audio.\n\nComplete your application here:\n${applicationUrl}\n\nQuestions? Reply to this message.`;
 
-    // Send SMS via Twilio
-    const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${twilio_account_sid}/Messages.json`;
-    const authHeader = 'Basic ' + Buffer.from(`${twilio_account_sid}:${twilio_auth_token}`).toString('base64');
+    // Send SMS via Vonage SDK
+    const from = vonage_from_number.replace(/\D/g, '');
+    const to = formattedPhone;
 
-    const formData = new URLSearchParams();
-    formData.append('To', formattedPhone);
-    formData.append('MessagingServiceSid', twilio_messaging_service_sid);
-    formData.append('Body', message);
-
-    const twilioResponse = await fetch(twilioUrl, {
-      method: 'POST',
-      headers: {
-        'Authorization': authHeader,
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString(),
-    });
-
-    const twilioData = await twilioResponse.json();
-
-    if (!twilioResponse.ok) {
-      console.error('Twilio error:', twilioData);
-      return NextResponse.json(
-        { success: false, error: twilioData.message || 'Failed to send SMS' },
-        { status: 500 }
-      );
-    }
+    const response = await vonage.sms.send({ to, from, text })
+      .then(resp => {
+        console.log('Message sent successfully');
+        console.log(resp);
+        return resp;
+      })
+      .catch(err => {
+        console.log('There was an error sending the message.');
+        console.error(err);
+        throw err;
+      });
 
     return NextResponse.json({
       success: true,
-      messageSid: twilioData.sid,
-      to: formattedPhone
+      messageId: response.messages[0]['message-id'],
+      to: formattedPhone,
+      status: response.messages[0].status
     });
 
   } catch (error: any) {
