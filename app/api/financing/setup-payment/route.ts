@@ -87,6 +87,16 @@ export async function POST(request: NextRequest) {
 // Save payment method after collection
 export async function PUT(request: NextRequest) {
   try {
+    // Initialize Stripe and Supabase
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
+      apiVersion: '2025-11-17.clover',
+    });
+
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.SUPABASE_SERVICE_ROLE_KEY!
+    );
+
     const { applicationId, paymentMethodId } = await request.json();
 
     // Get payment method details from Stripe
