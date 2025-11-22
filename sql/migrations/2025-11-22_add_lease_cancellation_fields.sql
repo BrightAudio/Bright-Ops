@@ -1,6 +1,14 @@
 -- Add fields for lease cancellation and equipment archiving
 -- Migration: 2025-11-22_add_lease_cancellation_fields.sql
 
+-- Add cancelled status to financing_applications
+ALTER TABLE financing_applications
+DROP CONSTRAINT IF EXISTS financing_applications_status_check;
+
+ALTER TABLE financing_applications
+ADD CONSTRAINT financing_applications_status_check 
+CHECK (status IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled'));
+
 -- Add archived status to equipment_items if not already present
 DO $$
 BEGIN
