@@ -97,9 +97,12 @@ export async function POST(request: NextRequest) {
       }
 
       // Update application balance (for regular payments, not down payments - those are handled separately)
+      let newBalance = parseFloat(application.remaining_balance);
+      let newTotalPaid = parseFloat(application.total_paid || 0);
+      
       if (!isDownPayment) {
-        const newBalance = parseFloat(application.remaining_balance) - parseFloat(amount);
-        const newTotalPaid = parseFloat(application.total_paid || 0) + parseFloat(amount);
+        newBalance = parseFloat(application.remaining_balance) - parseFloat(amount);
+        newTotalPaid = parseFloat(application.total_paid || 0) + parseFloat(amount);
 
         await supabase
           .from('financing_applications')
@@ -120,7 +123,7 @@ export async function POST(request: NextRequest) {
         confirmationNumber: `CONF-${Date.now()}`,
         paymentMethod: application.payment_method_type === 'us_bank_account' ? 'Bank Account' : 'Card',
         paymentLast4: application.payment_method_last4,
-        remainingBalance: !isDownPayment ? newBalance : application.remaining_balance,
+        remainingBalance: newBalance,
         application: application,
         payment: payment,
       });
