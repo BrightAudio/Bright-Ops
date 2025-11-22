@@ -1,6 +1,12 @@
 -- Add fields for lease cancellation and equipment archiving
 -- Migration: 2025-11-22_add_lease_cancellation_fields.sql
 
+-- First, update any invalid statuses to 'active' (or check what exists)
+-- This prevents constraint violation errors
+UPDATE financing_applications 
+SET status = 'active' 
+WHERE status NOT IN ('pending', 'approved', 'active', 'completed', 'defaulted', 'cancelled');
+
 -- Add cancelled status to financing_applications
 ALTER TABLE financing_applications
 DROP CONSTRAINT IF EXISTS financing_applications_status_check;
