@@ -21,8 +21,8 @@ BEGIN
     remaining_principal := NEW.loan_amount;
     monthly_rate := (NEW.interest_rate / 100) / 12;
     
-    -- Use first_payment_date if provided, otherwise use start_date + 1 month
-    payment_date := COALESCE(NEW.first_payment_date, NEW.start_date + INTERVAL '1 month');
+    -- Use first_payment_date if provided, otherwise use created_at + 1 month
+    payment_date := COALESCE(NEW.first_payment_date, (NEW.created_at::date) + INTERVAL '1 month');
     
     -- If still NULL, use today + 1 month as fallback
     IF payment_date IS NULL THEN
