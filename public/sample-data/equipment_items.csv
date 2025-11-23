@@ -1,0 +1,12 @@
+id,financing_application_id,name,purchase_cost,status,calculated_fmv,created_at
+eq-001,app-001,Audio Mixer XLR-500,5000,active,500,2025-11-01T10:00:00Z
+eq-002,app-001,Studio Monitors (Pair),5000,active,500,2025-11-01T10:00:00Z
+eq-003,app-002,Digital Console DigiMix Pro,15000,active,1500,2025-11-05T14:30:00Z
+eq-004,app-002,Microphone Set (8-Pack),5000,active,500,2025-11-05T14:30:00Z
+eq-005,app-002,Wireless System 4-Channel,5000,active,500,2025-11-05T14:30:00Z
+eq-006,app-003,Portable PA System,3000,active,300,2025-11-15T09:15:00Z
+eq-007,app-003,Wireless Mics (2),2000,active,200,2025-11-15T09:15:00Z
+eq-008,app-004,4K Camera Package,10000,active,1000,2025-11-18T11:00:00Z
+eq-009,app-004,Lighting Kit Pro,5000,active,500,2025-11-18T11:00:00Z
+eq-010,app-005,DJ Controller DDJ-1000,4000,active,400,2025-11-20T16:45:00Z
+eq-011,app-005,Active Speakers (Pair),4000,active,400,2025-11-20T16:45:00Z

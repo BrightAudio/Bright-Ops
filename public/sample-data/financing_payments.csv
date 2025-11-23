@@ -1,0 +1,9 @@
+id,financing_application_id,payment_number,due_date,amount,status,amount_paid,paid_date,stripe_payment_intent_id
+pay-001,app-001,1,2025-12-01,312.45,paid,312.45,2025-12-01,pi_123abc
+pay-002,app-001,2,2026-01-01,312.45,pending,,,
+pay-003,app-002,1,2025-12-05,699.87,paid,699.87,2025-12-05,pi_456def
+pay-004,app-002,2,2026-01-05,699.87,pending,,,
+pay-005,app-003,1,2025-12-15,193.52,pending,,,
+pay-006,app-004,1,2025-12-18,468.68,pending,,,
+pay-007,app-005,1,2025-12-20,309.63,paid,309.63,2025-12-20,pi_789ghi
+pay-008,app-005,2,2026-01-20,309.63,pending,,,

@@ -1,0 +1,6 @@
+id,client_id,equipment_cost,sales_tax_rate,term_months,residual_percentage,monthly_payment,status,created_at,notes
+app-001,1,10000,8.5,36,10,312.45,active,2025-11-01T10:00:00Z,36-month lease for sound equipment
+app-002,2,25000,8.5,48,10,699.87,active,2025-11-05T14:30:00Z,Full audio system upgrade
+app-003,3,5000,8.5,24,10,193.52,pending,2025-11-15T09:15:00Z,Event equipment package
+app-004,4,15000,8.5,36,10,468.68,approved,2025-11-18T11:00:00Z,Video production gear
+app-005,5,8000,8.5,24,10,309.63,active,2025-11-20T16:45:00Z,DJ equipment lease

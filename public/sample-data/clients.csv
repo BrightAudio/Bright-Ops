@@ -1,0 +1,6 @@
+id,name,email,phone,company,address,city,state,zip
+1,John Smith,john.smith@example.com,720-555-0101,ABC Productions,123 Main St,Denver,CO,80202
+2,Sarah Johnson,sarah.j@soundstudio.com,303-555-0202,Sound Studio LLC,456 Broadway,Boulder,CO,80301
+3,Mike Davis,mike@eventpros.com,720-555-0303,Event Pros Inc,789 Market St,Denver,CO,80204
+4,Lisa Chen,lisa.chen@techevents.com,303-555-0404,Tech Events Co,321 Pearl St,Boulder,CO,80302
+5,Tom Anderson,tom@audioworks.com,720-555-0505,AudioWorks,654 Larimer St,Denver,CO,80205
