@@ -22,6 +22,8 @@ type JobPosition = {
   employee_name?: string;
   rate_type: 'day' | 'hourly' | null;
   rate_amount: number | null;
+  status?: string;
+  requested_at?: string | null;
 };
 
 type Job = {
@@ -40,6 +42,7 @@ export default function ScheduledCrew() {
   const [positions, setPositions] = useState<Record<string, JobPosition[]>>({});
   const [loading, setLoading] = useState(true);
   const [expandedJobs, setExpandedJobs] = useState<Set<string>>(new Set());
+  const [pendingRequests, setPendingRequests] = useState<JobPosition[]>([]);
 
   useEffect(() => {
     loadData();
@@ -91,7 +94,7 @@ export default function ScheduledCrew() {
 
       // Load job assignments
       console.log("Fetching job assignments from Supabase...");
-      const { data: assignmentsData, error: assignmentsError } = await supabase
+      const { data: assignmentsData, error: assignmentsError} = await supabase
         .from("job_assignments")
         .select(`
           id,
@@ -100,6 +103,8 @@ export default function ScheduledCrew() {
           employee_id,
           rate_type,
           rate_amount,
+          status,
+          requested_at,
           employees (name)
         `);
 
@@ -111,13 +116,12 @@ export default function ScheduledCrew() {
         console.log("No assignments found, continuing...");
       }
 
-      // Group assignments by job
+      // Group assignments by job and separate pending requests
       const positionsByJob: Record<string, JobPosition[]> = {};
+      const pending: JobPosition[] = [];
+      
       assignmentsData?.forEach((assignment: any) => {
-        if (!positionsByJob[assignment.job_id]) {
-          positionsByJob[assignment.job_id] = [];
-        }
-        positionsByJob[assignment.job_id].push({
+        const position = {
           id: assignment.id,
           job_id: assignment.job_id,
           role: assignment.role,
@@ -125,10 +129,22 @@ export default function ScheduledCrew() {
           employee_name: assignment.employees?.name,
           rate_type: assignment.rate_type,
           rate_amount: assignment.rate_amount,
-        });
+          status: assignment.status || 'assigned',
+          requested_at: assignment.requested_at,
+        };
+
+        if (assignment.status === 'pending') {
+          pending.push(position);
+        }
+
+        if (!positionsByJob[assignment.job_id]) {
+          positionsByJob[assignment.job_id] = [];
+        }
+        positionsByJob[assignment.job_id].push(position);
       });
 
       setPositions(positionsByJob);
+      setPendingRequests(pending);
     } catch (err) {
       console.error("Error loading data:", err);
     } finally {
@@ -221,6 +237,39 @@ export default function ScheduledCrew() {
     }
   }
 
+  async function approveVolunteer(positionId: string, jobId: string) {
+    try {
+      const { error } = await supabase
+        .from("job_assignments")
+        .update({ 
+          status: 'approved',
+          approved_at: new Date().toISOString()
+        })
+        .eq("id", positionId);
+
+      if (error) throw error;
+      alert("Volunteer request approved!");
+      loadData();
+    } catch (err) {
+      console.error("Error approving volunteer:", err);
+      alert("Failed to approve request");
+    }
+  }
+
+  async function rejectVolunteer(positionId: string) {
+    try {
+      const { error } = await supabase
+        .from("job_assignments")
+        .delete()
+        .eq("id", positionId);
+
+      if (error) throw error;
+      loadData();
+    } catch (err) {
+      console.error("Error rejecting volunteer:", err);
+    }
+  }
+
   function getEmployeesForRole(role: string) {
     // Show all employees in dropdown (not filtered by role)
     return employees;
@@ -233,6 +282,13 @@ export default function ScheduledCrew() {
         <h1 className="text-3xl font-bold">Crew Planner</h1>
         <div className="flex gap-2">
           <Link
+            href="/app/crew/portal"
+            className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center gap-2"
+          >
+            <i className="fas fa-user"></i>
+            Crew Portal
+          </Link>
+          <Link
             href="/app/crew"
             className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded-lg transition-colors flex items-center gap-2 border border-zinc-700"
           >
@@ -241,6 +297,52 @@ export default function ScheduledCrew() {
           </Link>
         </div>
       </div>
+
+      {/* Pending Volunteer Requests */}
+      {pendingRequests.length > 0 && (
+        <div className="mb-8 bg-yellow-900/20 border border-yellow-700 rounded-lg p-6">
+          <h2 className="text-xl font-semibold text-yellow-300 mb-4 flex items-center gap-2">
+            <i className="fas fa-clock"></i>
+            Pending Volunteer Requests ({pendingRequests.length})
+          </h2>
+          <div className="space-y-3">
+            {pendingRequests.map(req => {
+              const job = jobs.find(j => j.id === req.job_id);
+              return (
+                <div key={req.id} className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 flex justify-between items-center">
+                  <div>
+                    <div className="font-semibold text-white">
+                      {req.employee_name} → {req.role}
+                    </div>
+                    <div className="text-sm text-zinc-400">
+                      Job: {job?.code} - {job?.title}
+                    </div>
+                    <div className="text-xs text-zinc-500 mt-1">
+                      Requested: {req.requested_at ? new Date(req.requested_at).toLocaleString() : 'N/A'}
+                    </div>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => approveVolunteer(req.id!, req.job_id)}
+                      className="px-4 py-2 bg-green-600 hover:bg-green-500 text-white rounded font-semibold transition-colors"
+                    >
+                      <i className="fas fa-check mr-2"></i>
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => rejectVolunteer(req.id!)}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-500 text-white rounded font-semibold transition-colors"
+                    >
+                      <i className="fas fa-times mr-2"></i>
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {loading ? (
         <div className="text-center py-12 text-gray-400">Loading jobs...</div>

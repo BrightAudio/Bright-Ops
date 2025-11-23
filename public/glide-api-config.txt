@@ -1,0 +1,154 @@
+GLIDE API CONFIGURATION
+=======================
+
+BASE URL (Production):
+https://your-vercel-app.vercel.app/api/mobile
+
+BASE URL (Development/Testing):
+http://localhost:3000/api/mobile
+
+AUTHENTICATION:
+Header Name: x-api-key
+Header Value: d3239dce42db26c7d2095420d34bc04cbac6fdc007263368ce8b1bb3aa250e24
+
+==========================================
+ENDPOINT 1: CALCULATOR (POST)
+==========================================
+Endpoint: /calculator
+Method: POST
+Content-Type: application/json
+
+Request Body:
+{
+  "purchaseCost": 10000,
+  "salesTax": 8.5,
+  "termMonths": 36,
+  "residualPercentage": 10
+}
+
+Response Fields to Map:
+- calculation.monthlyPayment
+- calculation.totalCost
+- calculation.residualAmount
+- calculation.totalPayments
+- calculation.totalInterest
+
+==========================================
+ENDPOINT 2: CREATE APPLICATION (POST)
+==========================================
+Endpoint: /applications
+Method: POST
+Content-Type: application/json
+
+Request Body:
+{
+  "client_id": "1",
+  "equipment_cost": 10000,
+  "sales_tax_rate": 8.5,
+  "term_months": 36,
+  "residual_percentage": 10,
+  "monthly_payment": 312.45,
+  "equipment_items": [
+    {
+      "name": "Audio Mixer",
+      "purchase_cost": 5000
+    }
+  ],
+  "notes": "Customer notes"
+}
+
+Response Fields to Map:
+- application.id
+- message
+
+==========================================
+ENDPOINT 3: GET APPLICATIONS (GET)
+==========================================
+Endpoint: /applications
+Method: GET
+
+Query Parameters (all optional):
+- status (pending, approved, active, etc.)
+- client_id
+- limit (default: 50)
+
+Response Fields to Map:
+- applications (array)
+- count
+
+==========================================
+ENDPOINT 4: GET CLIENTS (GET)
+==========================================
+Endpoint: /clients
+Method: GET
+
+Query Parameters (all optional):
+- search (search by name, email, company)
+- limit (default: 100)
+
+Response Fields to Map:
+- clients (array)
+- count
+
+==========================================
+ENDPOINT 5: CREATE CLIENT (POST)
+==========================================
+Endpoint: /clients
+Method: POST
+Content-Type: application/json
+
+Request Body:
+{
+  "name": "John Doe",
+  "email": "john@example.com",
+  "phone": "720-555-1234",
+  "company": "ABC Productions"
+}
+
+Response Fields to Map:
+- client.id
+- message
+
+==========================================
+ENDPOINT 6: GET EQUIPMENT (GET)
+==========================================
+Endpoint: /equipment
+Method: GET
+
+Query Parameters (all optional):
+- application_id
+- status
+- limit (default: 100)
+
+Response Fields to Map:
+- equipment (array)
+- count
+
+==========================================
+ENDPOINT 7: GET PAYMENTS (GET)
+==========================================
+Endpoint: /payments
+Method: GET
+
+Query Parameters (all optional):
+- application_id
+- client_id
+- status (paid, pending, overdue)
+- limit (default: 100)
+
+Response Fields to Map:
+- payments (array)
+- summary.totalPaid
+- summary.totalPending
+- summary.overdueCount
+- count
+
+==========================================
+MOST IMPORTANT ENDPOINTS FOR MOBILE:
+==========================================
+1. /calculator (POST) - Generate quotes
+2. /applications (POST) - Create applications
+3. /clients (GET) - Client dropdown
+
+You can view existing data using the CSV files.
+Use the API for calculations and creating new records.
