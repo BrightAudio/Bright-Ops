@@ -356,7 +356,7 @@ export default function ProfessionalPullSheet({
 
       if (error) throw error;
 
-      setScanHistory(data || []);
+      setScanHistory((data as any) || []);
       setShowScanHistory(true);
     } catch (error) {
       console.error("Error loading scan history:", error);

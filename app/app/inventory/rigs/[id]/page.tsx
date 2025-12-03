@@ -6,6 +6,7 @@ import { useRigContainer, updateRigContainer, addItemToRig, updateRigItem, remov
 import { useInventory } from "@/lib/hooks/useInventory";
 import { supabase } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
+import PrintBarcodeButton from "@/components/PrintBarcodeButton";
 import { Package, Plus, Trash2, Search } from "lucide-react";
 
 export default function RigDetailPage() {
@@ -23,6 +24,25 @@ export default function RigDetailPage() {
   const [selectedItem, setSelectedItem] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState("");
+
+  // Initialize barcode rendering
+  useEffect(() => {
+    if (typeof window !== 'undefined' && rig?.barcode) {
+      import('jsbarcode').then((JsBarcode) => {
+        const barcodeElements = document.querySelectorAll('.barcode');
+        barcodeElements.forEach((element) => {
+          JsBarcode.default(element as any, rig.barcode!, {
+            format: 'CODE128',
+            width: 2,
+            height: 60,
+            displayValue: true,
+            fontOptions: 'bold',
+            fontSize: 14,
+          });
+        });
+      });
+    }
+  }, [rig?.barcode]);
 
   useEffect(() => {
     if (rig) {
@@ -141,7 +161,7 @@ export default function RigDetailPage() {
           </button>
           
           <div className="flex justify-between items-start">
-            <div>
+            <div className="flex-1">
               {editMode ? (
                 <input
                   type="text"
@@ -163,7 +183,29 @@ export default function RigDetailPage() {
                 rig.description && <p className="text-zinc-400">{rig.description}</p>
               )}
             </div>
-            <div className="flex gap-2">
+            
+            {/* Barcode Display */}
+            {rig.barcode && (
+              <div className="ml-4 flex flex-col items-end gap-2">
+                <div className="bg-white p-3 rounded-lg shadow-lg">
+                  <div className="text-center mb-1">
+                    <svg
+                      className="barcode"
+                      jsbarcode-value={rig.barcode}
+                      jsbarcode-format="CODE128"
+                      jsbarcode-width="2"
+                      jsbarcode-height="60"
+                      jsbarcode-displayvalue="true"
+                      jsbarcode-fontoptions="bold"
+                      jsbarcode-fontsize="14"
+                    />
+                  </div>
+                </div>
+                <PrintBarcodeButton barcode={rig.barcode} itemName={rig.name} />
+              </div>
+            )}
+            
+            <div className="flex gap-2 ml-4">
               {editMode ? (
                 <>
                   <button

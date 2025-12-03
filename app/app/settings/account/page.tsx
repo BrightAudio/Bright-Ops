@@ -9,6 +9,9 @@ export default function AccountSettingsPage() {
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
+  // Profile state
+  const [profile, setProfile] = useState<any>(null);
+  
   // Profile form state
   const [profileForm, setProfileForm] = useState({
     name: "",
@@ -21,22 +24,23 @@ export default function AccountSettingsPage() {
     async function loadProfile() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profileData } = await supabase
           .from('user_profiles')
-          .select('full_name, company_name, pexels_api_key')
+          .select('*')
           .eq('id', user.id)
           .single();
         
+        setProfile(profileData);
         setProfileForm({
-          name: (profile as any)?.full_name || '',
-          companyName: (profile as any)?.company_name || '',
+          name: (profileData as any)?.full_name || '',
+          companyName: (profileData as any)?.company_name || '',
           email: user.email || ''
         });
-
-        // Load API key if exists
-        if ((profile as any)?.pexels_api_key) {
-          setPexelsApiKey((profile as any).pexels_api_key);
-        }
+        
+        // Load API keys
+        setPexelsApiKey((profileData as any)?.pexels_api_key || '');
+        setStripePublishableKey((profileData as any)?.stripe_publishable_key || '');
+        setStripeSecretKey((profileData as any)?.stripe_secret_key || '');
       }
     }
     loadProfile();
@@ -56,11 +60,17 @@ export default function AccountSettingsPage() {
   const [pexelsApiKey, setPexelsApiKey] = useState("");
   const [isEditingApiKey, setIsEditingApiKey] = useState(false);
   const [apiKeySuccess, setApiKeySuccess] = useState("");
+  
+  // Stripe API Keys state
+  const [stripePublishableKey, setStripePublishableKey] = useState("");
+  const [stripeSecretKey, setStripeSecretKey] = useState("");
+  const [isEditingStripe, setIsEditingStripe] = useState(false);
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
     setSuccessMessage("");
+    setPasswordError("");
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -205,6 +215,99 @@ export default function AccountSettingsPage() {
             <h1 style={{ margin: 0, fontSize: "1.875rem", fontWeight: 600 }}>Account Settings</h1>
           </div>
         </div>
+        
+        {/* Role & Department Display */}
+        {profile && (
+          <div style={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            gap: '1rem', 
+            marginTop: '1rem',
+            padding: '1rem',
+            backgroundColor: '#f9fafb',
+            border: '1px solid #e5e7eb',
+            borderRadius: '8px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Role:</span>
+              <span style={{ 
+                fontSize: '0.875rem', 
+                fontWeight: 600,
+                color: profile.role === 'manager' ? '#059669' : '#2563eb',
+                textTransform: 'capitalize'
+              }}>
+                {profile.role === 'manager' ? '👔 Manager' : '👤 Associate'}
+              </span>
+            </div>
+            
+            {profile.department && (
+              <>
+                <span style={{ color: '#d1d5db' }}>•</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Department:</span>
+                  <span style={{ 
+                    fontSize: '0.875rem', 
+                    fontWeight: 600,
+                    color: '#374151',
+                    textTransform: 'uppercase'
+                  }}>
+                    {profile.department}
+                  </span>
+                </div>
+              </>
+            )}
+            
+            <div style={{ marginLeft: 'auto' }}>
+              <button
+                onClick={async () => {
+                  if (!profile?.id) {
+                    alert('Profile not loaded. Please refresh the page.');
+                    return;
+                  }
+                  
+                  const newRole = profile.role === 'manager' ? 'associate' : 'manager';
+                  
+                  // If switching to manager, require password
+                  if (newRole === 'manager') {
+                    const password = prompt('Enter manager password to switch to manager role:');
+                    const savedPassword = localStorage.getItem('managerPassword') || 'BrightNewSound';
+                    if (password !== savedPassword) {
+                      alert('Incorrect password');
+                      return;
+                    }
+                  }
+                  
+                  if (confirm(`Change role to ${newRole}?`)) {
+                    const { error } = await supabase
+                      .from('user_profiles')
+                      .update({ role: newRole })
+                      .eq('id', profile.id);
+                    
+                    if (error) {
+                      console.error('Error updating role:', error);
+                      alert(`Failed to update role: ${error.message}`);
+                    } else {
+                      alert(`Role changed to ${newRole}`);
+                      window.location.reload();
+                    }
+                  }
+                }}
+                style={{
+                  padding: '0.5rem 1rem',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: 'white',
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  fontWeight: 500
+                }}
+              >
+                Switch to {profile.role === 'manager' ? 'Associate' : 'Manager'}
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Success Message */}
@@ -625,6 +728,121 @@ export default function AccountSettingsPage() {
           )}
         </div>
 
+        {/* Manager Settings Card (Managers Only) */}
+        {profile?.role === 'manager' && (
+          <div style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            padding: "1.5rem"
+          }}>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.25rem", fontWeight: 600 }}>
+                Manager Settings
+              </h2>
+              <p style={{ 
+                margin: 0, 
+                fontSize: "0.875rem", 
+                color: "#6b7280"
+              }}>
+                Change the password required for switching to Manager role
+              </p>
+            </div>
+
+            <div>
+              <label style={{
+                display: "block",
+                marginBottom: "0.75rem",
+                fontSize: "0.9375rem",
+                fontWeight: 600,
+                color: "#374151"
+              }}>
+                Change Manager Password
+              </label>
+              
+              <div style={{ display: "grid", gap: "0.75rem" }}>
+                <div>
+                  <input
+                    type="password"
+                    id="current-manager-password"
+                    placeholder="Current password"
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+                <div>
+                  <input
+                    type="password"
+                    id="new-manager-password"
+                    placeholder="New password"
+                    style={{
+                      width: "100%",
+                      padding: "0.625rem",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      fontSize: "0.875rem"
+                    }}
+                  />
+                </div>
+                <button
+                  onClick={() => {
+                    const currentPassword = (document.getElementById('current-manager-password') as HTMLInputElement)?.value;
+                    const newPassword = (document.getElementById('new-manager-password') as HTMLInputElement)?.value;
+                    
+                    if (!currentPassword || !newPassword) {
+                      alert('Please enter both current and new password');
+                      return;
+                    }
+                    
+                    const savedPassword = localStorage.getItem('managerPassword') || 'BrightNewSound';
+                    if (currentPassword !== savedPassword) {
+                      alert('Current password is incorrect');
+                      return;
+                    }
+                    
+                    if (newPassword.length < 8) {
+                      alert('New password must be at least 8 characters');
+                      return;
+                    }
+                    
+                    localStorage.setItem('managerPassword', newPassword);
+                    alert('Manager password updated successfully');
+                    
+                    (document.getElementById('current-manager-password') as HTMLInputElement).value = '';
+                    (document.getElementById('new-manager-password') as HTMLInputElement).value = '';
+                  }}
+                  style={{
+                    padding: "0.625rem 1.5rem",
+                    backgroundColor: "#137CFB",
+                    color: "#fff",
+                    border: "none",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    fontSize: "0.875rem",
+                    fontWeight: 500
+                  }}
+                >
+                  Update Password
+                </button>
+              </div>
+              
+              <p style={{ 
+                fontSize: "0.75rem", 
+                color: "#6b7280", 
+                marginTop: "0.75rem",
+                lineHeight: "1.5"
+              }}>
+                This password is required when switching from Associate to Manager role.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* API Key Management Card */}
         <div style={{
           background: "#fff",
@@ -890,6 +1108,208 @@ export default function AccountSettingsPage() {
               )}
             </div>
 
+            {/* Stripe API Keys */}
+            <div style={{
+              padding: "1rem",
+              backgroundColor: "#f9fafb",
+              border: "1px solid #e5e7eb",
+              borderRadius: "6px",
+              marginBottom: "1rem"
+            }}>
+              <div style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: isEditingStripe ? "1rem" : "0"
+              }}>
+                <div>
+                  <div style={{
+                    fontWeight: 600,
+                    fontSize: "0.9375rem",
+                    color: "#374151",
+                    marginBottom: "0.25rem"
+                  }}>
+                    Stripe API Keys
+                  </div>
+                  <div style={{
+                    fontSize: "0.8125rem",
+                    color: "#6b7280"
+                  }}>
+                    Used for payment processing and customer management
+                  </div>
+                  {(stripePublishableKey || stripeSecretKey) && !isEditingStripe && (
+                    <div style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.8125rem",
+                      color: "#059669"
+                    }}>
+                      <i className="fas fa-check-circle" style={{ marginRight: "0.25rem" }}></i>
+                      Stripe keys configured
+                    </div>
+                  )}
+                </div>
+                {!isEditingStripe && (
+                  <button
+                    onClick={() => setIsEditingStripe(true)}
+                    style={{
+                      padding: "0.5rem 1rem",
+                      backgroundColor: "#fff",
+                      color: "#374151",
+                      border: "1px solid #d1d5db",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "0.8125rem",
+                      fontWeight: 500
+                    }}
+                  >
+                    <i className="fas fa-edit" style={{ marginRight: "0.25rem" }}></i>
+                    {(stripePublishableKey || stripeSecretKey) ? "Edit" : "Configure"}
+                  </button>
+                )}
+              </div>
+
+              {isEditingStripe && (
+                <form onSubmit={async (e) => {
+                  e.preventDefault();
+                  setIsSaving(true);
+                  setApiKeySuccess("");
+                  setPasswordError("");
+
+                  try {
+                    const { data: { user } } = await supabase.auth.getUser();
+                    if (user) {
+                      const { error } = await supabase
+                        .from('user_profiles')
+                        .update({
+                          stripe_publishable_key: stripePublishableKey || null,
+                          stripe_secret_key: stripeSecretKey || null
+                        } as any)
+                        .eq('id', user.id);
+                      
+                      if (error) {
+                        console.error("Supabase error:", error);
+                        setPasswordError(`Failed to save Stripe keys: ${error.message || 'Unknown error'}`);
+                        return;
+                      }
+                      
+                      setApiKeySuccess("Stripe API keys saved successfully");
+                      setIsEditingStripe(false);
+                    }
+                  } catch (error: any) {
+                    console.error("Error saving Stripe keys:", error);
+                    setPasswordError(`Failed to save Stripe keys: ${error?.message || 'Unknown error'}`);
+                  } finally {
+                    setIsSaving(false);
+                  }
+                }}>
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "#374151"
+                    }}>
+                      Publishable Key
+                    </label>
+                    <input
+                      type="text"
+                      value={stripePublishableKey}
+                      onChange={(e) => setStripePublishableKey(e.target.value)}
+                      placeholder="pk_live_... or pk_test_..."
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "0.875rem",
+                        fontFamily: "monospace"
+                      }}
+                    />
+                  </div>
+                  
+                  <div style={{ marginBottom: "1rem" }}>
+                    <label style={{
+                      display: "block",
+                      marginBottom: "0.5rem",
+                      fontSize: "0.875rem",
+                      fontWeight: 500,
+                      color: "#374151"
+                    }}>
+                      Secret Key
+                    </label>
+                    <input
+                      type="password"
+                      value={stripeSecretKey}
+                      onChange={(e) => setStripeSecretKey(e.target.value)}
+                      placeholder="sk_live_... or sk_test_..."
+                      style={{
+                        width: "100%",
+                        padding: "0.5rem",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        fontSize: "0.875rem",
+                        fontFamily: "monospace"
+                      }}
+                    />
+                    <div style={{
+                      marginTop: "0.5rem",
+                      fontSize: "0.75rem",
+                      color: "#6b7280"
+                    }}>
+                      Get your API keys from{" "}
+                      <a 
+                        href="https://dashboard.stripe.com/apikeys" 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        style={{ color: "#2563eb", textDecoration: "underline" }}
+                      >
+                        Stripe Dashboard
+                      </a>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", gap: "0.5rem" }}>
+                    <button
+                      type="submit"
+                      disabled={isSaving}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#6366f1",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: "6px",
+                        cursor: isSaving ? "not-allowed" : "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: 500,
+                        opacity: isSaving ? 0.6 : 1
+                      }}
+                    >
+                      {isSaving ? "Saving..." : "Save Keys"}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsEditingStripe(false);
+                        setApiKeySuccess("");
+                      }}
+                      style={{
+                        padding: "0.5rem 1rem",
+                        backgroundColor: "#fff",
+                        color: "#374151",
+                        border: "1px solid #d1d5db",
+                        borderRadius: "6px",
+                        cursor: "pointer",
+                        fontSize: "0.875rem",
+                        fontWeight: 500
+                      }}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+            </div>
+
             {/* Info section */}
             <div style={{
               padding: "0.75rem",
@@ -903,6 +1323,94 @@ export default function AccountSettingsPage() {
               API keys are stored securely and never exposed to the client
             </div>
           </div>
+        </div>
+
+        {/* Training Management Card (Managers Only) */}
+        {profile?.role === 'manager' && (
+          <div style={{
+            background: "#fff",
+            border: "1px solid #e5e7eb",
+            borderRadius: "8px",
+            padding: "1.5rem"
+          }}>
+            <div style={{ marginBottom: "1.5rem" }}>
+              <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.25rem", fontWeight: 600 }}>
+                Training Management
+              </h2>
+              <p style={{ 
+                margin: 0, 
+                fontSize: "0.875rem", 
+                color: "#6b7280"
+              }}>
+                Assign and manage training for your team
+              </p>
+            </div>
+
+            <div style={{ display: "flex", gap: "1rem", flexWrap: "wrap" }}>
+              <Link
+                href="/app/training/manage"
+                style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  gap: "0.5rem",
+                  padding: "0.75rem 1.5rem",
+                  backgroundColor: "#137CFB",
+                  color: "#fff",
+                  border: "none",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  fontSize: "0.875rem",
+                  fontWeight: 500,
+                  textDecoration: "none"
+                }}
+              >
+                <i className="fas fa-chalkboard-teacher"></i>
+                Training Manager Dashboard
+              </Link>
+            </div>
+          </div>
+        )}
+
+        {/* My Training Card (All Users) */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "1.5rem"
+        }}>
+          <div style={{ marginBottom: "1.5rem" }}>
+            <h2 style={{ margin: 0, marginBottom: "0.5rem", fontSize: "1.25rem", fontWeight: 600 }}>
+              My Training
+            </h2>
+            <p style={{ 
+              margin: 0, 
+              fontSize: "0.875rem", 
+              color: "#6b7280"
+            }}>
+              View your assigned training and track progress
+            </p>
+          </div>
+
+          <Link
+            href="/app/settings/training"
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "0.5rem",
+              padding: "0.75rem 1.5rem",
+              backgroundColor: "#667eea",
+              color: "#fff",
+              border: "none",
+              borderRadius: "6px",
+              cursor: "pointer",
+              fontSize: "0.875rem",
+              fontWeight: 500,
+              textDecoration: "none"
+            }}
+          >
+            <i className="fas fa-graduation-cap"></i>
+            View My Training
+          </Link>
         </div>
       </div>
     </div>

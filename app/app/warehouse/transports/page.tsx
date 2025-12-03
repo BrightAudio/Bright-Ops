@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
 import { supabase, Tables, TablesInsert } from "@/lib/supabaseClient";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
@@ -23,6 +23,7 @@ function statusColor(status: string) {
 }
 
 export default function Transports() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const jobIdFromUrl = searchParams.get('job');
   
@@ -54,11 +55,13 @@ export default function Transports() {
   const [error, setError] = useState<string | null>(null);
   const [transports, setTransports] = useState<Tables<"transports">[]>([]);
   const [vehicles, setVehicles] = useState<string[]>([]);
+  const [fleetVehicles, setFleetVehicles] = useState<Array<{ id: string; name: string; status: string | null }>>([]);
   const [customVehicle, setCustomVehicle] = useState("");
   const [showCustomInput, setShowCustomInput] = useState(false);
 
   useEffect(() => {
     loadTransports();
+    loadFleet();
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -83,6 +86,16 @@ export default function Transports() {
         .filter((v): v is string => !!v)
     )];
     setVehicles(uniqueVehicles);
+  }
+
+  async function loadFleet() {
+    const { data } = await supabase
+      .from('fleet')
+      .select('id, name, status')
+      .eq('status', 'Active')
+      .order('name', { ascending: true });
+    
+    setFleetVehicles(data ?? []);
   }
 
   function openModal(transport?: Tables<"transports">) {
@@ -195,14 +208,33 @@ export default function Transports() {
     <DashboardLayout>
     <main className="min-h-screen bg-zinc-900 px-6 py-10 text-white">
       <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
-        <h1 className="text-3xl font-bold">Transports</h1>
-        <button
-          type="button"
-          className="bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 rounded-lg shadow transition-colors"
-          onClick={handleCreateTransport}
-        >
-          + Create Transport
-        </button>
+        <div className="flex items-center gap-4">
+          <button
+            onClick={() => router.back()}
+            className="text-zinc-400 hover:text-white transition-colors"
+            aria-label="Go back"
+          >
+            <i className="fas fa-arrow-left text-xl"></i>
+          </button>
+          <h1 className="text-3xl font-bold">Transports</h1>
+        </div>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className="bg-zinc-700 hover:bg-zinc-600 text-white font-semibold px-4 py-3 rounded-lg transition-colors"
+            onClick={() => router.push('/app/warehouse/fleet')}
+          >
+            <i className="fas fa-truck mr-2"></i>
+            Manage Fleet
+          </button>
+          <button
+            type="button"
+            className="bg-amber-500 hover:bg-amber-400 text-black font-semibold px-6 py-3 rounded-lg shadow transition-colors"
+            onClick={handleCreateTransport}
+          >
+            + Create Transport
+          </button>
+        </div>
       </div>
 
       {/* Create Transport Form */}
@@ -217,7 +249,14 @@ export default function Transports() {
               onChange={e => setVehicle(e.target.value)}
             >
               <option value="">Select Vehicle</option>
-              {vehicles.map(v => <option key={v} value={v}>{v}</option>)}
+              <optgroup label="Fleet Vehicles">
+                {fleetVehicles.map(v => <option key={v.id} value={v.name}>{v.name}</option>)}
+              </optgroup>
+              {vehicles.length > 0 && (
+                <optgroup label="Previously Used">
+                  {vehicles.filter(v => !fleetVehicles.find(f => f.name === v)).map(v => <option key={v} value={v}>{v}</option>)}
+                </optgroup>
+              )}
             </select>
           </div>
           <div className="flex flex-col">
@@ -270,6 +309,16 @@ export default function Transports() {
           </div>
         </div>
         {error && <div className="mt-4 text-red-400 text-sm">{error}</div>}
+        <div className="mt-4 flex justify-end">
+          <button
+            type="button"
+            className="bg-amber-500 hover:bg-amber-400 text-black font-semibold px-8 py-2 rounded-lg shadow transition-colors"
+            onClick={handleCreateTransport}
+          >
+            <i className="fas fa-save mr-2"></i>
+            Save Transport
+          </button>
+        </div>
       </div>
 
       {/* Filter Section */}
@@ -307,13 +356,14 @@ export default function Transports() {
               <th className="px-4 py-3">Depart</th>
               <th className="px-4 py-3">Arrive</th>
               <th className="px-4 py-3">Status</th>
+              <th className="px-4 py-3">Notes</th>
               <th className="px-4 py-3">Actions</th>
             </tr>
           </thead>
           <tbody>
             {filtered.length === 0 && !jobIdFromUrl ? (
               <tr>
-                <td colSpan={6} className="px-4 py-6 text-center text-gray-400">No transports found.</td>
+                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">No transports found.</td>
               </tr>
             ) : filtered.length > 0 ? (
               filtered.map((t) => (
@@ -324,6 +374,9 @@ export default function Transports() {
                   <td className="px-4 py-3">{formatDateTime(t.arrive_at ?? "")}</td>
                   <td className="px-4 py-3">
                     <span className={`inline-block px-3 py-1 rounded-full border text-xs font-semibold ${statusColor(t.status ?? "")}`}>{t.status ?? "Scheduled"}</span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className="text-sm text-gray-400">{t.notes || '-'}</span>
                   </td>
                   <td className="px-4 py-3">
                     <button
@@ -382,9 +435,18 @@ export default function Transports() {
                 required={!showCustomInput}
               >
                 <option value="">Select a vehicle</option>
-                {vehicles.map(v => (
-                  <option key={v} value={v}>{v}</option>
-                ))}
+                <optgroup label="Fleet Vehicles">
+                  {fleetVehicles.map(v => (
+                    <option key={v.id} value={v.name}>{v.name}</option>
+                  ))}
+                </optgroup>
+                {vehicles.length > 0 && (
+                  <optgroup label="Previously Used">
+                    {vehicles.filter(v => !fleetVehicles.find(f => f.name === v)).map(v => (
+                      <option key={v} value={v}>{v}</option>
+                    ))}
+                  </optgroup>
+                )}
                 <option value="__custom__">+ Add New Vehicle</option>
               </select>
               {showCustomInput && (

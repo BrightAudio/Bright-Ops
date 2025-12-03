@@ -5,18 +5,35 @@ import { useRouter } from "next/navigation";
 import { supabaseBrowser } from "@/lib/supabaseClient";
 import { logoutAction } from "@/app/actions/auth";
 
+interface UserProfile {
+  role: 'manager' | 'associate';
+}
+
 export default function ProfileMenu() {
   const supabase = supabaseBrowser();
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     supabase.auth.getUser().then(({ data }) => {
-      if (!cancelled) {
-        setUserEmail(data.user?.email ?? null);
+      if (!cancelled && data.user) {
+        setUserEmail(data.user.email ?? null);
+        
+        // Load user profile to check role
+        supabase
+          .from('user_profiles')
+          .select('role')
+          .eq('id', data.user.id)
+          .single()
+          .then(({ data: profile }) => {
+            if (!cancelled) {
+              setUserProfile(profile);
+            }
+          });
       }
     });
     return () => {
@@ -76,8 +93,20 @@ export default function ProfileMenu() {
             }}
             className="w-full px-3 py-2 text-left hover:bg-slate-50"
           >
-            My Profile
+            My Profile & Training
           </button>
+          {userProfile?.role === 'manager' && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                router.push("/app/training/manage");
+              }}
+              className="w-full px-3 py-2 text-left hover:bg-slate-50 border-t border-slate-100"
+            >
+              👔 Training Manager
+            </button>
+          )}
           <div className="my-1 border-t border-slate-100" />
           <button
             type="button"

@@ -60,7 +60,7 @@ export default function LeadScraperSection({ onImportComplete }: LeadScraperSect
   const [city, setCity] = useState('');
   const [state, setState] = useState('');
   const [radius, setRadius] = useState(25);
-  const [searchMethod, setSearchMethod] = useState<'google' | 'chatgpt' | 'mock' | 'smart'>('smart');
+  const [searchMethod, setSearchMethod] = useState<'google' | 'chatgpt' | 'mock' | 'smart' | 'audio-gigs'>('smart');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
@@ -94,6 +94,8 @@ export default function LeadScraperSection({ onImportComplete }: LeadScraperSect
         ? '/api/leads/mock-search'
         : searchMethod === 'smart'
         ? '/api/leads/smart-discovery'
+        : searchMethod === 'audio-gigs'
+        ? '/api/leads/audio-gigs-search'
         : '/api/leads/auto-search';
 
       console.log(`🔍 Sending ${searchMethod} search request:`, { city, state, radius });      const response = await fetch(endpoint, {
@@ -341,6 +343,17 @@ export default function LeadScraperSection({ onImportComplete }: LeadScraperSect
           }`}
         >
           🔍 Google
+        </button>
+        <button
+          onClick={() => setSearchMethod('audio-gigs')}
+          className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+            searchMethod === 'audio-gigs'
+              ? 'bg-purple-600 text-white'
+              : 'bg-[#1a1a1a] text-[#9ca3af] border border-[#333333] hover:bg-[#333333]'
+          }`}
+          title="Search for field audio gigs: boom operator, field mixer, foley, movie score"
+        >
+          🎬 Field Audio Gigs
         </button>
       </div>
 

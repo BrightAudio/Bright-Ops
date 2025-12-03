@@ -16,84 +16,241 @@ interface TrainingVideo {
 }
 
 const trainingVideos: TrainingVideo[] = [
+  // Administrative Skills
+  {
+    id: 'admin-1',
+    title: 'How to Succeed as an Administrative Assistant',
+    description: 'Core admin skills including organization, soft skills, and "managing up". Essential training for support roles.',
+    youtubeId: 'V5kCFv5b4VY',
+    duration: '45:00',
+    difficulty: 'beginner',
+    category: 'Administrative',
+    rating: 4.8
+  },
+  {
+    id: 'admin-2',
+    title: 'Essential Office Administrative Skills Training',
+    description: 'Office operations, document handling, time-management, and communication skills for administrative professionals.',
+    youtubeId: 't5TRGKaBBzs',
+    duration: '35:20',
+    difficulty: 'beginner',
+    category: 'Administrative',
+    rating: 4.7
+  },
+  {
+    id: 'admin-3',
+    title: 'Administrative Assistant Training | Online Course',
+    description: 'Full-course for assistants covering scheduling, communication, IT basics, and record-keeping.',
+    youtubeId: '1zqaZi3A_J8',
+    duration: '52:15',
+    difficulty: 'beginner',
+    category: 'Administrative',
+    rating: 4.9
+  },
+  {
+    id: 'admin-4',
+    title: 'Master Administrative Assistant Skills: Essential Training for Job Success',
+    description: 'Good for beginners or inexperienced staff - covers all essential administrative skills.',
+    youtubeId: 'TqDlGAcUOQ0',
+    duration: '38:45',
+    difficulty: 'beginner',
+    category: 'Administrative',
+    rating: 4.6
+  },
+  {
+    id: 'admin-5',
+    title: '24 Powerful Communication Strategies for Administrative Assistants',
+    description: 'Builds communication, listening, public-speaking and soft-skills for support roles.',
+    youtubeId: '9VUDYC8n0Ws',
+    duration: '42:30',
+    difficulty: 'intermediate',
+    category: 'Administrative',
+    rating: 4.8
+  },
+
+  // Customer Service
+  {
+    id: 'cs-1',
+    title: 'Customer Service Training',
+    description: 'General best-practices for support, call-handling, and interpersonal interactions with clients.',
+    youtubeId: 'iGZCmc3b_OM',
+    duration: '28:15',
+    difficulty: 'beginner',
+    category: 'Customer Service',
+    rating: 4.7
+  },
+  {
+    id: 'cs-2',
+    title: 'De-escalation Skills Training for Employees',
+    description: 'Handling frustrated customers, diffusing tension, resolving complaints. Valuable for client-facing staff.',
+    youtubeId: 'KvHi2trFlpo',
+    duration: '32:40',
+    difficulty: 'intermediate',
+    category: 'Customer Service',
+    rating: 4.9
+  },
+  {
+    id: 'cs-3',
+    title: 'Practice Task: Customer Service | Free Training for Virtual Assistants',
+    description: 'Good for VA-style work: remote customer support, virtual admin, communication via email/chat/phone.',
+    youtubeId: '548QbADFw84',
+    duration: '25:50',
+    difficulty: 'beginner',
+    category: 'Customer Service',
+    rating: 4.6
+  },
+  {
+    id: 'cs-4',
+    title: 'Top 10 Customer Service Training Courses to Boost Your Career',
+    description: 'Overview of courses & strategies for high-level customer support and scalable service delivery systems.',
+    youtubeId: 'zltmFZR6llU',
+    duration: '36:20',
+    difficulty: 'intermediate',
+    category: 'Customer Service',
+    rating: 4.8
+  },
+
+  // Sales Training
+  {
+    id: 'sales-1',
+    title: '11 Sales Training Basics Beginners MUST Master',
+    description: 'Great foundational video: teaches core sales principles and mindset for beginners.',
+    youtubeId: 'BaDGqm4rEzY',
+    duration: '18:45',
+    difficulty: 'beginner',
+    category: 'Sales',
+    rating: 4.8
+  },
+  {
+    id: 'sales-2',
+    title: 'How to Sell Anything to Anyone Anytime - Sales Training',
+    description: 'Simple, effective strategies for closing a sale — good for teaching staff how to navigate sales conversations.',
+    youtubeId: '1N9BGJxVF5w',
+    duration: '22:30',
+    difficulty: 'beginner',
+    category: 'Sales',
+    rating: 4.7
+  },
+  {
+    id: 'sales-3',
+    title: 'The Ultimate Sales Training for 2025 [Full Course]',
+    description: 'A more comprehensive sales "blueprint." Great if you want to train clerical/sales staff beyond basics.',
+    youtubeId: 'StVqS0jD7Ls',
+    duration: '1:45:00',
+    difficulty: 'intermediate',
+    category: 'Sales',
+    rating: 4.9
+  },
+  {
+    id: 'sales-4',
+    title: '57 Minutes of sales training that will explode your sales in 2024',
+    description: 'Strong refresher or boot-camp style video — good for team meetings or onboarding new sales hires.',
+    youtubeId: '5O-sLe6iOns',
+    duration: '57:00',
+    difficulty: 'intermediate',
+    category: 'Sales',
+    rating: 4.8
+  },
+  {
+    id: 'sales-5',
+    title: 'Sales Training // How to Sell Anything to Anyone // Andy Elliott',
+    description: 'Solid practical strategies — good for someone who\'ll be doing outreach, phone-calls, bookings, etc.',
+    youtubeId: '1NXacboR5ME',
+    duration: '34:20',
+    difficulty: 'intermediate',
+    category: 'Sales',
+    rating: 4.7
+  },
+  {
+    id: 'sales-6',
+    title: 'Acquisition Strategy: How to Grow Your Sales the Easy Way',
+    description: 'Useful for understanding customer acquisition flow — helpful if you want clerical staff to help bring in leads.',
+    youtubeId: 'oKY3Vfvf9zI',
+    duration: '28:15',
+    difficulty: 'advanced',
+    category: 'Sales',
+    rating: 4.8
+  },
+
+  // Lead Generation (Original)
   {
     id: '1',
     title: 'Lead Generation 101 - Complete Beginner Guide',
     description: 'Learn the fundamentals of lead generation, including what leads are, why they matter, and basic strategies for finding potential customers.',
-    youtubeId: 'dQw4w9WgXcQ',
+    youtubeId: 'cF5_bcaZqwQ',
     duration: '15:42',
     difficulty: 'beginner',
-    category: 'Fundamentals',
+    category: 'Lead Generation',
     rating: 4.8
   },
   {
     id: '2',
     title: 'Cold Outreach Strategies That Actually Work',
     description: 'Master the art of cold email and cold calling to reach out to potential customers. Learn proven templates and techniques used by top sales professionals.',
-    youtubeId: 'jZjmlJPJgug',
+    youtubeId: 'M9pIB64gvaw',
     duration: '22:15',
     difficulty: 'intermediate',
-    category: 'Outreach',
+    category: 'Lead Generation',
     rating: 4.7
   },
   {
     id: '3',
     title: 'LinkedIn Lead Generation Mastery',
     description: 'Discover how to find and qualify leads on LinkedIn, build your network strategically, and use LinkedIn features to generate high-quality leads.',
-    youtubeId: 'XqZsoesa55w',
+    youtubeId: 'uiHhf32uUlQ',
     duration: '18:30',
     difficulty: 'intermediate',
-    category: 'Platforms',
+    category: 'Lead Generation',
     rating: 4.9
   },
   {
     id: '4',
     title: 'Lead Qualification: Separating Hot Leads from Duds',
     description: 'Learn how to qualify leads effectively, score leads based on potential, and prioritize your outreach efforts to close more deals.',
-    youtubeId: '9bZkp7q19f0',
+    youtubeId: 'CkdgPXRzslk',
     duration: '17:45',
     difficulty: 'intermediate',
-    category: 'Qualification',
+    category: 'Lead Generation',
     rating: 4.6
   },
   {
     id: '5',
     title: 'Email Marketing for Lead Generation',
     description: 'Build effective email campaigns that generate leads, create compelling copy, and set up automation to nurture prospects.',
-    youtubeId: 'kffacxfA7G4',
+    youtubeId: 'e-kHBhJzZo8',
     duration: '24:20',
     difficulty: 'intermediate',
-    category: 'Email',
+    category: 'Lead Generation',
     rating: 4.7
   },
   {
     id: '6',
     title: 'Advanced: Building a Lead Generation Funnel',
     description: 'Design and implement a complete lead generation funnel, from awareness to conversion. Learn advanced tactics used by enterprise teams.',
-    youtubeId: 'L_LUpnjgPso',
+    youtubeId: 'FHpqEYLZfJU',
     duration: '31:15',
     difficulty: 'advanced',
-    category: 'Strategy',
+    category: 'Lead Generation',
     rating: 4.8
   },
   {
     id: '7',
     title: 'Research Skills for Lead Generation',
     description: 'Become an expert researcher! Learn tools and techniques to find contact information, identify decision makers, and research companies.',
-    youtubeId: 'BROWqjuTM0g',
+    youtubeId: 'ck0A1QKqF6k',
     duration: '19:50',
     difficulty: 'beginner',
-    category: 'Research',
+    category: 'Lead Generation',
     rating: 4.5
   },
   {
     id: '8',
     title: 'Sales Psychology: Understanding Buyer Behavior',
     description: 'Learn the psychology behind purchasing decisions, how to identify pain points, and tailor your approach to different customer types.',
-    youtubeId: 'M7lc1UVf-VE',
+    youtubeId: 'p-nKttWT5Dc',
     duration: '25:30',
     difficulty: 'intermediate',
-    category: 'Psychology',
+    category: 'Lead Generation',
     rating: 4.6
   }
 ];

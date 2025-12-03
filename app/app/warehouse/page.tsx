@@ -11,6 +11,7 @@ const actions = [
   { label: "Transports", href: "/app/warehouse/transports" },
   { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew" },
   { label: "Crew Portal", href: "/app/crew/portal" },
+  { label: "Training", href: "/app/settings/training" },
   { label: "Archived Jobs", href: "/app/archive/jobs" },
 ];
 

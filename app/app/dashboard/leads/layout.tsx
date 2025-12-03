@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser, FaDollarSign } from 'react-icons/fa';
+import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser, FaDollarSign, FaComments } from 'react-icons/fa';
 
 export default function LeadsLayout({
   children,
@@ -14,6 +14,7 @@ export default function LeadsLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -26,6 +27,13 @@ export default function LeadsLayout({
       router.push('/auth/login?redirectTo=/app/dashboard/leads');
     } else {
       setUser(session.user);
+      // Load user profile
+      const { data: profileData } = await supabase
+        .from('user_profiles')
+        .select('full_name')
+        .eq('id', session.user.id)
+        .single();
+      setProfile(profileData);
     }
     setLoading(false);
   }
@@ -46,6 +54,7 @@ export default function LeadsLayout({
 
   const menuItems = [
     { href: '/app/dashboard/leads', icon: <FaChartLine />, label: 'Dashboard' },
+    { href: '/app/dashboard/leads/chat', icon: <FaComments />, label: 'Chat' },
     { href: '/app/dashboard/leads/campaigns', icon: <FaEnvelope />, label: 'Email Campaigns' },
     { href: '/app/dashboard/leads/financing', icon: <FaDollarSign />, label: 'Financing' },
     { href: '/app/dashboard/leads/settings', icon: <FaCog />, label: 'Settings' },
@@ -126,16 +135,30 @@ export default function LeadsLayout({
 
         {/* User Profile & Back to Warehouse */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '0.5rem',
-            color: 'white',
-            fontSize: '14px'
-          }}>
+          <button
+            onClick={() => router.push('/app/settings/profile')}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              color: 'white',
+              fontSize: '14px',
+              background: 'transparent',
+              border: 'none',
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+              padding: '0.5rem'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.05)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = 'scale(1)';
+            }}
+          >
             <FaUser />
-            <span>{user?.email?.split('@')[0] || 'User'}</span>
-          </div>
+            <span>{profile?.full_name || user?.email?.split('@')[0] || 'User'}</span>
+          </button>
           <button
             onClick={() => router.push('/app/warehouse')}
             style={{

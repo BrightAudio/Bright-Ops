@@ -71,7 +71,7 @@ export default function CrewPortal() {
       const { data: empData } = await supabase
         .from("employees")
         .select("*")
-        .eq("email", user.email)
+        .eq("email", user.email || '')
         .single();
 
       if (!empData) {
@@ -118,7 +118,7 @@ export default function CrewPortal() {
         .eq("employee_id", empData.id)
         .order("available_date", { ascending: true });
 
-      setAvailability(availData || []);
+      setAvailability((availData as any) || []);
 
     } catch (err) {
       console.error("Error loading data:", err);

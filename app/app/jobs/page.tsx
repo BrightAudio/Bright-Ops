@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
 import { createPullSheet } from "@/lib/hooks/usePullSheets";
+import { useLocation } from "@/lib/contexts/LocationContext";
 import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -11,26 +12,27 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 
 const STATUS_OPTIONS = [
   { value: "all", label: "All Jobs" },
-  { value: "draft", label: "Draft" },
-  { value: "active", label: "Active" },
-  { value: "complete", label: "Completed" },
-  { value: "cancelled", label: "Cancelled" },
+  { value: "planned", label: "Planned" },
+  { value: "confirmed", label: "Confirmed" },
+  { value: "completed", label: "Completed" },
+  { value: "canceled", label: "Canceled" },
 ];
 
 export default function JobsPage() {
   const router = useRouter();
+  const { currentLocation } = useLocation();
   const [search, setSearch] = useState("");
-  const [status, setStatus] = useState("all");
+  const [status, setStatus] = useState<"all" | "planned" | "confirmed" | "completed" | "canceled">("all");
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [showArchived, setShowArchived] = useState(false);
-  const [showModal, setShowModal] = useState(false);
+  const [showCreateForm, setShowCreateForm] = useState(false);
   const [form, setForm] = useState({ code: "", title: "", client: "", startDate: "", endDate: "" });
   const [creating, setCreating] = useState(false);
   const [creatingPullSheet, setCreatingPullSheet] = useState<string | null>(null);
   const [archiving, setArchiving] = useState<string | null>(null);
   
-  // Client/Venue modal state
-  const [showClientModal, setShowClientModal] = useState(false);
+  // Client/Venue info state
+  const [showClientInfoSection, setShowClientInfoSection] = useState(false);
   const [clientForm, setClientForm] = useState({ phone: "", email: "", venueId: "" });
   const [venues, setVenues] = useState<any[]>([]);
   const [loadingVenues, setLoadingVenues] = useState(false);
@@ -90,8 +92,8 @@ export default function JobsPage() {
       .maybeSingle();
     
     if (!existingClient) {
-      // New client - show modal to collect phone, email, venue
-      setShowClientModal(true);
+      // New client - show inline section to collect phone, email, venue
+      setShowClientInfoSection(true);
     } else {
       // Existing client - create job directly
       await createJobWithClient(existingClient.id, null);
@@ -130,8 +132,8 @@ export default function JobsPage() {
       // Create job with new client
       await createJobWithClient(newClient.id, clientForm.venueId || null);
       
-      // Close modals and reset
-      setShowClientModal(false);
+      // Close inline sections and reset
+      setShowClientInfoSection(false);
       setClientForm({ phone: "", email: "", venueId: "" });
     } catch (err) {
       console.error('Error creating client:', err);
@@ -153,14 +155,21 @@ export default function JobsPage() {
         start_at: form.startDate || null,
         end_at: form.endDate || null,
         status: 'draft',
+        warehouse: currentLocation === 'All Locations' ? 'NEW SOUND Warehouse' : currentLocation,
       };
       
-      await createJob(jobData);
+      const newJob = await createJob(jobData);
       
-      // Reset form and close modal
+      // Reset form and close inline form
       setForm({ code: "", title: "", client: "", startDate: "", endDate: "" });
-      setShowModal(false);
-      reload();
+      setShowCreateForm(false);
+      
+      // Redirect to job detail page
+      if (newJob?.id) {
+        router.push(`/app/jobs/${newJob.id}`);
+      } else {
+        reload();
+      }
     } catch (err) {
       console.error('Error creating job:', err);
       alert('Failed to create job: ' + (err as Error).message);
@@ -308,9 +317,9 @@ export default function JobsPage() {
           </Link>
           <button
             className="flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-400"
-            onClick={() => setShowModal(true)}
+            onClick={() => setShowCreateForm(!showCreateForm)}
           >
-            <Plus size={18} /> New Job
+            <Plus size={18} /> {showCreateForm ? 'Cancel' : 'New Job'}
           </button>
         </div>
       </div>
@@ -327,13 +336,213 @@ export default function JobsPage() {
         <select
           className="bg-zinc-800 border border-zinc-700 rounded px-4 py-2 text-white"
           value={status}
-          onChange={e => setStatus(e.target.value)}
+          onChange={e => setStatus(e.target.value as "all" | "planned" | "confirmed" | "completed" | "canceled")}
         >
           {STATUS_OPTIONS.map(opt => (
             <option key={opt.value} value={opt.value}>{opt.label}</option>
           ))}
         </select>
       </div>
+      
+      {/* Inline Create Job Form */}
+      {showCreateForm && (
+        <div className="bg-zinc-800 border border-amber-500 rounded-lg p-6 mb-6">
+          <h2 className="text-xl font-bold text-amber-400 mb-4">Create New Job</h2>
+          
+          {!showClientInfoSection ? (
+            <form onSubmit={handleCreate} className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    Job Code *
+                  </label>
+                  <input
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                    placeholder="e.g., JOB-001"
+                    value={form.code}
+                    onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
+                    required
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    Job Title *
+                  </label>
+                  <input
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                    placeholder="e.g., Conference Setup"
+                    value={form.title}
+                    onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
+                    required
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-zinc-300 mb-1">
+                  Client Name *
+                </label>
+                <input
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                  placeholder="Enter client name"
+                  value={form.client}
+                  onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
+                  required
+                />
+                <p className="text-xs text-zinc-500 mt-1">
+                  If this is a new client, you'll be prompted for contact details
+                </p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    Start Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                    value={form.startDate}
+                    onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    End Date
+                  </label>
+                  <input
+                    type="date"
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                    value={form.endDate}
+                    onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
+                  />
+                </div>
+              </div>
+              
+              {/* Next Steps Preview */}
+              <div className="bg-zinc-900 rounded-lg p-4 border border-zinc-700">
+                <h3 className="text-sm font-semibold text-zinc-300 mb-3">After creating, you can:</h3>
+                <div className="flex flex-wrap gap-2">
+                  <div className="flex items-center gap-2 bg-zinc-800 text-zinc-400 px-3 py-1.5 rounded text-sm">
+                    <i className="fas fa-map-marker-alt"></i>
+                    Add Venue
+                  </div>
+                  <div className="flex items-center gap-2 bg-zinc-800 text-zinc-400 px-3 py-1.5 rounded text-sm">
+                    <i className="fas fa-users"></i>
+                    Add Labor
+                  </div>
+                  <div className="flex items-center gap-2 bg-zinc-800 text-zinc-400 px-3 py-1.5 rounded text-sm">
+                    <i className="fas fa-dollar-sign"></i>
+                    Add Income
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex gap-2 pt-2">
+                <button
+                  type="submit"
+                  className="bg-amber-500 text-black px-6 py-2 rounded font-semibold hover:bg-amber-400"
+                  disabled={creating}
+                >
+                  {creating ? "Creating..." : "Create Job & Continue"}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowCreateForm(false);
+                    setForm({ code: "", title: "", client: "", startDate: "", endDate: "" });
+                  }}
+                  className="px-6 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
+                  disabled={creating}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-zinc-300 mb-4">
+                <strong>{form.client}</strong> is a new client. Please provide their contact information:
+              </p>
+              
+              <form onSubmit={handleClientInfoSubmit} className="space-y-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">
+                      Phone Number
+                    </label>
+                    <input
+                      type="tel"
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                      placeholder="(555) 123-4567"
+                      value={clientForm.phone}
+                      onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))}
+                    />
+                  </div>
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-zinc-300 mb-1">
+                      Email Address
+                    </label>
+                    <input
+                      type="email"
+                      className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                      placeholder="client@example.com"
+                      value={clientForm.email}
+                      onChange={e => setClientForm(f => ({ ...f, email: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-zinc-300 mb-1">
+                    Venue
+                  </label>
+                  <select
+                    className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                    value={clientForm.venueId}
+                    onChange={e => setClientForm(f => ({ ...f, venueId: e.target.value }))}
+                  >
+                    <option value="">Select a venue (optional)</option>
+                    {venues.map(venue => (
+                      <option key={venue.id} value={venue.id}>
+                        {venue.name} {venue.city && `- ${venue.city}, ${venue.state}`}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    You can add venues later in the Venues section
+                  </p>
+                </div>
+                
+                <div className="flex gap-2 pt-2">
+                  <button
+                    type="submit"
+                    className="bg-green-600 text-white px-6 py-2 rounded font-semibold hover:bg-green-500"
+                    disabled={creating}
+                  >
+                    {creating ? "Creating..." : "Save & Create Job"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowClientInfoSection(false);
+                      setClientForm({ phone: "", email: "", venueId: "" });
+                    }}
+                    className="px-6 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
+                    disabled={creating}
+                  >
+                    Back
+                  </button>
+                </div>
+              </form>
+            </div>
+          )}
+        </div>
+      )}
+      
       {loading ? (
         <p className="text-zinc-500">Loading jobs...</p>
       ) : !jobs || jobs.length === 0 ? (
@@ -436,203 +645,6 @@ export default function JobsPage() {
               </div>
             </div>
           ))}
-        </div>
-      )}
-      
-      {/* New Job Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-amber-400">Create New Job</h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="text-zinc-400 hover:text-white"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <form onSubmit={handleCreate} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Job Code *
-                </label>
-                <input
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  placeholder="e.g., JOB-001"
-                  value={form.code}
-                  onChange={e => setForm(f => ({ ...f, code: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Job Title *
-                </label>
-                <input
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  placeholder="e.g., Conference Setup"
-                  value={form.title}
-                  onChange={e => setForm(f => ({ ...f, title: e.target.value }))}
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Client Name *
-                </label>
-                <input
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  placeholder="Enter client name"
-                  value={form.client}
-                  onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
-                  required
-                />
-                <p className="text-xs text-zinc-500 mt-1">
-                  If this is a new client, you'll be prompted for contact details
-                </p>
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Start Date
-                </label>
-                <input
-                  type="date"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  value={form.startDate}
-                  onChange={e => setForm(f => ({ ...f, startDate: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  End Date
-                </label>
-                <input
-                  type="date"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  value={form.endDate}
-                  onChange={e => setForm(f => ({ ...f, endDate: e.target.value }))}
-                />
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-amber-500 text-black px-4 py-2 rounded font-semibold hover:bg-amber-400"
-                  disabled={creating}
-                >
-                  {creating ? "Creating..." : "Create Job"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setShowModal(false)}
-                  className="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
-                  disabled={creating}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-      
-      {/* Client Info Modal */}
-      {showClientModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-zinc-800 rounded-lg p-6 max-w-md w-full border border-zinc-700">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-xl font-bold text-amber-400">New Client Details</h2>
-              <button
-                onClick={() => {
-                  setShowClientModal(false);
-                  setClientForm({ phone: "", email: "", venueId: "" });
-                }}
-                className="text-zinc-400 hover:text-white"
-              >
-                <X size={24} />
-              </button>
-            </div>
-            
-            <p className="text-zinc-300 mb-4">
-              <strong>{form.client}</strong> is a new client. Please provide their contact information:
-            </p>
-            
-            <form onSubmit={handleClientInfoSubmit} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Phone Number
-                </label>
-                <input
-                  type="tel"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  placeholder="(555) 123-4567"
-                  value={clientForm.phone}
-                  onChange={e => setClientForm(f => ({ ...f, phone: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Email Address
-                </label>
-                <input
-                  type="email"
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  placeholder="client@example.com"
-                  value={clientForm.email}
-                  onChange={e => setClientForm(f => ({ ...f, email: e.target.value }))}
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium text-zinc-300 mb-1">
-                  Venue
-                </label>
-                <select
-                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
-                  value={clientForm.venueId}
-                  onChange={e => setClientForm(f => ({ ...f, venueId: e.target.value }))}
-                >
-                  <option value="">Select a venue (optional)</option>
-                  {venues.map(venue => (
-                    <option key={venue.id} value={venue.id}>
-                      {venue.name} {venue.city && `- ${venue.city}, ${venue.state}`}
-                    </option>
-                  ))}
-                </select>
-                <p className="text-xs text-zinc-500 mt-1">
-                  You can add venues later in the Venues section
-                </p>
-              </div>
-              
-              <div className="flex gap-2 pt-2">
-                <button
-                  type="submit"
-                  className="flex-1 bg-green-600 text-white px-4 py-2 rounded font-semibold hover:bg-green-500"
-                  disabled={creating}
-                >
-                  {creating ? "Creating..." : "Save & Create Job"}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowClientModal(false);
-                    setClientForm({ phone: "", email: "", venueId: "" });
-                  }}
-                  className="px-4 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"
-                  disabled={creating}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
         </div>
       )}
     </div>

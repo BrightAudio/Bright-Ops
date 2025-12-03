@@ -218,10 +218,11 @@ export default function PullSheetRedesign({
           
           console.log('📋 Profile data:', profile, 'Error:', error);
           
-          if (profile?.full_name) {
-            fullName = profile.full_name;
-          } else if (profile?.first_name && profile?.last_name) {
-            fullName = `${profile.first_name} ${profile.last_name}`;
+          const profileData = profile as any;
+          if (profileData?.full_name) {
+            fullName = profileData.full_name;
+          } else if (profileData?.first_name && profileData?.last_name) {
+            fullName = `${profileData.first_name} ${profileData.last_name}`;
           }
         }
         

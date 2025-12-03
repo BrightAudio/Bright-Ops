@@ -277,10 +277,39 @@ function extractNameNearEmail($: any, email: string): string {
 }
 
 function extractPhoneNearEmail($: any, email: string): string | null {
-  const emailContext = $(`*:contains("${email}")`).parent().text();
-  const phonePattern = /\b\d{3}[-.]?\d{3}[-.]?\d{4}\b/g;
-  const phones = emailContext.match(phonePattern) || [];
-  return phones[0] || null;
+  // First try: get phone from the same element or parent containing the email
+  const emailElement = $(`*:contains("${email}")`).first();
+  const emailParent = emailElement.parent();
+  const emailSection = emailElement.closest('section, div[class*="contact"], div[class*="team"], div[class*="staff"]');
+  
+  // Check in increasingly broader contexts
+  const contexts = [
+    emailElement.text(),
+    emailParent.text(),
+    emailSection.text()
+  ];
+  
+  const phonePattern = /(\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/;
+  
+  for (const context of contexts) {
+    if (context) {
+      // Look for labeled phone first (more reliable)
+      const labeledPattern = /(?:phone|tel|telephone|mobile|cell|direct|office)\s*:?\s*(\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/i;
+      const labeledMatch = context.match(labeledPattern);
+      
+      if (labeledMatch) {
+        return `(${labeledMatch[2]}) ${labeledMatch[3]}-${labeledMatch[4]}`;
+      }
+      
+      // Fallback to any phone in context
+      const match = context.match(phonePattern);
+      if (match) {
+        return `(${match[2]}) ${match[3]}-${match[4]}`;
+      }
+    }
+  }
+  
+  return null;
 }
 
 function extractTitleNearEmail($: any, email: string): string | null {

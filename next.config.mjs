@@ -21,7 +21,17 @@ const nextConfig = {
   // Experimental optimizations
   experimental: {
     optimizeCss: true,
-    optimizePackageImports: ['react-icons', '@supabase/supabase-js'],
+    optimizePackageImports: ['react-icons', '@supabase/supabase-js', 'lucide-react'],
+  },
+  
+  // Modularize imports for better tree shaking
+  modularizeImports: {
+    'react-icons/fa': {
+      transform: 'react-icons/fa/{{member}}',
+    },
+    'lucide-react': {
+      transform: 'lucide-react/dist/esm/icons/{{kebabCase member}}',
+    },
   },
   
   // Production optimizations

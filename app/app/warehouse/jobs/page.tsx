@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { useJobs, createJob } from "@/lib/hooks/useJobs";
+import { useLocation } from "@/lib/contexts/LocationContext";
 import Link from "next/link";
 import { Plus, Search, FileText, Undo2, Truck } from "lucide-react";
 
@@ -12,6 +13,7 @@ const STATUS_OPTIONS = [
 ];
 
 export default function WarehouseJobsPage() {
+  const { currentLocation } = useLocation();
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("all");
   const [showForm, setShowForm] = useState(false);
@@ -23,7 +25,11 @@ export default function WarehouseJobsPage() {
     e.preventDefault();
     setCreating(true);
     try {
-      await createJob(form);
+      const jobData = {
+        ...form,
+        warehouse: currentLocation === 'All Locations' ? 'NEW SOUND Warehouse' : currentLocation
+      };
+      await createJob(jobData);
       setForm({ code: "", title: "", client: "" });
       setShowForm(false);
       reload();
@@ -35,7 +41,12 @@ export default function WarehouseJobsPage() {
   return (
     <main className="bg-zinc-900 text-gray-100 min-h-screen p-6">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold">Warehouse Jobs</h1>
+        <div>
+          <h1 className="text-2xl font-bold">Warehouse Jobs</h1>
+          <p className="text-sm text-zinc-400 mt-1">
+            📍 Active Location: <span className="text-blue-400 font-semibold">{currentLocation}</span>
+          </p>
+        </div>
         <button
           className="flex items-center gap-2 bg-amber-500 text-black px-4 py-2 rounded hover:bg-amber-400"
           onClick={() => setShowForm((v) => !v)}
@@ -69,6 +80,10 @@ export default function WarehouseJobsPage() {
             onChange={e => setForm(f => ({ ...f, client: e.target.value }))}
             required
           />
+          <div className="flex items-center gap-2 px-3 py-2 bg-blue-900/30 border border-blue-700 rounded text-blue-300 text-sm">
+            <span>📍</span>
+            <span>{currentLocation === 'All Locations' ? 'NEW SOUND Warehouse' : currentLocation}</span>
+          </div>
           <button
             type="submit"
             className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-500"
@@ -105,6 +120,7 @@ export default function WarehouseJobsPage() {
               <th className="px-4 py-2">Code</th>
               <th className="px-4 py-2">Title</th>
               <th className="px-4 py-2">Client</th>
+              <th className="px-4 py-2">Warehouse</th>
               <th className="px-4 py-2">Status</th>
               <th className="px-4 py-2">Start</th>
               <th className="px-4 py-2">End</th>
@@ -114,7 +130,7 @@ export default function WarehouseJobsPage() {
           <tbody>
             {loading ? (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">Loading...</td>
+                <td colSpan={8} className="text-center py-8 text-gray-500">Loading...</td>
               </tr>
             ) : jobs && jobs.length > 0 ? (
               jobs.map((job) => (
@@ -122,6 +138,11 @@ export default function WarehouseJobsPage() {
                   <td className="px-4 py-2 font-mono font-bold">{job.code}</td>
                   <td className="px-4 py-2">{job.title}</td>
                   <td className="px-4 py-2">{job.client}</td>
+                  <td className="px-4 py-2">
+                    <span className="px-2 py-1 rounded bg-blue-900/30 text-blue-300 text-xs">
+                      {(job as any).warehouse || 'NEW SOUND Warehouse'}
+                    </span>
+                  </td>
                   <td className="px-4 py-2">
                     <span className="px-2 py-1 rounded bg-zinc-700 text-xs">
                       {job.status}
@@ -144,7 +165,7 @@ export default function WarehouseJobsPage() {
               ))
             ) : (
               <tr>
-                <td colSpan={7} className="text-center py-8 text-gray-500">No jobs found.</td>
+                <td colSpan={8} className="text-center py-8 text-gray-500">No jobs found.</td>
               </tr>
             )}
           </tbody>

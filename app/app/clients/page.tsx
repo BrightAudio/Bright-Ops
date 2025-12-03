@@ -133,6 +133,75 @@ export default function ClientsPage() {
     }
   }
 
+  async function handleDelete(client: Client) {
+    if (!confirm(`Are you sure you want to delete ${client.name}?\n\nThis will remove the client record, but existing jobs will not be affected.`)) {
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (client.id) {
+        const { error } = await (supabase as any)
+          .from('clients')
+          .delete()
+          .eq('id', client.id);
+        
+        if (error) throw error;
+        loadClients();
+      } else {
+        alert('This client only exists in jobs and cannot be deleted here.');
+      }
+    } catch (error) {
+      console.error('Error deleting client:', error);
+      alert('Failed to delete client');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleClearAllClients() {
+    if (!confirm('⚠️ WARNING: This will delete ALL clients from the database AND clear client names from all jobs.\n\nAre you sure you want to continue?')) {
+      return;
+    }
+
+    if (!confirm('This action cannot be undone. Type DELETE in the next prompt to confirm.')) {
+      return;
+    }
+
+    const confirmation = prompt('Type DELETE to confirm:');
+    if (confirmation !== 'DELETE') {
+      alert('Deletion cancelled.');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      // Delete all client records
+      const { error: clientsError } = await (supabase as any)
+        .from('clients')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+      
+      if (clientsError) throw clientsError;
+
+      // Clear client field from all jobs
+      const { error: jobsError } = await (supabase as any)
+        .from('jobs')
+        .update({ client: null, client_id: null })
+        .not('client', 'is', null);
+      
+      if (jobsError) throw jobsError;
+      
+      alert('All clients have been cleared from the database and jobs.');
+      loadClients();
+    } catch (error) {
+      console.error('Error clearing clients:', error);
+      alert('Failed to clear clients');
+    } finally {
+      setSaving(false);
+    }
+  }
+
   const filtered = clients.filter(c => 
     c.name?.toLowerCase().includes(search.toLowerCase()) ||
     c.email?.toLowerCase().includes(search.toLowerCase()) ||
@@ -152,12 +221,22 @@ export default function ClientsPage() {
           </button>
           <h1 className="text-2xl font-bold text-amber-400">Clients</h1>
         </div>
-        <Link 
-          href="/app/clients/new"
-          className="px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors"
-        >
-          New Client
-        </Link>
+        <div className="flex gap-2">
+          <button
+            onClick={handleClearAllClients}
+            disabled={saving}
+            className="px-4 py-2 bg-red-600 text-white rounded font-semibold hover:bg-red-700 transition-colors disabled:opacity-50"
+            title="Clear all test data"
+          >
+            Clear All
+          </button>
+          <Link 
+            href="/app/clients/new"
+            className="px-4 py-2 bg-amber-400 text-black rounded font-semibold hover:bg-amber-500 transition-colors"
+          >
+            New Client
+          </Link>
+        </div>
       </div>
 
       <input
@@ -238,12 +317,24 @@ export default function ClientsPage() {
                       <div className="text-sm text-zinc-500 italic">No phone</div>
                     )}
                   </div>
-                  <button
-                    onClick={() => handleEdit(client)}
-                    className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-black rounded text-sm font-medium transition-colors"
-                  >
-                    {client.id ? 'Edit' : 'Add Info'}
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(client)}
+                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-black rounded text-sm font-medium transition-colors"
+                    >
+                      {client.id ? 'Edit' : 'Add Info'}
+                    </button>
+                    {client.id && (
+                      <button
+                        onClick={() => handleDelete(client)}
+                        disabled={saving}
+                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
+                        title="Delete client"
+                      >
+                        Delete
+                      </button>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

@@ -187,7 +187,13 @@ export default function FinancialPage() {
 
   return (
     <DashboardLayout>
-      <div style={{ padding: "1.5rem" }}>
+      {loading ? (
+        <div style={{ padding: "2rem", textAlign: "center", color: "#e5e5e5", background: "#1a1a1a", minHeight: "100vh" }}>
+          <div style={{ fontSize: "1.5rem", marginBottom: "1rem" }}>💰 Loading Financial Data...</div>
+          <div style={{ color: "#9ca3af" }}>Please wait while we fetch your financial information</div>
+        </div>
+      ) : (
+      <div style={{ padding: "1.5rem", background: "#1a1a1a", minHeight: "100vh", color: "#e5e5e5" }}>
         <div style={{ marginBottom: "1.5rem", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div>
             <h1
@@ -947,6 +953,7 @@ export default function FinancialPage() {
           </div>
         )}
       </div>
+      )}
     </DashboardLayout>
   );
 }

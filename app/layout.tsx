@@ -9,10 +9,22 @@ export const metadata: Metadata = {
   description: "Home base and workspace for Bright Ops operations",
 };
 
+// Performance optimization - revalidate static content
+export const revalidate = 3600; // Revalidate every hour
+
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en" data-scroll-behavior="smooth">
       <head>
+        <link 
+          rel="preconnect"
+          href="https://fonts.googleapis.com"
+        />
+        <link 
+          rel="preconnect"
+          href="https://fonts.gstatic.com"
+          crossOrigin="anonymous"
+        />
         <link 
           href="https://fonts.googleapis.com/css2?family=Source+Sans+Pro:wght@400;600;700&family=Playfair+Display:wght@400;600;700&display=swap" 
           rel="stylesheet"

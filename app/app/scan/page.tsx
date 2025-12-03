@@ -70,6 +70,33 @@ export default function ScanConsole() {
     setLoading(true); setMsg(null); setError(null);
     
     try {
+      // Check if this is a rig barcode (RIG-XXX format)
+      if (codeToSend.startsWith('RIG-')) {
+        const response = await fetch('/api/inventory/rig-scan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            barcode: codeToSend,
+            location: jobCode, // Use job code as location
+            status: 'checked_out',
+            job_id: jobCode
+          })
+        });
+        
+        const data = await response.json();
+        
+        if (!response.ok) {
+          playSafe(errBeep);
+          throw new Error(data.error || 'Failed to scan rig');
+        }
+        
+        playSafe(okBeep);
+        setMsg(`✅ ${data.message}\n${data.items_updated} items updated to ${jobCode}`);
+        setCode("");
+        setLoading(false);
+        return;
+      }
+      
       // Import supabase dynamically
       const { supabase } = await import("@/lib/supabaseClient");
       

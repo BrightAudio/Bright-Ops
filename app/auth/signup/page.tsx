@@ -9,6 +9,9 @@ export default function SignupPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
+  const [fullName, setFullName] = useState("");
+  const [role, setRole] = useState<'manager' | 'associate'>('associate');
+  const [department, setDepartment] = useState<'warehouse' | 'leads' | 'both'>('both');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
@@ -25,12 +28,30 @@ export default function SignupPage() {
 
     try {
       const supabaseAny = supabase as any;
-      const { error: signUpError } = await supabaseAny.auth.signUp({
+      const { data: authData, error: signUpError } = await supabaseAny.auth.signUp({
         email,
         password,
       });
 
       if (signUpError) throw signUpError;
+
+      // Create user profile after successful signup
+      if (authData.user) {
+        const { error: profileError } = await supabaseAny
+          .from('user_profiles')
+          .insert({
+            id: authData.user.id,
+            email,
+            full_name: fullName,
+            role,
+            department
+          });
+
+        if (profileError) {
+          console.error('Failed to create profile:', profileError);
+          // Don't fail signup if profile creation fails, they can update later
+        }
+      }
 
       alert("Check your email to confirm your account");
       router.push("/auth/login");
@@ -78,6 +99,28 @@ export default function SignupPage() {
               className="block text-sm font-medium mb-2"
               style={{ color: "#e5e5e5" }}
             >
+              Full Name
+            </label>
+            <input
+              type="text"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="w-full px-4 py-2 rounded-lg"
+              style={{
+                background: "#1a1a1a",
+                border: "1px solid #333333",
+                color: "#e5e5e5",
+              }}
+              placeholder="John Doe"
+            />
+          </div>
+
+          <div>
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "#e5e5e5" }}
+            >
               Email
             </label>
             <input
@@ -93,6 +136,53 @@ export default function SignupPage() {
               }}
               placeholder="you@example.com"
             />
+          </div>
+
+          <div>
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "#e5e5e5" }}
+            >
+              Role
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value as 'manager' | 'associate')}
+              required
+              className="w-full px-4 py-2 rounded-lg"
+              style={{
+                background: "#1a1a1a",
+                border: "1px solid #333333",
+                color: "#e5e5e5",
+              }}
+            >
+              <option value="associate">Associate</option>
+              <option value="manager">Manager</option>
+            </select>
+          </div>
+
+          <div>
+            <label
+              className="block text-sm font-medium mb-2"
+              style={{ color: "#e5e5e5" }}
+            >
+              Department
+            </label>
+            <select
+              value={department}
+              onChange={(e) => setDepartment(e.target.value as 'warehouse' | 'leads' | 'both')}
+              required
+              className="w-full px-4 py-2 rounded-lg"
+              style={{
+                background: "#1a1a1a",
+                border: "1px solid #333333",
+                color: "#e5e5e5",
+              }}
+            >
+              <option value="both">Both Warehouse & Leads</option>
+              <option value="warehouse">Warehouse Only</option>
+              <option value="leads">Leads Only</option>
+            </select>
           </div>
 
           <div>

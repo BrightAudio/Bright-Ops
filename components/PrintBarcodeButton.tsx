@@ -251,3 +251,5 @@ export function PrintBarcodeButton({
     </div>
   );
 }
+
+export default PrintBarcodeButton;

@@ -112,27 +112,11 @@ const getSubcategory = (itemName: string, category: string): string => {
 // Sound feedback functions
 const playBeep = (type: "success" | "error") => {
   try {
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const oscillator = audioContext.createOscillator();
-    const gainNode = audioContext.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(audioContext.destination);
-
-    if (type === "success") {
-      oscillator.frequency.value = 800;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.2);
-    } else {
-      oscillator.frequency.value = 400;
-      gainNode.gain.setValueAtTime(0.3, audioContext.currentTime);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.3);
-    }
-
-    oscillator.start(audioContext.currentTime);
-    oscillator.stop(audioContext.currentTime + (type === "success" ? 0.2 : 0.3));
+    const audio = new Audio(type === "success" ? "/success.mp3" : "/fail.mp3");
+    audio.volume = 0.5;
+    audio.play().catch(e => console.error('Audio playback failed:', e));
   } catch (e) {
-    // Silently fail if audio not available
+    console.error('Audio creation failed:', e);
   }
 };
 
@@ -464,11 +448,12 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
       );
 
       // Update warehouse inventory
-      const { data: inventoryItem } = await supabase
-        .from('inventory_items')
-        .select('id, qty_in_warehouse')
-        .eq('id', item.inventory_item_id)
-        .single();
+      if (item.inventory_item_id) {
+        const { data: inventoryItem } = await supabase
+          .from('inventory_items')
+          .select('id, qty_in_warehouse')
+          .eq('id', item.inventory_item_id)
+          .single();
 
       if (inventoryItem) {
         const invItem = inventoryItem as any;
@@ -480,18 +465,21 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
           })
           .eq('id', invItem.id);
       }
+      }
 
       // Record the return
-      await supabase
-        .from('pull_sheet_scans')
-        .insert({
-          pull_sheet_id: pullSheetId,
-          pull_sheet_item_id: itemId,
+      if (pullSheetId) {
+        await supabase
+          .from('pull_sheet_scans')
+          .insert({
+            pull_sheet_id: pullSheetId,
+            pull_sheet_item_id: itemId,
           barcode: `QUANTITY-${qtyToReturn}`,
           item_name: item.item_name,
           scan_type: 'return',
           inventory_item_id: item.inventory_item_id
-        });
+        } as any);
+      }
 
       setQuantityInputItemId(null);
       setQuantityInputValue('');
@@ -509,11 +497,12 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
     try {
       setSaving(true);
 
-      const { data: inventoryItem } = await supabase
-        .from('inventory_items')
-        .select('id, qty_in_warehouse')
-        .eq('id', item.inventory_item_id)
-        .single();
+      if (item.inventory_item_id) {
+        const { data: inventoryItem } = await supabase
+          .from('inventory_items')
+          .select('id, qty_in_warehouse')
+          .eq('id', item.inventory_item_id)
+          .single();
 
       if (inventoryItem) {
         const invItem = inventoryItem as any;
@@ -523,6 +512,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
             qty_in_warehouse: Math.max(0, (invItem.qty_in_warehouse || 0) - 1)
           })
           .eq('id', invItem.id);
+      }
       }
 
       setItems(prev =>
@@ -1121,9 +1111,16 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
 
       {/* Scan Prompts Configuration Modal */}
       {showScanPromptsConfig && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-xl font-semibold text-white mb-4">Scan Prompt Settings</h2>
+        <div 
+          className="fixed inset-0 flex items-center justify-center z-[9999]"
+          style={{ backgroundColor: '#d4d4d8' }}
+          onClick={() => setShowScanPromptsConfig(false)}
+        >
+          <div 
+            className="bg-white border border-zinc-300 rounded-lg p-6 w-full max-w-md shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h2 className="text-xl font-semibold text-zinc-900 mb-4">Scan Prompt Settings</h2>
             
             <div className="space-y-4">
               {/* Success Message */}
@@ -1189,8 +1186,8 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                 </label>
                 <input
                   type="range"
-                  min="0.5"
-                  max="2.0"
+                  min="0.1"
+                  max="3.0"
                   step="0.1"
                   value={scanPrompts.pitch}
                   onChange={(e) => setScanPrompts(prev => ({ ...prev, pitch: parseFloat(e.target.value) }))}
@@ -1200,7 +1197,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
 
               {/* Enable Toggles */}
               <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <label className="flex items-center gap-2 text-sm text-zinc-700">
                   <input
                     type="checkbox"
                     checked={scanPrompts.enableSuccess}
@@ -1209,7 +1206,7 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                   />
                   Enable success sounds
                 </label>
-                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <label className="flex items-center gap-2 text-sm text-zinc-700">
                   <input
                     type="checkbox"
                     checked={scanPrompts.enableError}
@@ -1220,19 +1217,49 @@ export default function ReturnManifestClient({ jobId, pullSheetId: propPullSheet
                 </label>
               </div>
 
-              {/* Preview Button */}
-              <button
-                onClick={() => {
-                  if (soundTheme === 'voice') {
-                    playVoice('success', scanPrompts);
-                  } else {
-                    playBeep('success');
-                  }
-                }}
-                className="w-full px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
-              >
-                Test Success Sound
-              </button>
+              {/* Preview Buttons */}
+              <div className="space-y-2">
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => {
+                      if (soundTheme === 'voice') {
+                        playVoice('success', scanPrompts);
+                      } else {
+                        playBeep('success');
+                      }
+                    }}
+                    className="px-3 py-2 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  >
+                    Test Success Sound
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (soundTheme === 'voice') {
+                        playVoice('error', scanPrompts);
+                      } else {
+                        playBeep('error');
+                      }
+                    }}
+                    className="px-3 py-2 bg-red-600 text-white rounded text-sm hover:bg-red-700"
+                  >
+                    Test Error Sound
+                  </button>
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                  <button
+                    onClick={() => playVoice('success', scanPrompts)}
+                    className="px-3 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    Test Success Voice
+                  </button>
+                  <button
+                    onClick={() => playVoice('error', scanPrompts)}
+                    className="px-3 py-2 bg-orange-600 text-white rounded text-sm hover:bg-orange-700"
+                  >
+                    Test Error Voice
+                  </button>
+                </div>
+              </div>
             </div>
 
             {/* Action Buttons */}

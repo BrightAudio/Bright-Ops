@@ -69,7 +69,8 @@ export async function GET(request: NextRequest) {
     }
 
     // If filtering by client, need to join through applications
-    let data, error;
+    let data: any[] = [];
+    let error;
     if (clientId) {
       const { data: payments, error: paymentsError } = await query;
       
@@ -83,7 +84,7 @@ export async function GET(request: NextRequest) {
       }
     } else {
       const result = await query;
-      data = result.data;
+      data = (result.data as any[]) || [];
       error = result.error;
     }
 
@@ -108,14 +109,15 @@ export async function GET(request: NextRequest) {
       return dueDate < new Date();
     }).length || 0;
 
+    const paymentsData = data || [];
     return NextResponse.json({
       success: true,
-      payments: data,
+      payments: paymentsData,
       summary: {
         totalPaid,
         totalPending,
         overdueCount,
-        count: data?.length || 0
+        count: paymentsData.length
       }
     });
 

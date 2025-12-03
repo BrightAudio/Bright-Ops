@@ -7,6 +7,7 @@ export type RigContainer = {
   name: string;
   description: string | null;
   category: string | null;
+  barcode: string | null;
   created_at: string;
   updated_at: string;
 };

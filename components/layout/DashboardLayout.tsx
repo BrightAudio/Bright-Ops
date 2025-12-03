@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -79,43 +79,72 @@ export default function DashboardLayout({
     link: string;
   }>>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const { notifications, markAsRead, markAllAsRead, hasUnread } = useNotifications();
   const [userProfile, setUserProfile] = useState<{ full_name: string; company_name: string | null; email: string } | null>(null);
+  const [currentEmployeeId, setCurrentEmployeeId] = useState<string | undefined>();
+  const { notifications, markAsRead, markAllAsRead, hasUnread } = useNotifications(currentEmployeeId);
   const profileRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLDivElement>(null);
   const notificationsRef = useRef<HTMLDivElement>(null);
   const { currentLocation } = useLocation();
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch user profile (optimized with caching)
+  // Fetch user profile (cached and optimized)
   useEffect(() => {
+    let mounted = true;
+    
     async function fetchUserProfile() {
       // Check cache first
       const cached = sessionStorage.getItem('user_profile');
-      if (cached) {
-        setUserProfile(JSON.parse(cached));
-        return;
+      if (cached && mounted) {
+        try {
+          const profileData = JSON.parse(cached);
+          setUserProfile(profileData);
+        } catch (e) {
+          // Invalid cache, continue to fetch
+        }
       }
-
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
+      
+      try {
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        
+        if (userError || !user || !mounted) return;
+        
         const { data: profile } = await supabase
           .from('user_profiles')
           .select('full_name, company_name')
           .eq('id', user.id)
-          .single();
-        
+          .maybeSingle();
+          
         const profileData = {
-          full_name: (profile as any)?.full_name || 'User',
+          full_name: (profile as any)?.full_name || user.email?.split('@')[0] || 'User',
           company_name: (profile as any)?.company_name || null,
           email: user.email || ''
         };
         
-        setUserProfile(profileData);
-        // Cache for session
-        sessionStorage.setItem('user_profile', JSON.stringify(profileData));
+        if (mounted) {
+          setUserProfile(profileData);
+          sessionStorage.setItem('user_profile', JSON.stringify(profileData));
+        }
+
+        // Fetch employee ID
+        if (user.email && mounted) {
+          const { data: employee } = await supabase
+            .from('employees')
+            .select('id')
+            .eq('email', user.email)
+            .maybeSingle();
+          
+          if (employee && mounted) {
+            setCurrentEmployeeId(employee.id);
+          }
+        }
+      } catch (error) {
+        console.error('Error fetching user profile:', error);
       }
     }
+    
     fetchUserProfile();
+    return () => { mounted = false; };
   }, []);
 
   // Close profile dropdown when clicking outside
@@ -141,16 +170,23 @@ export default function DashboardLayout({
     };
   }, [profileOpen, searchOpen, notificationsOpen]);
 
-  // Search functionality
+  // Search functionality (debounced for performance)
   useEffect(() => {
-    const performSearch = async () => {
-      if (!searchQuery.trim()) {
-        setSearchResults([]);
-        return;
-      }
+    // Clear existing timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    if (!searchQuery.trim()) {
+      setSearchResults([]);
+      setSearchLoading(false);
+      return;
+    }
 
-      setSearchLoading(true);
-      
+    setSearchLoading(true);
+    
+    // Debounce search by 300ms
+    searchTimeoutRef.current = setTimeout(async () => {
       try {
         const results: any[] = [];
         const query = searchQuery.toLowerCase();
@@ -215,17 +251,16 @@ export default function DashboardLayout({
         setSearchResults(results);
       } catch (error) {
         console.error('Search error:', error);
-        setSearchResults([]);
       } finally {
         setSearchLoading(false);
       }
-    };
-
-    const debounce = setTimeout(() => {
-      performSearch();
     }, 300);
-
-    return () => clearTimeout(debounce);
+    
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
   }, [searchQuery]);
 
   const toggleSidebar = () => {
@@ -538,8 +573,8 @@ export default function DashboardLayout({
                       let icon = "fas fa-info-circle";
                       let color = "#6B7280";
                       if (type === "pull_sheet") { icon = "fas fa-clipboard-list"; color = "#137CFB"; }
-                      if (type === "job") { icon = "fas fa-briefcase"; color = "#10B981"; }
-                      if (type === "inventory") { icon = "fas fa-box"; color = "#F59E0B"; }
+                      if (type === "job_assignment") { icon = "fas fa-briefcase"; color = "#10B981"; }
+                      if (type === "job_update") { icon = "fas fa-calendar-check"; color = "#F59E0B"; }
                       if (type === "system") { icon = "fas fa-bell"; color = "#8B5CF6"; }
                       return link ? (
                         <Link
@@ -714,10 +749,10 @@ export default function DashboardLayout({
                     </div>
                     <div>
                       <div style={{ fontWeight: 600, fontSize: '0.9375rem' }}>
-                        {userProfile?.company_name || userProfile?.full_name || 'Bright Audio'}
+                        {userProfile?.full_name || 'User'}
                       </div>
                       <div style={{ fontSize: '0.8125rem', color: 'rgba(255, 255, 255, 0.7)' }}>
-                        {userProfile?.email || 'admin@brightaudio.com'}
+                        {userProfile?.email || 'user@example.com'}
                       </div>
                     </div>
                   </div>

@@ -2,12 +2,12 @@
 // @ts-nocheck
 
 import { useState, useEffect } from 'react';
-import { FaDollarSign, FaCalculator, FaFileSignature, FaChartLine, FaCog, FaUniversity, FaBell, FaCreditCard, FaArchive } from 'react-icons/fa';
+import { FaDollarSign, FaCalculator, FaFileSignature, FaChartLine, FaCog, FaUniversity, FaBell, FaCreditCard, FaArchive, FaCode } from 'react-icons/fa';
 import { supabase } from '@/lib/supabaseClient';
 import { loadStripe } from '@stripe/stripe-js';
 
 export default function FinancingPage() {
-  const [activeTab, setActiveTab] = useState<'calculator' | 'applications' | 'active' | 'payments' | 'section179' | 'archive'>('calculator');
+  const [activeTab, setActiveTab] = useState<'calculator' | 'applications' | 'active' | 'payments' | 'section179' | 'website' | 'archive'>('calculator');
   
   // Calculator state
   const [financeAmount, setFinanceAmount] = useState('50000');
@@ -52,6 +52,8 @@ export default function FinancingPage() {
   const [inventoryCategoryFilter, setInventoryCategoryFilter] = useState('');
   const [inventorySubcategoryFilter, setInventorySubcategoryFilter] = useState('');
   const [inventorySearch, setInventorySearch] = useState('');
+  const [editingLeaseAmount, setEditingLeaseAmount] = useState<string | null>(null);
+  const [editedAmount, setEditedAmount] = useState('');
   
   const [newApp, setNewApp] = useState({
     client_name: '',
@@ -578,10 +580,65 @@ export default function FinancingPage() {
       loadActiveFinancing();
     } catch (error: any) {
       console.error('Error in updateApplicationStatus:', error);
-      alert('Error: ' + error.message);
-    } finally {
-      setProcessing(false);
+      alert('Error updating status: ' + error.message);
     }
+    setProcessing(false);
+  }
+
+  async function updateLeaseAmount(appId: string, newAmount: string) {
+    try {
+      setProcessing(true);
+      
+      const amount = parseFloat(newAmount);
+      if (isNaN(amount) || amount <= 0) {
+        alert('Please enter a valid lease amount');
+        return;
+      }
+
+      const app = applications.find(a => a.id === appId);
+      if (!app) return;
+
+      // Recalculate down payment (20% of new lease amount)
+      const downPaymentPercentage = app.down_payment_percentage || 20;
+      const newDownPayment = amount * (downPaymentPercentage / 100);
+
+      // Recalculate monthly payment with new amount
+      const principal = amount;
+      const months = parseInt(app.term_months) || 36;
+      const interestRate = parseFloat(app.interest_rate || '6.5');
+      const rate = interestRate / 100 / 12;
+      const basePayment = (principal * rate * Math.pow(1 + rate, months)) / 
+                         (Math.pow(1 + rate, months) - 1);
+      const salesTax = parseFloat(app.sales_tax_rate || '8.25');
+      const salesTaxRate = salesTax / 100;
+      const salesTaxPerPayment = basePayment * salesTaxRate;
+      const totalPayment = basePayment + salesTaxPerPayment;
+      const totalPaid = totalPayment * months;
+
+      const { error } = await supabase
+        .from('financing_applications')
+        .update({
+          loan_amount: amount,
+          monthly_payment: totalPayment,
+          total_amount: totalPaid,
+          down_payment_amount: newDownPayment
+        })
+        .eq('id', appId);
+
+      if (error) {
+        alert('Error updating lease amount: ' + error.message);
+        return;
+      }
+
+      setEditingLeaseAmount(null);
+      setEditedAmount('');
+      await loadApplications();
+      alert('✓ Lease amount updated successfully!');
+      
+    } catch (error: any) {
+      alert('Error: ' + error.message);
+    }
+    setProcessing(false);
   }
 
   async function processActivationFirstPayment(applicationId: string) {
@@ -1139,7 +1196,7 @@ export default function FinancingPage() {
       
       if (paymentsError) throw paymentsError;
       
-      const totalLeasePayments = payments?.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0) || 0;
+      const totalLeasePayments = payments?.reduce((sum, p) => sum + parseFloat((p as any).amount || 0), 0) || 0;
       const purchaseCost = parseFloat(equipment.purchase_cost) || 0;
       const section179 = parseFloat(equipment.section_179_elected_amount) || 0;
       const bonusPercent = parseFloat(equipment.bonus_depreciation_percentage) || 0;
@@ -1182,7 +1239,7 @@ export default function FinancingPage() {
     try {
       setProcessing(true);
       
-      const { error } = await supabase.rpc('complete_lease_transfer', {
+      const { error } = await (supabase as any).rpc('complete_lease_transfer', {
         equipment_id: equipmentId
       });
       
@@ -1749,6 +1806,7 @@ export default function FinancingPage() {
             { id: 'active', label: 'Active Leases', icon: <FaChartLine /> },
             { id: 'payments', label: 'Payments', icon: <FaDollarSign /> },
             { id: 'section179', label: 'Section 179', icon: <FaCog /> },
+            { id: 'website', label: 'Website Widget', icon: <FaCode /> },
             { id: 'archive', label: 'Archive', icon: <FaArchive /> }
           ].map((tab) => (
             <button
@@ -2134,260 +2192,6 @@ export default function FinancingPage() {
               )}
             </div>
           </div>
-
-          {/* Right Column: Cost Estimator */}
-          <div style={{ background: '#2a2a2a', borderRadius: '12px', padding: '2rem', border: '1px solid #3a3a3a' }}>
-            <h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '1.5rem' }}>📋 Cost Estimator</h2>
-
-            {/* Equipment Items Section */}
-            <div style={{ marginBottom: '1.5rem' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                <h3 style={{ fontSize: '18px', fontWeight: 600 }}>Equipment & Materials</h3>
-                <button
-                  onClick={addEstimatorItem}
-                  style={{
-                    padding: '0.5rem 1rem',
-                    background: '#22c55e',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: '6px',
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    fontWeight: 500
-                  }}
-                >
-                  + Add Item
-                </button>
-              </div>
-
-              {estimatorItems.length > 0 ? (
-                <div style={{ marginBottom: '1rem', overflowX: 'auto' }}>
-                  <table style={{ width: '100%', borderCollapse: 'collapse' }}>
-                    <thead>
-                      <tr style={{ backgroundColor: '#1a1a1a' }}>
-                        <th style={{ padding: '0.75rem', textAlign: 'left', fontSize: '14px', fontWeight: 600, borderBottom: '1px solid #3a3a3a' }}>Description</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '14px', fontWeight: 600, width: '80px', borderBottom: '1px solid #3a3a3a' }}>Qty</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '14px', fontWeight: 600, width: '100px', borderBottom: '1px solid #3a3a3a' }}>Unit Cost</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'right', fontSize: '14px', fontWeight: 600, width: '100px', borderBottom: '1px solid #3a3a3a' }}>Total</th>
-                        <th style={{ padding: '0.75rem', textAlign: 'center', fontSize: '14px', fontWeight: 600, width: '60px', borderBottom: '1px solid #3a3a3a' }}></th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {estimatorItems.map((item) => (
-                        <tr key={item.id} style={{ borderBottom: '1px solid #3a3a3a' }}>
-                          <td style={{ padding: '0.75rem' }}>
-                            <input
-                              type="text"
-                              value={item.description}
-                              onChange={(e) => updateEstimatorItem(item.id, 'description', e.target.value)}
-                              placeholder="Item description"
-                              style={{
-                                width: '100%',
-                                padding: '0.5rem',
-                                background: '#1a1a1a',
-                                border: '1px solid #3a3a3a',
-                                borderRadius: '4px',
-                                color: '#e5e5e5',
-                                fontSize: '14px'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <input
-                              type="number"
-                              value={item.quantity}
-                              onChange={(e) => updateEstimatorItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                              min="1"
-                              style={{
-                                width: '60px',
-                                padding: '0.5rem',
-                                background: '#1a1a1a',
-                                border: '1px solid #3a3a3a',
-                                borderRadius: '4px',
-                                color: '#e5e5e5',
-                                fontSize: '14px',
-                                textAlign: 'center'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right' }}>
-                            <input
-                              type="number"
-                              value={item.unitCost}
-                              onChange={(e) => updateEstimatorItem(item.id, 'unitCost', parseFloat(e.target.value) || 0)}
-                              min="0"
-                              step="0.01"
-                              style={{
-                                width: '90px',
-                                padding: '0.5rem',
-                                background: '#1a1a1a',
-                                border: '1px solid #3a3a3a',
-                                borderRadius: '4px',
-                                color: '#e5e5e5',
-                                fontSize: '14px',
-                                textAlign: 'right'
-                              }}
-                            />
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'right', fontSize: '14px', fontWeight: 500, color: '#e5e5e5' }}>
-                            ${(item.quantity * item.unitCost).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </td>
-                          <td style={{ padding: '0.75rem', textAlign: 'center' }}>
-                            <button
-                              onClick={() => removeEstimatorItem(item.id)}
-                              style={{
-                                padding: '0.25rem 0.5rem',
-                                background: '#ef4444',
-                                color: 'white',
-                                border: 'none',
-                                borderRadius: '4px',
-                                cursor: 'pointer',
-                                fontSize: '12px'
-                              }}
-                            >
-                              ✕
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <div style={{ 
-                  padding: '2rem', 
-                  textAlign: 'center', 
-                  color: '#9ca3af',
-                  background: '#1a1a1a',
-                  borderRadius: '8px',
-                  border: '1px dashed #3a3a3a',
-                  marginBottom: '1rem'
-                }}>
-                  No items added yet. Click "+ Add Item" to start building your estimate.
-                </div>
-              )}
-            </div>
-
-            {/* Labor Section */}
-            <div style={{ marginBottom: '1.5rem', paddingTop: '1.5rem', borderTop: '2px solid #3a3a3a' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '1rem' }}>Labor / Installation</h3>
-              
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem' }}>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '14px', fontWeight: 500 }}>
-                    Hours
-                  </label>
-                  <input
-                    type="number"
-                    value={laborHours}
-                    onChange={(e) => setLaborHours(e.target.value)}
-                    min="0"
-                    step="0.5"
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      background: '#1a1a1a',
-                      border: '1px solid #3a3a3a',
-                      borderRadius: '8px',
-                      color: '#e5e5e5',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-                <div>
-                  <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '14px', fontWeight: 500 }}>
-                    Rate ($/hr)
-                  </label>
-                  <input
-                    type="number"
-                    value={laborRate}
-                    onChange={(e) => setLaborRate(e.target.value)}
-                    min="0"
-                    step="5"
-                    style={{
-                      width: '100%',
-                      padding: '0.75rem',
-                      background: '#1a1a1a',
-                      border: '1px solid #3a3a3a',
-                      borderRadius: '8px',
-                      color: '#e5e5e5',
-                      fontSize: '14px'
-                    }}
-                  />
-                </div>
-              </div>
-              
-              <div style={{ 
-                padding: '1rem', 
-                background: '#1a1a1a',
-                borderRadius: '8px',
-                border: '1px solid #3a3a3a'
-              }}>
-                <div style={{ fontSize: '14px', color: '#9ca3af', marginBottom: '0.25rem' }}>Labor Total:</div>
-                <div style={{ fontSize: '20px', fontWeight: 600, color: '#e5e5e5' }}>
-                  ${(parseFloat(laborHours) * parseFloat(laborRate)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </div>
-              </div>
-            </div>
-
-            {/* Estimate Summary */}
-            <div style={{ 
-              padding: '1.5rem',
-              background: '#1a1a1a',
-              borderRadius: '8px',
-              border: '2px solid #667eea',
-              marginBottom: '1rem'
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '14px', color: '#9ca3af' }}>
-                <span>Equipment Subtotal:</span>
-                <span style={{ fontWeight: 500, color: '#e5e5e5' }}>${calculateEstimate().equipmentTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '14px', color: '#9ca3af' }}>
-                <span>Labor Subtotal:</span>
-                <span style={{ fontWeight: 500, color: '#e5e5e5' }}>${calculateEstimate().laborTotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '14px', color: '#9ca3af', paddingTop: '0.75rem', borderTop: '1px solid #3a3a3a' }}>
-                <span>Subtotal:</span>
-                <span style={{ fontWeight: 600, color: '#e5e5e5' }}>${calculateEstimate().subtotal.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '0.75rem', fontSize: '14px', color: '#9ca3af' }}>
-                <span>Sales Tax (8.25%):</span>
-                <span style={{ fontWeight: 500, color: '#e5e5e5' }}>${calculateEstimate().salesTaxAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
-              </div>
-              <div style={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                paddingTop: '1rem', 
-                borderTop: '2px solid #667eea',
-                marginTop: '0.75rem'
-              }}>
-                <span style={{ fontSize: '16px', fontWeight: 600, color: '#e5e5e5' }}>Total Estimate:</span>
-                <span style={{ fontSize: '28px', fontWeight: 700, color: '#667eea' }}>
-                  ${calculateEstimate().total.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </span>
-              </div>
-            </div>
-
-            {/* Apply to Calculator Button */}
-            <button
-              onClick={applyEstimateToCalculator}
-              disabled={calculateEstimate().total === 0}
-              style={{
-                width: '100%',
-                padding: '0.875rem',
-                background: calculateEstimate().total === 0 ? '#4a4a4a' : 'linear-gradient(135deg, #22c55e 0%, #16a34a 100%)',
-                color: 'white',
-                border: 'none',
-                borderRadius: '8px',
-                fontSize: '16px',
-                fontWeight: 600,
-                cursor: calculateEstimate().total === 0 ? 'not-allowed' : 'pointer',
-                opacity: calculateEstimate().total === 0 ? 0.5 : 1
-              }}
-            >
-              → Use This Amount in Calculator
-            </button>
-          </div>
         </div>
       )}
 
@@ -2545,6 +2349,28 @@ export default function FinancingPage() {
                     <option value="36">36 Months</option>
                     <option value="48">48 Months</option>
                   </select>
+                  
+                  {/* Locked Interest Rate */}
+                  <div>
+                    <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '14px', color: '#9ca3af', fontWeight: 500 }}>
+                      Interest Rate (Locked)
+                    </label>
+                    <input
+                      type="text"
+                      value={`${newApp.interest_rate}%`}
+                      readOnly
+                      style={{
+                        padding: '0.75rem',
+                        background: '#333',
+                        border: '1px solid #3a3a3a',
+                        borderRadius: '8px',
+                        color: '#9ca3af',
+                        cursor: 'not-allowed',
+                        opacity: 0.7
+                      }}
+                    />
+                  </div>
+                  
                   <input
                     placeholder="Business Address"
                     value={newApp.business_address}
@@ -2801,17 +2627,17 @@ export default function FinancingPage() {
                     </button>
                     <button
                       onClick={createApplication}
-                      disabled={!newApp.terms_accepted}
+                      disabled={!newApp.terms_accepted || !newApp.client_name || !newApp.client_email || !newApp.client_phone || !newApp.drivers_license_number || !newApp.loan_amount || !newApp.equipment_description}
                       style={{
                         flex: 1,
                         padding: '0.75rem',
-                        background: newApp.terms_accepted ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#3a3a3a',
+                        background: (newApp.terms_accepted && newApp.client_name && newApp.client_email && newApp.client_phone && newApp.drivers_license_number && newApp.loan_amount && newApp.equipment_description) ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : '#3a3a3a',
                         border: 'none',
                         borderRadius: '8px',
-                        color: newApp.terms_accepted ? 'white' : '#6b7280',
+                        color: (newApp.terms_accepted && newApp.client_name && newApp.client_email && newApp.client_phone && newApp.drivers_license_number && newApp.loan_amount && newApp.equipment_description) ? 'white' : '#6b7280',
                         fontWeight: 600,
-                        cursor: newApp.terms_accepted ? 'pointer' : 'not-allowed',
-                        opacity: newApp.terms_accepted ? 1 : 0.5
+                        cursor: (newApp.terms_accepted && newApp.client_name && newApp.client_email && newApp.client_phone && newApp.drivers_license_number && newApp.loan_amount && newApp.equipment_description) ? 'pointer' : 'not-allowed',
+                        opacity: (newApp.terms_accepted && newApp.client_name && newApp.client_email && newApp.client_phone && newApp.drivers_license_number && newApp.loan_amount && newApp.equipment_description) ? 1 : 0.5
                       }}
                     >
                       Submit Application
@@ -2869,8 +2695,79 @@ export default function FinancingPage() {
                 
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1rem' }}>
                   <div>
-                    <div style={{ color: '#9ca3af', fontSize: '14px' }}>Lease Amount</div>
-                    <div style={{ fontSize: '18px', fontWeight: 600 }}>${parseFloat(app.loan_amount).toLocaleString()}</div>
+                    <div style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '0.5rem' }}>Lease Amount</div>
+                    {editingLeaseAmount === app.id ? (
+                      <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                        <input
+                          type="number"
+                          value={editedAmount}
+                          onChange={(e) => setEditedAmount(e.target.value)}
+                          placeholder="Enter new amount"
+                          style={{
+                            padding: '0.5rem',
+                            background: '#1a1a1a',
+                            border: '1px solid #667eea',
+                            borderRadius: '6px',
+                            color: '#e5e5e5',
+                            fontSize: '16px',
+                            width: '140px'
+                          }}
+                        />
+                        <button
+                          onClick={() => updateLeaseAmount(app.id, editedAmount)}
+                          disabled={processing || !editedAmount}
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            background: processing || !editedAmount ? '#4b5563' : '#10b981',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: 'white',
+                            fontSize: '14px',
+                            cursor: processing || !editedAmount ? 'not-allowed' : 'pointer'
+                          }}
+                        >
+                          ✓
+                        </button>
+                        <button
+                          onClick={() => {
+                            setEditingLeaseAmount(null);
+                            setEditedAmount('');
+                          }}
+                          style={{
+                            padding: '0.5rem 0.75rem',
+                            background: '#3a3a3a',
+                            border: 'none',
+                            borderRadius: '6px',
+                            color: '#e5e5e5',
+                            fontSize: '14px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                        <div style={{ fontSize: '18px', fontWeight: 600 }}>${parseFloat(app.loan_amount).toLocaleString()}</div>
+                        <button
+                          onClick={() => {
+                            setEditingLeaseAmount(app.id);
+                            setEditedAmount(app.loan_amount);
+                          }}
+                          style={{
+                            padding: '0.25rem 0.5rem',
+                            background: '#667eea',
+                            border: 'none',
+                            borderRadius: '4px',
+                            color: 'white',
+                            fontSize: '12px',
+                            cursor: 'pointer'
+                          }}
+                        >
+                          ✏️ Edit
+                        </button>
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div style={{ color: '#9ca3af', fontSize: '14px' }}>Term</div>
@@ -3252,7 +3149,7 @@ export default function FinancingPage() {
                           if (equipment && equipment.length > 0) {
                             for (const item of equipment) {
                               // Calculate new FMV based on actual lease term
-                              let baseResidual = parseFloat(item.residual_percentage) || 15;
+                              let baseResidual = parseFloat(String(item.residual_percentage || 15));
                               let termAdjustment = 0;
                               
                               // Adjust residual based on actual term (shorter term = higher FMV)
@@ -3265,7 +3162,7 @@ export default function FinancingPage() {
                               }
                               
                               const adjustedResidual = baseResidual + termAdjustment;
-                              const newFMV = parseFloat(item.purchase_cost) * (adjustedResidual / 100);
+                              const newFMV = parseFloat(String(item.purchase_cost)) * (adjustedResidual / 100);
                               
                               // Update equipment with new FMV and archive status
                               await supabase
@@ -4791,6 +4688,107 @@ export default function FinancingPage() {
                 No archived equipment yet
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* Website Widget Tab */}
+      {activeTab === 'website' && (
+        <div>
+          <div style={{ marginBottom: '2rem' }}>
+            <h2 style={{ fontSize: '24px', fontWeight: 600, marginBottom: '0.5rem' }}>🌐 Website Lease Application Widget</h2>
+            <p style={{ color: '#9ca3af', fontSize: '14px' }}>
+              Embed a lease-to-own application form on your website. Interest rate is locked at 6.5% for website submissions.
+            </p>
+          </div>
+
+          <div style={{
+            background: '#2a2a2a',
+            borderRadius: '12px',
+            padding: '2rem',
+            border: '1px solid #3a3a3a',
+            marginBottom: '2rem'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '1rem', color: '#667eea' }}>
+              Embed Code
+            </h3>
+            <p style={{ color: '#9ca3af', fontSize: '14px', marginBottom: '1rem' }}>
+              Copy and paste this code before the closing <code style={{ background: '#1a1a1a', padding: '2px 6px', borderRadius: '4px' }}>&lt;/body&gt;</code> tag on your website:
+            </p>
+            
+            <div style={{
+              background: '#1a1a1a',
+              border: '1px solid #3a3a3a',
+              borderRadius: '8px',
+              padding: '1rem',
+              position: 'relative',
+              fontFamily: 'monospace',
+              fontSize: '14px',
+              color: '#e5e5e5',
+              overflowX: 'auto'
+            }}>
+              <code>{`<script src="${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/lease-application-widget"></script>`}</code>
+              
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`<script src="${typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}/api/lease-application-widget"></script>`);
+                  alert('✓ Embed code copied to clipboard!');
+                }}
+                style={{
+                  position: 'absolute',
+                  top: '0.5rem',
+                  right: '0.5rem',
+                  padding: '0.5rem 1rem',
+                  background: '#667eea',
+                  border: 'none',
+                  borderRadius: '6px',
+                  color: 'white',
+                  fontSize: '12px',
+                  fontWeight: 600,
+                  cursor: 'pointer'
+                }}
+              >
+                📋 Copy Code
+              </button>
+            </div>
+          </div>
+
+          <div style={{
+            background: '#2a2a2a',
+            borderRadius: '12px',
+            padding: '2rem',
+            border: '1px solid #3a3a3a',
+            marginBottom: '2rem'
+          }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 600, marginBottom: '1rem', color: '#667eea' }}>
+              Widget Features
+            </h3>
+            <ul style={{ color: '#e5e5e5', fontSize: '14px', lineHeight: '1.8', paddingLeft: '1.5rem' }}>
+              <li>✓ <strong>Locked Interest Rate:</strong> 6.5% rate is pre-set and cannot be changed by customers</li>
+              <li>✓ <strong>Required Field Validation:</strong> Form cannot be submitted until all required fields are completed</li>
+              <li>✓ <strong>Real-time Payment Calculator:</strong> Shows monthly payment breakdown as customer enters information</li>
+              <li>✓ <strong>Automatic Lead Creation:</strong> Submissions create both lease applications and lead records</li>
+              <li>✓ <strong>Mobile Responsive:</strong> Works perfectly on all devices</li>
+              <li>✓ <strong>Secure:</strong> All data encrypted in transit and stored securely</li>
+            </ul>
+          </div>
+
+          <div style={{
+            background: '#1a1a1a',
+            borderRadius: '12px',
+            padding: '1.5rem',
+            border: '1px solid #667eea'
+          }}>
+            <h4 style={{ fontSize: '16px', fontWeight: 600, marginBottom: '0.75rem', color: '#667eea' }}>
+              ℹ️ Important Notes
+            </h4>
+            <ul style={{ color: '#9ca3af', fontSize: '13px', lineHeight: '1.6', paddingLeft: '1.5rem', margin: 0 }}>
+              <li>The widget appears as a floating button in the bottom-right corner of your website</li>
+              <li>Customer submissions appear in the "Applications" tab with status "pending"</li>
+              <li>Sales tax rate defaults to 8.25% but customers can adjust if needed</li>
+              <li>Interest rate is locked at 6.5% and cannot be changed by customers</li>
+              <li>All required fields must be filled before submission is allowed</li>
+            </ul>
           </div>
         </div>
       )}

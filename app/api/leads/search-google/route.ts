@@ -127,10 +127,6 @@ async function fetchPageContacts(url: string): Promise<{
       !email.includes('support@')
     );
 
-    // Extract phone numbers
-    const phoneRegex = /(\+\d{1,3}[-.\s]?)?\(?\d{3}\)?[-.\s]?\d{3}[-.\s]?\d{4}/g;
-    const phones = text.match(phoneRegex) || [];
-
     // Look for contact names near "contact", "director", "manager", "coordinator" keywords
     const namePatterns = [
       /(?:contact|director|manager|coordinator|events?|pastor|minister|reverend|rabbi|imam)\s*:?\s*([A-Z][a-z]+\s+[A-Z][a-z]+)/gi,
@@ -165,11 +161,50 @@ async function fetchPageContacts(url: string): Promise<{
       }
     }
 
+    // Extract phone number near the contact's email or name (not just any phone on page)
+    let contactPhone: string | undefined;
+    
+    if (contactEmail || contactName) {
+      // Find phone number within 200 characters of email or name
+      const searchTerm = contactEmail || contactName;
+      const searchIndex = text.toLowerCase().indexOf(searchTerm.toLowerCase());
+      
+      if (searchIndex !== -1) {
+        // Get text around the email/name (200 chars before and after)
+        const contextStart = Math.max(0, searchIndex - 200);
+        const contextEnd = Math.min(text.length, searchIndex + searchTerm.length + 200);
+        const context = text.substring(contextStart, contextEnd);
+        
+        // Look for phone in this context
+        const phoneRegex = /(\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/;
+        const phoneMatch = context.match(phoneRegex);
+        
+        if (phoneMatch) {
+          contactPhone = `(${phoneMatch[2]}) ${phoneMatch[3]}-${phoneMatch[4]}`;
+        }
+      }
+    }
+    
+    // Fallback: look for labeled phone numbers (direct line, office, etc.)
+    if (!contactPhone) {
+      const labeledPhonePatterns = [
+        /(?:phone|tel|telephone|call|mobile|cell|direct|office)\s*:?\s*(\+?1[-. ]?)?\(?([0-9]{3})\)?[-. ]?([0-9]{3})[-. ]?([0-9]{4})/i,
+      ];
+      
+      for (const pattern of labeledPhonePatterns) {
+        const match = text.match(pattern);
+        if (match) {
+          contactPhone = `(${match[2]}) ${match[3]}-${match[4]}`;
+          break;
+        }
+      }
+    }
+
     return {
       email: contactEmail,
       contactName,
       title,
-      phone: phones[0]
+      phone: contactPhone
     };
 
   } catch (error) {

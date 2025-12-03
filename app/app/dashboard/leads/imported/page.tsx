@@ -588,8 +588,13 @@ export default function ImportedLeadsPage() {
               </tr>
             </thead>
             <tbody className="divide-y" style={{ borderColor: '#333333' }}>
-              {filteredLeads.map((lead) => (
-                <tr key={lead.id} style={{ background: '#2a2a2a' }}>
+              {filteredLeads.map((lead) => {
+                const isFieldAudio = lead.source === 'audio-gigs-search';
+                return (
+                <tr key={lead.id} style={{ 
+                  background: isFieldAudio ? 'rgba(16, 185, 129, 0.1)' : '#2a2a2a',
+                  borderLeft: isFieldAudio ? '3px solid #10b981' : 'none'
+                }}>
                   <td className="py-4 whitespace-nowrap" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <input
                       type="checkbox"
@@ -599,7 +604,24 @@ export default function ImportedLeadsPage() {
                     />
                   </td>
                   <td className="py-4 whitespace-nowrap text-sm font-medium" style={{ color: '#e5e5e5', paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
-                    {lead.title || "—"}
+                    <div className="flex items-center gap-2">
+                      {lead.title || "—"}
+                      {isFieldAudio && (
+                        <span 
+                          style={{ 
+                            background: '#10b981', 
+                            color: 'white', 
+                            padding: '2px 8px', 
+                            borderRadius: '12px', 
+                            fontSize: '10px',
+                            fontWeight: '600'
+                          }}
+                          title="Field Audio Gig"
+                        >
+                          🎬 AUDIO
+                        </span>
+                      )}
+                    </div>
                   </td>
                   <td className="py-4 whitespace-nowrap" style={{ paddingLeft: '0.75rem', paddingRight: '0.75rem' }}>
                     <div className="font-medium" style={{ color: '#f3f4f6' }}>{lead.name}</div>
@@ -683,7 +705,8 @@ export default function ImportedLeadsPage() {
                     </div>
                   </td>
                 </tr>
-              ))}
+              );
+              })}
             </tbody>
           </table>
           </div>
