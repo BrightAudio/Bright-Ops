@@ -20,6 +20,7 @@ type Item = {
     barcode?: string;
     name?: string;
     category?: string;
+    is_quantity_item?: boolean;
   };
 };
 
@@ -83,7 +84,7 @@ export default function PullSheetDetailWrapper() {
         .from('pull_sheet_items')
         .select(`
           *,
-          inventory_items (barcode, name, category, gear_type, image_url)
+          inventory_items (barcode, name, category, gear_type, image_url, is_quantity_item)
         `)
         .eq('pull_sheet_id', pullSheetId)
         .order('sort_index', { ascending: true });

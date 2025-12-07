@@ -9,7 +9,8 @@ import {
   ScanLine,
   ClipboardList,
   Truck,
-  Users
+  Users,
+  Wand2
 } from "lucide-react";
 
 const warehouseLinks = [
@@ -18,6 +19,7 @@ const warehouseLinks = [
   { label: "Returns", href: "/app/warehouse/returns", icon: <ClipboardList className="w-4 h-4 mr-2" /> },
   { label: "Transports", href: "/app/warehouse/transports", icon: <Truck className="w-4 h-4 mr-2" /> },
   { label: "Scheduled Crew", href: "/app/warehouse/scheduled-crew", icon: <Users className="w-4 h-4 mr-2" /> },
+  { label: "Speaker Designer", href: "/app/warehouse/speaker-designer", icon: <Wand2 className="w-4 h-4 mr-2" /> },
 ];
 
 function classNames(...classes: (string | boolean | undefined)[]) {
@@ -118,7 +120,7 @@ export default function Sidebar() {
             id="sidebar-warehouse-list"
             className={classNames(
               "space-y-1 mt-2 overflow-hidden transition-all duration-300",
-              warehouseOpen ? "max-h-[500px] opacity-100" : "max-h-0 opacity-0"
+              warehouseOpen ? "max-h-[800px] opacity-100" : "max-h-0 opacity-0"
             )}
             aria-hidden={!warehouseOpen}
           >
@@ -175,6 +177,25 @@ export default function Sidebar() {
                 )}
               >
                 Equipment
+              </Link>
+            </li>
+          </ul>
+        </div>
+        {/* Work Area */}
+        <div className="mb-6">
+          <div className="text-xs font-bold uppercase text-white/40 px-3 mb-2 tracking-wider">Work Area</div>
+          <ul className="space-y-1">
+            <li>
+              <Link
+                href="/app/warehouse/speaker-designer"
+                className={classNames(
+                  "flex items-center px-4 py-2 rounded-lg font-medium transition-all border-l-4 border-transparent",
+                  (pathname === "/app/warehouse/speaker-designer" || pathname.startsWith("/app/warehouse/speaker-designer/")) &&
+                    "bg-amber-400/20 text-amber-200 border-amber-400"
+                )}
+              >
+                <Wand2 className="w-4 h-4 mr-2" />
+                Speaker Designer
               </Link>
             </li>
           </ul>

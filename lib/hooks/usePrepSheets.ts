@@ -145,7 +145,7 @@ export async function finalizePrepSheetByJob(jobId: string) {
     // Load prep items
     const itemsRes = await supabase
       .from('prep_sheet_items')
-      .select('id, inventory_item_id, required_qty, picked_qty, inventory_items(name)')
+      .select('id, inventory_item_id, item_name, qty_requested, qty_picked, inventory_items(name)')
       .eq('prep_sheet_id', prep.id);
     
     if (itemsRes.error) {
@@ -193,8 +193,9 @@ export async function finalizePrepSheetByJob(jobId: string) {
     // Insert pull sheet items
     const itemsToInsert = [] as any[];
     for (const it of items) {
-      const qty = (it.required_qty ?? 0);
-      const itemName = (it as any).inventory_items?.name || 'Unknown Item';
+      const qty = (it.qty_requested ?? 0);
+      // Use item_name if available (for potential items), otherwise get from join
+      const itemName = it.item_name || (it as any).inventory_items?.name || 'Unknown Item';
       itemsToInsert.push({
         pull_sheet_id: createdPull.id,
         inventory_item_id: it.inventory_item_id || null,

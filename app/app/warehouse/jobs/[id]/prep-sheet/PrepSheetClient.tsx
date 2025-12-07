@@ -36,6 +36,10 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
   const [newRowResults, setNewRowResults] = useState<any[]>([]);
   const [newRowSelected, setNewRowSelected] = useState<any | null>(null);
   const [newRowQty, setNewRowQty] = useState(1);
+  
+  // Client and potential items
+  const [selectedClient, setSelectedClient] = useState<{ id: string; name: string } | null>(null);
+  const [loadingPotentialItems, setLoadingPotentialItems] = useState(false);
 
   useEffect(() => {
     fetchPrepSheet();
@@ -47,12 +51,25 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
       
       const { data: jobData, error: jobError } = await supabase
         .from('jobs')
-        .select('id, code, title')
+        .select('id, code, title, client, client_id')
         .eq('id', jobId)
         .single();
 
       if (jobError) throw jobError;
       if (!jobData) throw new Error('Job not found');
+      
+      // Load client if available
+      if (jobData.client) {
+        const { data: clientData } = await supabase
+          .from('clients')
+          .select('id, name')
+          .eq('name', jobData.client)
+          .maybeSingle();
+        
+        if (clientData) {
+          setSelectedClient(clientData);
+        }
+      }
 
       // Get all prep sheets for this job (use latest one)
       const { data: allPrepSheets } = await supabase
@@ -87,9 +104,9 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
         const prepItems: PrepItem[] = (itemsData || []).map((item: any) => ({
           id: item.id,
           inventory_item_id: item.inventory_item_id,
-          item_name: item.inventory_items?.name || 'Unknown Item',
-          required_qty: item.required_qty || 0,
-          picked_qty: item.picked_qty || 0,
+          item_name: item.item_name || item.inventory_items?.name || 'Unknown Item',
+          required_qty: item.qty_requested || 0,
+          picked_qty: item.qty_picked || 0,
         }));
 
         setPrepSheet({
@@ -155,8 +172,8 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
         .insert([{
           prep_sheet_id: prepSheetId,
           inventory_item_id: newRowSelected.id,
-          required_qty: newRowQty,
-          picked_qty: 0,
+          qty_requested: newRowQty,
+          qty_picked: 0,
         }] as any);
 
       if (error) throw error;
@@ -166,6 +183,74 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
     } catch (err) {
       console.error('Error adding item:', err);
       alert('Failed to add item');
+    }
+  };
+  
+  const handleDeleteItem = async (itemId: string) => {
+    if (!confirm('Delete this item from the prep sheet?')) return;
+    
+    try {
+      const { error } = await supabase
+        .from('prep_sheet_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      
+      await fetchPrepSheet();
+    } catch (err) {
+      console.error('Error deleting item:', err);
+      alert('Failed to delete item');
+    }
+  };
+  
+  const handleLoadPotentialItems = async () => {
+    if (!selectedClient?.id) {
+      alert('No client associated with this job');
+      return;
+    }
+    
+    if (!prepSheetId) {
+      alert('Prep sheet not ready');
+      return;
+    }
+
+    setLoadingPotentialItems(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('potential_items')
+        .select('*')
+        .eq('client_id', selectedClient.id);
+
+      if (error) throw error;
+
+      if (data && data.length > 0) {
+        // Add each potential item to prep sheet
+        const itemsToInsert = data.map((item: any) => ({
+          prep_sheet_id: prepSheetId,
+          inventory_item_id: null, // Potential items don't have inventory IDs
+          item_name: item.item_name,
+          qty_requested: item.quantity || 1,
+          qty_picked: 0,
+        }));
+
+        const { error: insertError } = await supabase
+          .from('prep_sheet_items')
+          .insert(itemsToInsert as any);
+
+        if (insertError) throw insertError;
+
+        await fetchPrepSheet();
+        alert(`Added ${data.length} potential item(s) to prep sheet`);
+      } else {
+        alert('No potential items found for this client');
+      }
+    } catch (err) {
+      console.error('Error loading potential items:', err);
+      const errorMsg = err instanceof Error ? err.message : JSON.stringify(err);
+      alert('Failed to load potential items: ' + errorMsg);
+    } finally {
+      setLoadingPotentialItems(false);
     }
   };
 
@@ -228,6 +313,20 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
           </div>
         </div>
 
+        {/* Populate Potential Items Button */}
+        {selectedClient && (
+          <div className="mb-4">
+            <button
+              onClick={handleLoadPotentialItems}
+              disabled={loadingPotentialItems}
+              className="px-4 py-2 bg-purple-600 text-white rounded-lg font-medium hover:bg-purple-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              📦 {loadingPotentialItems ? 'Loading...' : 'Populate Potential Items'}
+            </button>
+            <p className="text-xs text-zinc-500 mt-1">Load items from {selectedClient.name}'s potential items list</p>
+          </div>
+        )}
+
         <div className="space-y-3">
           {/* Existing Items */}
           {prepSheet.items.map((item) => (
@@ -236,9 +335,18 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
                 <div className="text-white font-semibold text-lg mb-1">{item.item_name}</div>
                 <div className="text-zinc-500 text-sm">Deficit to be filled from warehouse</div>
               </div>
-              <div className="text-right">
-                <div className="text-3xl font-bold text-amber-400">0/{item.required_qty}</div>
-                <div className="text-zinc-500 text-xs mt-1">Not yet pulled</div>
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-3xl font-bold text-amber-400">0/{item.required_qty}</div>
+                  <div className="text-zinc-500 text-xs mt-1">Not yet pulled</div>
+                </div>
+                <button
+                  onClick={() => handleDeleteItem(item.id)}
+                  className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                  title="Delete item"
+                >
+                  🗑️
+                </button>
               </div>
             </div>
           ))}

@@ -11,6 +11,7 @@ type InventoryItem = {
   name: string;
   barcode: string | null;
   category: string | null;
+  subcategory: string | null;
   location: string | null;
 };
 
@@ -33,6 +34,8 @@ export default function CreatePullSheetPage() {
   
   // Item selection
   const [searchQuery, setSearchQuery] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState("");
+  const [subcategoryFilter, setSubcategoryFilter] = useState("");
   const [searchResults, setSearchResults] = useState<InventoryItem[]>([]);
   const [searching, setSearching] = useState(false);
   const [selectedItems, setSelectedItems] = useState<SelectedItem[]>([]);
@@ -44,6 +47,10 @@ export default function CreatePullSheetPage() {
   // Form state
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  // Potential items
+  const [selectedClient, setSelectedClient] = useState<any>(null);
+  const [loadingPotentialItems, setLoadingPotentialItems] = useState(false);
 
   // Load jobs for selection
   async function loadJobs(search: string) {
@@ -77,11 +84,75 @@ export default function CreatePullSheetPage() {
     setJobSearchQuery(`${job.code} - ${job.title}`);
     setPullSheetName(`${job.code} - ${job.title}`);
     setJobs([]);
+    
+    // Load client for potential items
+    loadClientForJob(job);
+  }
+  
+  // Load client info for potential items
+  async function loadClientForJob(job: any) {
+    if (!job.client) return;
+    
+    try {
+      const { data: clientData, error } = await supabase
+        .from('clients')
+        .select('id, name')
+        .eq('name', job.client)
+        .maybeSingle();
+      
+      if (!error && clientData) {
+        setSelectedClient(clientData);
+      }
+    } catch (err) {
+      console.error('Error loading client:', err);
+    }
+  }
+
+  // Load potential items for selected client
+  async function loadPotentialItems() {
+    if (!selectedClient?.id) {
+      alert('No client associated with this job');
+      return;
+    }
+    
+    setLoadingPotentialItems(true);
+    try {
+      const { data, error } = await (supabase as any)
+        .from('potential_items')
+        .select('*')
+        .eq('client_id', selectedClient.id);
+      
+      if (error) throw error;
+      
+      if (!data || data.length === 0) {
+        alert(`No potential items found for client "${selectedClient.name}". Add items in the Clients page first.`);
+        return;
+      }
+      
+      // Add potential items to selected items list
+      const newItems = data.map((item: any) => ({
+        tempId: `potential-${item.id}-${Date.now()}`,
+        inventory_item_id: '', // No inventory link for potential items
+        item_name: item.item_name,
+        barcode: null,
+        category: null,
+        qty_requested: item.quantity || 1,
+      }));
+      
+      setSelectedItems([...selectedItems, ...newItems]);
+      alert(`Added ${newItems.length} potential item(s) from ${selectedClient.name}`);
+      
+    } catch (err: any) {
+      console.error('Error loading potential items:', err);
+      alert('Failed to load potential items: ' + err.message);
+    } finally {
+      setLoadingPotentialItems(false);
+    }
   }
 
   // Search for inventory items
   async function searchInventory() {
-    if (!searchQuery.trim()) {
+    if (!searchQuery.trim() && !categoryFilter && !subcategoryFilter) {
       setSearchResults([]);
       return;
     }
@@ -90,10 +161,31 @@ export default function CreatePullSheetPage() {
     setError(null);
     
     try {
-      const { data, error: searchError } = await supabase
+      let query = supabase
         .from('inventory_items')
-        .select('id, name, barcode, category, location')
-        .or(`name.ilike.%${searchQuery.trim()}%,category.ilike.%${searchQuery.trim()}%,barcode.ilike.%${searchQuery.trim()}%`)
+        .select('id, name, barcode, category, subcategory, location');
+      
+      // Build filters
+      const filters = [];
+      
+      if (searchQuery.trim()) {
+        filters.push(`name.ilike.%${searchQuery.trim()}%`);
+        filters.push(`barcode.ilike.%${searchQuery.trim()}%`);
+      }
+      
+      if (categoryFilter) {
+        filters.push(`category.ilike.%${categoryFilter}%`);
+      }
+      
+      if (subcategoryFilter) {
+        filters.push(`subcategory.ilike.%${subcategoryFilter}%`);
+      }
+      
+      if (filters.length > 0) {
+        query = query.or(filters.join(','));
+      }
+      
+      const { data, error: searchError } = await query
         .order('name', { ascending: true })
         .limit(20);
       
@@ -217,12 +309,12 @@ export default function CreatePullSheetPage() {
       // Add items to pull sheet
       const itemsToInsert = selectedItems.map((item, index) => ({
         pull_sheet_id: pullSheet.id,
-        inventory_item_id: item.inventory_item_id,
+        inventory_item_id: item.inventory_item_id || null, // Null for potential items
         item_name: item.item_name,
         qty_requested: item.qty_requested,
         qty_pulled: 0,
         qty_fulfilled: 0,
-        category: item.category,
+        category: item.category || 'Other',
         prep_status: 'pending',
         sort_index: index,
         notes: null,
@@ -379,27 +471,72 @@ export default function CreatePullSheetPage() {
 
           {/* Search & Add Items */}
           <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 mb-6">
-            <h2 className="text-lg font-semibold mb-4">Add Equipment</h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold">Add Equipment</h2>
+              {selectedClient && (
+                <button
+                  onClick={loadPotentialItems}
+                  disabled={loadingPotentialItems}
+                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                  title={`Load items from ${selectedClient.name}`}
+                >
+                  <span>📦</span>
+                  <span>{loadingPotentialItems ? 'Loading...' : 'Use Potential Items'}</span>
+                </button>
+              )}
+            </div>
             
-            <div className="flex gap-2 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+            <div className="space-y-3 mb-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <input
                   type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+                  value={categoryFilter}
+                  onChange={(e) => setCategoryFilter(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && searchInventory()}
-                  placeholder="Search by name, category, or barcode (e.g., 'top speaker', 'JBL', 'lighting')..."
-                  className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded text-white focus:border-amber-400 focus:outline-none"
+                  placeholder="Category (e.g., tops, subs, mixer)..."
+                  className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded text-white focus:border-amber-400 focus:outline-none"
                 />
+                <input
+                  type="text"
+                  value={subcategoryFilter}
+                  onChange={(e) => setSubcategoryFilter(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && searchInventory()}
+                  placeholder="Subcategory..."
+                  className="w-full px-4 py-2 bg-zinc-900 border border-zinc-700 rounded text-white focus:border-amber-400 focus:outline-none"
+                />
+                <button
+                  onClick={() => {
+                    setCategoryFilter('');
+                    setSubcategoryFilter('');
+                    setSearchQuery('');
+                    setSearchResults([]);
+                  }}
+                  className="px-4 py-2 bg-zinc-700 text-white rounded hover:bg-zinc-600 font-medium"
+                >
+                  Clear Filters
+                </button>
               </div>
-              <button
-                onClick={searchInventory}
-                disabled={searching || !searchQuery.trim()}
-                className="px-6 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {searching ? 'Searching...' : 'Search'}
-              </button>
+              
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" size={18} />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && searchInventory()}
+                    placeholder="Search by name or barcode (e.g., 'JBL VTX', '12345')..."
+                    className="w-full pl-10 pr-4 py-2 bg-zinc-900 border border-zinc-700 rounded text-white focus:border-amber-400 focus:outline-none"
+                  />
+                </div>
+                <button
+                  onClick={searchInventory}
+                  disabled={searching}
+                  className="px-6 py-2 bg-amber-500 text-black rounded hover:bg-amber-400 font-medium disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {searching ? 'Searching...' : 'Search'}
+                </button>
+              </div>
             </div>
 
             {/* Search Results */}
@@ -473,10 +610,14 @@ export default function CreatePullSheetPage() {
                     </div>
                     
                     <button
-                      onClick={() => removeItem(item.tempId)}
-                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        removeItem(item.tempId);
+                      }}
+                      className="p-2 text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded transition-colors"
+                      title="Remove item"
                     >
-                      <Trash2 size={18} />
+                      <Trash2 size={20} />
                     </button>
                   </div>
                 ))}

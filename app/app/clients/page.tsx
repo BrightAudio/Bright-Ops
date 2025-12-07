@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { matchesSubcategory, getExtendedSubcategories } from '@/lib/utils/categoryMatching';
 
 type Client = {
   id: string;
@@ -11,6 +12,20 @@ type Client = {
   email?: string | null;
   phone?: string | null;
   job_count?: number;
+  upcoming_jobs?: Array<{
+    id: string;
+    code: string;
+    title: string;
+    start_at: string;
+    end_at: string;
+  }>;
+  potential_items?: Array<{
+    id: string;
+    item_name: string;
+    description: string | null;
+    quantity: number;
+    notes: string | null;
+  }>;
 };
 
 export default function ClientsPage() {
@@ -20,6 +35,19 @@ export default function ClientsPage() {
   const [editingClient, setEditingClient] = useState<string | null>(null);
   const [editForm, setEditForm] = useState({ email: '', phone: '' });
   const [saving, setSaving] = useState(false);
+  const [expandedClient, setExpandedClient] = useState<string | null>(null);
+  const [showPotentialItemForm, setShowPotentialItemForm] = useState<string | null>(null);
+  const [newPotentialItem, setNewPotentialItem] = useState({ 
+    item_name: '', 
+    description: '', 
+    quantity: 1, 
+    notes: '',
+    category: '',
+    subcategory: ''
+  });
+  const [inventorySearch, setInventorySearch] = useState('');
+  const [inventoryResults, setInventoryResults] = useState<any[]>([]);
+  const [searchingInventory, setSearchingInventory] = useState(false);
 
   useEffect(() => {
     loadClients();
@@ -31,7 +59,7 @@ export default function ClientsPage() {
       // Get all unique client names from jobs
       const { data: jobs, error: jobsError } = await supabase
         .from('jobs')
-        .select('client, client_id')
+        .select('client, client_id, id, code, title, start_at, end_at')
         .not('client', 'is', null) as any;
       
       if (jobsError) throw jobsError;
@@ -42,6 +70,14 @@ export default function ClientsPage() {
         .select('*') as any;
       
       if (clientsError) throw clientsError;
+
+      // Get potential items for all clients
+      const { data: potentialItems, error: itemsError } = await (supabase as any)
+        .from('potential_items')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (itemsError) console.error('Error loading potential items:', itemsError);
 
       // Merge: create a map of client names to their info
       const clientMap = new Map<string, Client>();
@@ -54,28 +90,73 @@ export default function ClientsPage() {
             name: client.name,
             email: client.email,
             phone: client.phone,
-            job_count: 0
+            job_count: 0,
+            upcoming_jobs: [],
+            potential_items: []
           });
         }
       });
 
       // Count jobs and add clients that only exist in jobs table
+      const today = new Date();
       jobs?.forEach((job: any) => {
         if (job.client) {
           if (clientMap.has(job.client)) {
             const client = clientMap.get(job.client)!;
             client.job_count = (client.job_count || 0) + 1;
+            
+            // Add upcoming jobs (jobs that haven't ended yet)
+            if (job.start_at && new Date(job.start_at) >= today) {
+              client.upcoming_jobs!.push({
+                id: job.id,
+                code: job.code,
+                title: job.title,
+                start_at: job.start_at,
+                end_at: job.end_at
+              });
+            }
           } else {
             // Client exists in jobs but not in clients table
+            const upcomingJobs = job.start_at && new Date(job.start_at) >= today ? [{
+              id: job.id,
+              code: job.code,
+              title: job.title,
+              start_at: job.start_at,
+              end_at: job.end_at
+            }] : [];
+            
             clientMap.set(job.client, {
               id: '', // No ID yet - needs to be created
               name: job.client,
               email: null,
               phone: null,
-              job_count: 1
+              job_count: 1,
+              upcoming_jobs: upcomingJobs,
+              potential_items: []
             });
           }
         }
+      });
+
+      // Add potential items to clients
+      potentialItems?.forEach((item: any) => {
+        const client = Array.from(clientMap.values()).find(c => c.id === item.client_id);
+        if (client) {
+          client.potential_items!.push({
+            id: item.id,
+            item_name: item.item_name,
+            description: item.description,
+            quantity: item.quantity,
+            notes: item.notes
+          });
+        }
+      });
+
+      // Sort upcoming jobs by date
+      clientMap.forEach(client => {
+        client.upcoming_jobs?.sort((a, b) => 
+          new Date(a.start_at).getTime() - new Date(b.start_at).getTime()
+        );
       });
 
       setClients(Array.from(clientMap.values()).sort((a, b) => 
@@ -127,7 +208,108 @@ export default function ClientsPage() {
       loadClients();
     } catch (error) {
       console.error('Error saving client:', error);
-      alert('Failed to save client information');
+      alert('Failed to save client info');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function handleAddPotentialItem(clientId: string) {
+    if (!clientId) {
+      alert('Please save client info before adding potential items');
+      return;
+    }
+    
+    if (!newPotentialItem.item_name.trim()) {
+      alert('Please enter an item name');
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('potential_items')
+        .insert([{
+          client_id: clientId,
+          item_name: newPotentialItem.item_name,
+          description: newPotentialItem.description || null,
+          quantity: newPotentialItem.quantity || 1,
+          notes: newPotentialItem.notes || null,
+          category: newPotentialItem.category || null,
+          subcategory: newPotentialItem.subcategory || null
+        }]);
+      
+      if (error) throw error;
+      
+      setNewPotentialItem({ item_name: '', description: '', quantity: 1, notes: '', category: '', subcategory: '' });
+      setInventorySearch('');
+      setInventoryResults([]);
+      setShowPotentialItemForm(null);
+      loadClients();
+    } catch (error) {
+      console.error('Error adding potential item:', error);
+      alert('Failed to add potential item');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  // Search inventory with extended category matching
+  async function searchInventoryForPotential(query: string) {
+    if (!query.trim() || query.length < 2) {
+      setInventoryResults([]);
+      return;
+    }
+
+    setSearchingInventory(true);
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('id, name, category, subcategory, barcode')
+        .or(`name.ilike.%${query.trim()}%,category.ilike.%${query.trim()}%,subcategory.ilike.%${query.trim()}%,barcode.ilike.%${query.trim()}%`)
+        .order('name', { ascending: true })
+        .limit(15);
+
+      if (error) throw error;
+
+      setInventoryResults(data || []);
+    } catch (err) {
+      console.error('Error searching inventory:', err);
+      setInventoryResults([]);
+    } finally {
+      setSearchingInventory(false);
+    }
+  }
+
+  // Select an inventory item to populate the form
+  function selectInventoryItem(item: any) {
+    setNewPotentialItem({
+      item_name: item.name,
+      description: item.barcode ? `Barcode: ${item.barcode}` : '',
+      quantity: 1,
+      notes: '',
+      category: item.category || '',
+      subcategory: item.subcategory || ''
+    });
+    setInventorySearch('');
+    setInventoryResults([]);
+  }
+
+  async function handleDeletePotentialItem(itemId: string) {
+    if (!confirm('Remove this potential item?')) return;
+    
+    setSaving(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('potential_items')
+        .delete()
+        .eq('id', itemId);
+      
+      if (error) throw error;
+      loadClients();
+    } catch (error) {
+      console.error('Error deleting potential item:', error);
+      alert('Failed to delete potential item');
     } finally {
       setSaving(false);
     }
@@ -302,39 +484,235 @@ export default function ClientsPage() {
                   </div>
                 </div>
               ) : (
-                <div className="flex justify-between items-start">
-                  <div className="flex-1">
-                    <div className="font-semibold text-amber-400">{client.name}</div>
-                    <div className="text-xs text-zinc-500 mb-2">{client.job_count} job{client.job_count !== 1 ? 's' : ''}</div>
-                    {client.email ? (
-                      <div className="text-sm text-zinc-300">📧 {client.email}</div>
-                    ) : (
-                      <div className="text-sm text-zinc-500 italic">No email</div>
-                    )}
-                    {client.phone ? (
-                      <div className="text-sm text-zinc-300">📞 {client.phone}</div>
-                    ) : (
-                      <div className="text-sm text-zinc-500 italic">No phone</div>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <button
-                      onClick={() => handleEdit(client)}
-                      className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-black rounded text-sm font-medium transition-colors"
-                    >
-                      {client.id ? 'Edit' : 'Add Info'}
-                    </button>
-                    {client.id && (
+                <div>
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <div className="font-semibold text-amber-400">{client.name}</div>
+                        {client.upcoming_jobs && client.upcoming_jobs.length > 0 && (
+                          <span className="px-2 py-0.5 bg-blue-600 text-white text-xs rounded-full">
+                            {client.upcoming_jobs.length} upcoming
+                          </span>
+                        )}
+                      </div>
+                      <div className="text-xs text-zinc-500 mb-2">{client.job_count} job{client.job_count !== 1 ? 's' : ''}</div>
+                      {client.email ? (
+                        <div className="text-sm text-zinc-300">📧 {client.email}</div>
+                      ) : (
+                        <div className="text-sm text-zinc-500 italic">No email</div>
+                      )}
+                      {client.phone ? (
+                        <div className="text-sm text-zinc-300">📞 {client.phone}</div>
+                      ) : (
+                        <div className="text-sm text-zinc-500 italic">No phone</div>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
                       <button
-                        onClick={() => handleDelete(client)}
-                        disabled={saving}
-                        className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
-                        title="Delete client"
+                        onClick={() => setExpandedClient(expandedClient === client.name ? null : client.name)}
+                        className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium transition-colors"
+                        title="View upcoming dates and potential items"
                       >
-                        Delete
+                        {expandedClient === client.name ? '▲ Hide' : '▼ Details'}
                       </button>
-                    )}
+                      <button
+                        onClick={() => handleEdit(client)}
+                        className="px-3 py-1 bg-amber-500 hover:bg-amber-600 text-black rounded text-sm font-medium transition-colors"
+                      >
+                        {client.id ? 'Edit' : 'Add Info'}
+                      </button>
+                      {client.id && (
+                        <button
+                          onClick={() => handleDelete(client)}
+                          disabled={saving}
+                          className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
+                          title="Delete client"
+                        >
+                          Delete
+                        </button>
+                      )}
+                    </div>
                   </div>
+
+                  {/* Expandable Section */}
+                  {expandedClient === client.name && (
+                    <div className="mt-4 pt-4 border-t border-zinc-700 space-y-4">
+                      {/* Upcoming Dates */}
+                      <div>
+                        <div className="font-semibold text-green-400 mb-2 flex items-center gap-2">
+                          📅 Upcoming Dates
+                        </div>
+                        {client.upcoming_jobs && client.upcoming_jobs.length > 0 ? (
+                          <div className="space-y-2">
+                            {client.upcoming_jobs.map(job => (
+                              <div key={job.id} className="p-2 bg-zinc-900 rounded border border-zinc-700">
+                                <div className="flex justify-between items-start">
+                                  <div>
+                                    <div className="font-medium text-white">{job.code} - {job.title}</div>
+                                    <div className="text-sm text-zinc-400 mt-1">
+                                      {new Date(job.start_at).toLocaleDateString()} 
+                                      {job.end_at && ` - ${new Date(job.end_at).toLocaleDateString()}`}
+                                    </div>
+                                  </div>
+                                  <Link 
+                                    href={`/app/jobs/${job.id}`}
+                                    className="text-blue-400 hover:text-blue-300 text-sm"
+                                  >
+                                    View →
+                                  </Link>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-zinc-500 italic">No upcoming jobs</div>
+                        )}
+                      </div>
+
+                      {/* Potential Items */}
+                      <div>
+                        <div className="font-semibold text-purple-400 mb-2 flex items-center gap-2 justify-between">
+                          <span>📦 Potential Items</span>
+                          <button
+                            onClick={() => setShowPotentialItemForm(showPotentialItemForm === client.id ? null : client.id)}
+                            className="px-2 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-xs font-medium transition-colors"
+                            disabled={!client.id}
+                            title={!client.id ? 'Save client info first' : 'Add potential item'}
+                          >
+                            + Add Item
+                          </button>
+                        </div>
+
+                        {showPotentialItemForm === client.id && (
+                          <div className="mb-3 p-3 bg-zinc-900 rounded border border-purple-600 space-y-2">
+                            {/* Inventory Search */}
+                            <div className="relative">
+                              <input
+                                type="text"
+                                placeholder="🔍 Search inventory (try 'tops', 'mixer', etc)..."
+                                className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700 focus:border-purple-400 focus:outline-none text-sm"
+                                value={inventorySearch}
+                                onChange={e => {
+                                  setInventorySearch(e.target.value);
+                                  searchInventoryForPotential(e.target.value);
+                                }}
+                              />
+                              {searchingInventory && (
+                                <div className="absolute right-3 top-2.5 text-purple-400 text-xs">Searching...</div>
+                              )}
+                              {inventoryResults.length > 0 && (
+                                <div className="absolute z-10 w-full mt-1 bg-zinc-800 border border-zinc-700 rounded max-h-48 overflow-y-auto">
+                                  {inventoryResults.map(item => (
+                                    <button
+                                      key={item.id}
+                                      type="button"
+                                      onClick={() => selectInventoryItem(item)}
+                                      className="w-full text-left px-3 py-2 hover:bg-zinc-700 border-b border-zinc-700 last:border-b-0"
+                                    >
+                                      <div className="text-white text-sm font-medium">{item.name}</div>
+                                      <div className="text-zinc-400 text-xs">
+                                        {item.subcategory && <span className="mr-2">📂 {item.subcategory}</span>}
+                                        {item.barcode && <span>🏷️ {item.barcode}</span>}
+                                      </div>
+                                    </button>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+
+                            <div className="text-xs text-zinc-500 italic">Or enter manually:</div>
+
+                            <input
+                              type="text"
+                              placeholder="Item name *"
+                              className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700 focus:border-purple-400 focus:outline-none text-sm"
+                              value={newPotentialItem.item_name}
+                              onChange={e => setNewPotentialItem(f => ({ ...f, item_name: e.target.value }))}
+                            />
+                            <input
+                              type="text"
+                              placeholder="Description"
+                              className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700 focus:border-purple-400 focus:outline-none text-sm"
+                              value={newPotentialItem.description}
+                              onChange={e => setNewPotentialItem(f => ({ ...f, description: e.target.value }))}
+                            />
+                            <input
+                              type="number"
+                              placeholder="Quantity"
+                              min="1"
+                              className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700 focus:border-purple-400 focus:outline-none text-sm"
+                              value={newPotentialItem.quantity}
+                              onChange={e => setNewPotentialItem(f => ({ ...f, quantity: parseInt(e.target.value) || 1 }))}
+                            />
+                            <textarea
+                              placeholder="Notes"
+                              rows={2}
+                              className="w-full px-3 py-2 rounded border bg-zinc-800 text-white border-zinc-700 focus:border-purple-400 focus:outline-none text-sm"
+                              value={newPotentialItem.notes}
+                              onChange={e => setNewPotentialItem(f => ({ ...f, notes: e.target.value }))}
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                onClick={() => handleAddPotentialItem(client.id)}
+                                disabled={saving}
+                                className="px-3 py-1 bg-purple-600 hover:bg-purple-700 text-white rounded text-sm font-medium transition-colors disabled:opacity-50"
+                              >
+                                {saving ? 'Adding...' : 'Add'}
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setShowPotentialItemForm(null);
+                                  setNewPotentialItem({ item_name: '', description: '', quantity: 1, notes: '', category: '', subcategory: '' });
+                                  setInventorySearch('');
+                                  setInventoryResults([]);
+                                }}
+                                className="px-3 py-1 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm font-medium transition-colors"
+                              >
+                                Cancel
+                              </button>
+                            </div>
+                          </div>
+                        )}
+
+                        {client.potential_items && client.potential_items.length > 0 ? (
+                          <div className="space-y-2">
+                            {client.potential_items.map(item => (
+                              <div key={item.id} className="p-2 bg-zinc-900 rounded border border-zinc-700">
+                                <div className="flex justify-between items-start">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-white flex items-center gap-2">
+                                      {item.item_name}
+                                      <span className="px-2 py-0.5 bg-purple-600 text-white text-xs rounded">
+                                        x{item.quantity}
+                                      </span>
+                                    </div>
+                                    {item.description && (
+                                      <div className="text-sm text-zinc-400 mt-1">{item.description}</div>
+                                    )}
+                                    {item.notes && (
+                                      <div className="text-xs text-zinc-500 mt-1 italic">{item.notes}</div>
+                                    )}
+                                  </div>
+                                  <button
+                                    onClick={() => handleDeletePotentialItem(item.id)}
+                                    disabled={saving}
+                                    className="text-red-400 hover:text-red-300 text-sm ml-2 disabled:opacity-50"
+                                    title="Remove item"
+                                  >
+                                    ✕
+                                  </button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-zinc-500 italic">
+                            No potential items. {client.id ? 'Add items that this client may need for jobs.' : 'Save client info first to add items.'}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

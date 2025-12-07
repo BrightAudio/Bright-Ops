@@ -44,6 +44,7 @@ export default function EditInventoryItemPage() {
 		residual_value: 0,
 		category: "",
 		subcategory: "",
+		is_quantity_item: false,
 		location: "NEW SOUND Warehouse",
 		tags: [] as string[],
 		image_url: "",
@@ -98,6 +99,7 @@ export default function EditInventoryItemPage() {
 				residual_value: item.residual_value ?? 0,
 				category: item.category ?? "",
 				subcategory: item.gear_type ?? "",
+				is_quantity_item: item.is_quantity_item ?? false,
 				location: item.location ?? "NEW SOUND Warehouse",
 				tags: (Array.isArray(item.tags) ? item.tags : []) as string[],
 				image_url: item.image_url ?? "",
@@ -293,6 +295,7 @@ export default function EditInventoryItemPage() {
 			residual_value: form.residual_value,
 			category: form.category || undefined,
 			subcategory: form.subcategory || null,
+			is_quantity_item: form.is_quantity_item,
 			location: form.location,
 				tags: form.tags,
 				image_url: form.image_url || null,
@@ -602,6 +605,20 @@ export default function EditInventoryItemPage() {
 								<option value="NEW SOUND Warehouse">NEW SOUND Warehouse</option>
 								<option value="Bright Audio Warehouse">Bright Audio Warehouse</option>
 							</select>
+						</div>
+						<div>
+							<label className="flex items-center gap-2 text-sm font-medium text-zinc-200 cursor-pointer">
+								<input
+									type="checkbox"
+									checked={form.is_quantity_item}
+									onChange={(e) => setForm(prev => ({ ...prev, is_quantity_item: e.target.checked }))}
+									className="w-4 h-4 rounded border-zinc-700 bg-zinc-800 text-blue-600 focus:ring-blue-500"
+								/>
+								Quantity Item
+							</label>
+							<p className="text-xs text-zinc-500 mt-1">
+								Check for cables/adapters. Uncheck for speakers/unique items.
+							</p>
 						</div>
 					</div>
 
