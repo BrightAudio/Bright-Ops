@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { ArrowLeft } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 
 type ArchivedJob = {
   id: string;
@@ -81,40 +83,44 @@ export default function ArchiveJobsClient() {
   const selectedManifest = selectedJobId ? manifests[selectedJobId] : null;
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200 p-6">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <div>
-            <button
-              onClick={() => router.back()}
-              className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+    <DashboardLayout>
+      <div className="p-6 max-w-7xl mx-auto">
+        {/* Header with Tabs */}
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold text-white mb-4">Archive</h1>
+          <div className="flex gap-2 border-b border-zinc-700">
+            <Link
+              href="/app/archive/jobs"
+              className="px-4 py-2 text-amber-400 border-b-2 border-amber-400 font-medium"
             >
-              <ArrowLeft size={20} />
-              <span>Back</span>
-            </button>
-            <h1 className="text-3xl font-bold text-gray-900">Job Archive</h1>
-            <p className="text-gray-600 mt-1">Completed and returned jobs</p>
-          </div>
-          <div className="text-right">
-            <div className="text-3xl font-bold text-blue-600">{jobs.length}</div>
-            <div className="text-sm text-gray-600">Archived Jobs</div>
+              Completed Jobs
+            </Link>
+            <Link
+              href="/app/archive/parts"
+              className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
+            >
+              Speaker Parts/Drivers
+            </Link>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Stats */}
+        <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-4 mb-6">
+          <div className="text-2xl font-bold text-white">{jobs.length}</div>
+          <div className="text-sm text-zinc-400">Archived Jobs</div>
+        </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Jobs List */}
           <div className="lg:col-span-1">
-            <div className="bg-white rounded-lg shadow">
-              <div className="p-4 border-b border-gray-200">
+            <div className="bg-zinc-800 border border-zinc-700 rounded-lg">
+              <div className="p-4 border-b border-zinc-700">
                 <input
                   type="text"
                   placeholder="Search jobs..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="w-full border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+                  className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-sm text-white focus:outline-none focus:border-amber-500"
                 />
               </div>
 
@@ -241,6 +247,6 @@ export default function ArchiveJobsClient() {
           </div>
         </div>
       </div>
-    </div>
+    </DashboardLayout>
   );
 }

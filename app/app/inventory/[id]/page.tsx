@@ -59,6 +59,7 @@ export default function EditInventoryItemPage() {
 			power_rating: "",
 			last_tested: "",
 			test_notes: "",
+			drivers: [] as any[],
 		},
 	});
 	const [saving, setSaving] = useState(false);
@@ -76,6 +77,23 @@ export default function EditInventoryItemPage() {
 		photographerUrl: string;
 		unsplashUrl: string;
 	}>>([]);
+	const [showAddDriverModal, setShowAddDriverModal] = useState(false);
+	const [availableParts, setAvailableParts] = useState<any[]>([]);
+	const [newDriver, setNewDriver] = useState({
+		name: "",
+		driver_type: "",
+		quantity: 1,
+		impedance: "",
+		power_rating: "",
+		frequency_response_low: "",
+		frequency_response_high: "",
+		sensitivity: "",
+		diameter: "",
+		fs: "",
+		qts: "",
+		vas: "",
+		xmax_excursion: "",
+	});
 
 	// Populate form when item loads
 	useEffect(() => {
@@ -103,24 +121,23 @@ export default function EditInventoryItemPage() {
 				location: item.location ?? "NEW SOUND Warehouse",
 				tags: (Array.isArray(item.tags) ? item.tags : []) as string[],
 				image_url: item.image_url ?? "",
-				repair_cost: item.repair_cost ?? 0,
-				maintenance_status: item.maintenance_status ?? "operational",
-				speaker_test_data: {
-					impedance: speakerData.impedance ?? "",
-					frequency_response_low: speakerData.frequency_response_low ?? "",
-					frequency_response_high: speakerData.frequency_response_high ?? "",
-					sensitivity: speakerData.sensitivity ?? "",
-					max_spl: speakerData.max_spl ?? "",
-					power_rating: speakerData.power_rating ?? "",
-					last_tested: speakerData.last_tested ?? "",
-					test_notes: speakerData.test_notes ?? "",
-				},
-			});
-			setOriginalBarcode(item.barcode ?? "");
-		}
-	}, [item, loading, error]);
-
-	const handleChange = (field: keyof typeof form, value: string | number) => {
+			repair_cost: item.repair_cost ?? 0,
+			maintenance_status: item.maintenance_status ?? "operational",
+			speaker_test_data: {
+				impedance: speakerData.impedance ?? "",
+				frequency_response_low: speakerData.frequency_response_low ?? "",
+				frequency_response_high: speakerData.frequency_response_high ?? "",
+				sensitivity: speakerData.sensitivity ?? "",
+				max_spl: speakerData.max_spl ?? "",
+				power_rating: speakerData.power_rating ?? "",
+				last_tested: speakerData.last_tested ?? "",
+				test_notes: speakerData.test_notes ?? "",
+				drivers: speakerData.drivers ?? [],
+			},
+		});
+		setOriginalBarcode(item.barcode ?? "");
+	}
+}, [item, loading, error]);	const handleChange = (field: keyof typeof form, value: string | number) => {
 		setForm((prev) => ({ ...prev, [field]: value }));
 	};
 
@@ -309,6 +326,106 @@ export default function EditInventoryItemPage() {
 		} finally {
 			setSaving(false);
 		}
+	}
+
+	// Load available salvaged parts for driver selection
+	useEffect(() => {
+		async function loadParts() {
+			try {
+				const { supabase } = await import("@/lib/supabaseClient");
+				const { data, error } = await (supabase as any)
+					.from('speaker_parts')
+					.select('*')
+					.eq('is_available', true)
+					.order('name');
+				
+				if (!error && data) {
+					setAvailableParts(data);
+				}
+			} catch (err) {
+				console.error('Error loading parts:', err);
+			}
+		}
+		
+		if (showAddDriverModal) {
+			loadParts();
+		}
+	}, [showAddDriverModal]);
+
+	function handleAddDriverFromPart(part: any) {
+		const driver = {
+			id: part.id,
+			name: part.name,
+			driver_type: part.driver_type,
+			quantity: 1,
+			impedance: part.impedance || "",
+			power_rating: part.power_rating || "",
+			frequency_response_low: part.frequency_response_low || "",
+			frequency_response_high: part.frequency_response_high || "",
+			sensitivity: part.sensitivity || "",
+			diameter: part.diameter || "",
+			fs: part.fs || "",
+			qts: part.qts || "",
+			vas: part.vas || "",
+			xmax_excursion: part.xmax_excursion || "",
+		};
+
+		setForm(prev => ({
+			...prev,
+			speaker_test_data: {
+				...prev.speaker_test_data,
+				drivers: [...(prev.speaker_test_data.drivers || []), driver]
+			}
+		}));
+		setShowAddDriverModal(false);
+	}
+
+	function handleAddNewDriver() {
+		if (!newDriver.name.trim()) {
+			setLocalError("Driver name is required");
+			return;
+		}
+
+		const driver = {
+			id: crypto.randomUUID(),
+			...newDriver
+		};
+
+		setForm(prev => ({
+			...prev,
+			speaker_test_data: {
+				...prev.speaker_test_data,
+				drivers: [...(prev.speaker_test_data.drivers || []), driver]
+			}
+		}));
+
+		// Reset form
+		setNewDriver({
+			name: "",
+			driver_type: "",
+			quantity: 1,
+			impedance: "",
+			power_rating: "",
+			frequency_response_low: "",
+			frequency_response_high: "",
+			sensitivity: "",
+			diameter: "",
+			fs: "",
+			qts: "",
+			vas: "",
+			xmax_excursion: "",
+		});
+		setShowAddDriverModal(false);
+	}
+
+	function handleRemoveDriver(index: number) {
+		setForm(prev => ({
+			...prev,
+			speaker_test_data: {
+				...prev.speaker_test_data,
+				drivers: prev.speaker_test_data.drivers.filter((_, i) => i !== index)
+			}
+		}));
 	}
 
 	async function handleDelete() {
@@ -915,6 +1032,374 @@ export default function EditInventoryItemPage() {
 									className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
 									placeholder="All drivers functional, slight cabinet wear"
 								/>
+							</div>
+						</div>
+
+						{/* Drivers Section */}
+						<div className="mt-6 pt-6 border-t border-zinc-600">
+							<div className="flex justify-between items-center mb-4">
+								<div>
+									<h4 className="text-md font-semibold text-white">Drivers</h4>
+									<p className="text-sm text-zinc-400">Individual driver components in this speaker</p>
+								</div>
+								<button
+									type="button"
+									onClick={() => setShowAddDriverModal(true)}
+									className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded-md text-sm"
+								>
+									+ Add Driver
+								</button>
+							</div>
+
+							{form.speaker_test_data.drivers && form.speaker_test_data.drivers.length > 0 ? (
+								<div className="space-y-3">
+									{form.speaker_test_data.drivers.map((driver: any, index: number) => (
+										<div key={index} className="p-4 bg-zinc-800 border border-zinc-700 rounded-md">
+											<div className="flex justify-between items-start">
+												<div className="flex-1">
+													<div className="flex items-center gap-2">
+														<h5 className="font-semibold text-white">{driver.name}</h5>
+														{driver.driver_type && (
+															<span className="px-2 py-0.5 bg-blue-900/30 border border-blue-700 text-blue-300 text-xs rounded">
+																{driver.driver_type}
+															</span>
+														)}
+														{driver.quantity && driver.quantity > 1 && (
+															<span className="px-2 py-0.5 bg-green-900/30 border border-green-700 text-green-300 text-xs rounded">
+																Qty: {driver.quantity}
+															</span>
+														)}
+													</div>
+													<div className="grid grid-cols-4 gap-3 mt-3 text-sm">
+														{driver.diameter && (
+															<div>
+																<span className="text-zinc-500">Size:</span>
+																<span className="ml-1 text-zinc-200">{driver.diameter}</span>
+															</div>
+														)}
+														{driver.impedance && (
+															<div>
+																<span className="text-zinc-500">Impedance:</span>
+																<span className="ml-1 text-zinc-200">{driver.impedance}</span>
+															</div>
+														)}
+														{driver.power_rating && (
+															<div>
+																<span className="text-zinc-500">Power:</span>
+																<span className="ml-1 text-zinc-200">{driver.power_rating}</span>
+															</div>
+														)}
+														{driver.sensitivity && (
+															<div>
+																<span className="text-zinc-500">Sensitivity:</span>
+																<span className="ml-1 text-zinc-200">{driver.sensitivity}</span>
+															</div>
+														)}
+													</div>
+													{(driver.frequency_response_low || driver.frequency_response_high) && (
+														<div className="mt-2 text-sm">
+															<span className="text-zinc-500">Frequency:</span>
+															<span className="ml-1 text-zinc-200">
+																{driver.frequency_response_low || '?'} - {driver.frequency_response_high || '?'} Hz
+															</span>
+														</div>
+													)}
+													{(driver.fs || driver.qts || driver.vas || driver.xmax_excursion) && (
+														<div className="mt-2 text-xs text-zinc-400 grid grid-cols-4 gap-2">
+															{driver.fs && <div>Fs: {driver.fs}</div>}
+															{driver.qts && <div>Qts: {driver.qts}</div>}
+															{driver.vas && <div>Vas: {driver.vas}</div>}
+															{driver.xmax_excursion && <div>Xmax: {driver.xmax_excursion}</div>}
+														</div>
+													)}
+												</div>
+												<button
+													type="button"
+													onClick={() => handleRemoveDriver(index)}
+													className="ml-4 px-3 py-1 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded"
+												>
+													Remove
+												</button>
+											</div>
+										</div>
+									))}
+								</div>
+							) : (
+								<p className="text-sm text-zinc-500 italic">No drivers added yet. Click "+ Add Driver" to add individual driver specifications.</p>
+							)}
+						</div>
+					</div>
+				)}
+
+				{/* Add Driver Modal */}
+				{showAddDriverModal && (
+					<div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+						<div className="bg-zinc-900 border border-zinc-700 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+							<div className="p-6">
+								<div className="flex justify-between items-center mb-6">
+									<h3 className="text-xl font-bold text-white">Add Driver</h3>
+									<button
+										onClick={() => {
+											setShowAddDriverModal(false);
+											setNewDriver({
+												name: "",
+												driver_type: "",
+												quantity: 1,
+												impedance: "",
+												power_rating: "",
+												frequency_response_low: "",
+												frequency_response_high: "",
+												sensitivity: "",
+												diameter: "",
+												fs: "",
+												qts: "",
+												vas: "",
+												xmax_excursion: "",
+											});
+										}}
+										className="text-zinc-400 hover:text-white"
+									>
+										✕
+									</button>
+								</div>
+
+								{/* Available Salvaged Parts */}
+								{availableParts.length > 0 && (
+									<div className="mb-6">
+										<h4 className="text-sm font-semibold text-white mb-3">Select from Salvaged Parts</h4>
+										<div className="grid grid-cols-2 gap-3 max-h-60 overflow-y-auto">
+											{availableParts.map((part) => (
+												<div
+													key={part.id}
+													onClick={() => handleAddDriverFromPart(part)}
+													className="p-3 bg-zinc-800 border border-zinc-700 hover:border-amber-600 rounded cursor-pointer transition-colors"
+												>
+													<div className="flex items-center gap-2">
+														<span className="text-2xl">🔧</span>
+														<div className="flex-1">
+															<div className="font-medium text-white">{part.name}</div>
+															<div className="text-xs text-zinc-400">
+																{part.driver_type} • {part.diameter} • {part.impedance}
+															</div>
+														</div>
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
+
+								{/* Manual Driver Entry */}
+								<div className="pt-6 border-t border-zinc-700">
+									<h4 className="text-sm font-semibold text-white mb-4">Or Add New Driver Manually</h4>
+									
+									<div className="grid grid-cols-2 gap-4">
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Driver Name *
+											</label>
+											<input
+												type="text"
+												value={newDriver.name}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, name: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="JBL 2226H"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Driver Type
+											</label>
+											<select
+												value={newDriver.driver_type}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, driver_type: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+											>
+												<option value="">Select...</option>
+												<option value="woofer">Woofer</option>
+												<option value="mid">Mid-range</option>
+												<option value="tweeter">Tweeter</option>
+												<option value="compression_driver">Compression Driver</option>
+												<option value="passive_radiator">Passive Radiator</option>
+											</select>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-4 gap-4 mt-4">
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Quantity
+											</label>
+											<input
+												type="number"
+												min="1"
+												value={newDriver.quantity}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, quantity: Number(e.target.value) }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Diameter
+											</label>
+											<input
+												type="text"
+												value={newDriver.diameter}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, diameter: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="15 inch"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Impedance
+											</label>
+											<input
+												type="text"
+												value={newDriver.impedance}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, impedance: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="8 ohm"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Power Rating
+											</label>
+											<input
+												type="text"
+												value={newDriver.power_rating}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, power_rating: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="600W"
+											/>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-3 gap-4 mt-4">
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Freq Low (Hz)
+											</label>
+											<input
+												type="text"
+												value={newDriver.frequency_response_low}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, frequency_response_low: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="40"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Freq High (Hz)
+											</label>
+											<input
+												type="text"
+												value={newDriver.frequency_response_high}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, frequency_response_high: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="2000"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Sensitivity (dB)
+											</label>
+											<input
+												type="text"
+												value={newDriver.sensitivity}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, sensitivity: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="96"
+											/>
+										</div>
+									</div>
+
+									<div className="grid grid-cols-4 gap-4 mt-4">
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Fs (Hz)
+											</label>
+											<input
+												type="text"
+												value={newDriver.fs}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, fs: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="35"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Qts
+											</label>
+											<input
+												type="text"
+												value={newDriver.qts}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, qts: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="0.4"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Vas (L)
+											</label>
+											<input
+												type="text"
+												value={newDriver.vas}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, vas: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="100"
+											/>
+										</div>
+										<div>
+											<label className="block text-sm font-medium text-zinc-200 mb-1">
+												Xmax (mm)
+											</label>
+											<input
+												type="text"
+												value={newDriver.xmax_excursion}
+												onChange={(e) => setNewDriver(prev => ({ ...prev, xmax_excursion: e.target.value }))}
+												className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-800 text-white"
+												placeholder="8"
+											/>
+										</div>
+									</div>
+
+									<div className="mt-6 flex justify-end gap-3">
+										<button
+											type="button"
+											onClick={() => {
+												setShowAddDriverModal(false);
+												setNewDriver({
+													name: "",
+													driver_type: "",
+													quantity: 1,
+													impedance: "",
+													power_rating: "",
+													frequency_response_low: "",
+													frequency_response_high: "",
+													sensitivity: "",
+													diameter: "",
+													fs: "",
+													qts: "",
+													vas: "",
+													xmax_excursion: "",
+												});
+											}}
+											className="px-4 py-2 border border-zinc-600 text-zinc-200 rounded hover:bg-zinc-800"
+										>
+											Cancel
+										</button>
+										<button
+											type="button"
+											onClick={handleAddNewDriver}
+											className="px-4 py-2 bg-amber-600 hover:bg-amber-700 text-white rounded"
+										>
+											Add Driver
+										</button>
+									</div>
+								</div>
 							</div>
 						</div>
 					</div>

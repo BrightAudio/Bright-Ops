@@ -16,17 +16,37 @@ type MaintenanceItem = {
   rental_notes: string | null;
 };
 
+type SpeakerPart = {
+  id: string;
+  name: string;
+  driver_type: string;
+  source_item_name: string;
+  impedance: string;
+  power_rating: string;
+  diameter: string;
+  condition: string;
+  is_available: boolean;
+  notes: string;
+  created_at: string;
+};
+
 export default function MaintenanceClient() {
   const router = useRouter();
+  const [activeTab, setActiveTab] = useState<'maintenance' | 'parts'>('maintenance');
   const [items, setItems] = useState<MaintenanceItem[]>([]);
+  const [parts, setParts] = useState<SpeakerPart[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [maintenanceNotes, setMaintenanceNotes] = useState('');
   const [repairing, setRepairing] = useState(false);
 
   useEffect(() => {
-    loadMaintenanceItems();
-  }, []);
+    if (activeTab === 'maintenance') {
+      loadMaintenanceItems();
+    } else {
+      loadParts();
+    }
+  }, [activeTab]);
 
   const loadMaintenanceItems = async () => {
     try {
@@ -41,6 +61,23 @@ export default function MaintenanceClient() {
       setItems(data || []);
     } catch (err) {
       console.error('Error loading maintenance items:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadParts = async () => {
+    try {
+      setLoading(true);
+      const { data, error } = await (supabase as any)
+        .from('speaker_parts')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setParts(data || []);
+    } catch (err) {
+      console.error('Error loading parts:', err);
     } finally {
       setLoading(false);
     }
