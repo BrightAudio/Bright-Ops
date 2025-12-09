@@ -1,62 +1,33 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import DashboardLayout from '@/components/layout/DashboardLayout';
-
-type SpeakerType = 'line_array' | 'shaded_line_array' | 'half_line_array' | 'sub' | 'active' | 'passive' | 'home_system';
-type Driver = {
-  id: string;
-  name: string;
-  type: string; // woofer, mid, tweeter, compression driver
-  specs?: any;
-};
-
-type Design = {
-  id: string;
-  name: string;
-  speakerType: SpeakerType;
-  drivers: Driver[];
-  cabinetDimensions?: {
-    width: number;
-    height: number;
-    depth: number;
-    volume: number; // liters
-  };
-  portSpecs?: {
-    diameter: number;
-    length: number;
-    tuning: number; // Hz
-  };
-  materials?: {
-    woodCutList: string[];
-    steelBracing: string[];
-    dampening: string;
-    crossover?: string;
-    ampPlate?: string;
-  };
-  blueprint?: {
-    woodCuts?: any[];
-    steelCuts?: any[];
-    bracingDesign?: {
-      pattern?: string;
-      positions?: any[];
-      instructions?: any;
-    };
-    assemblyNotes?: any;
-  };
-  availableParts?: any[];
-  aiAnalysis?: string;
-  createdAt: string;
-};
+import type {
+  SpeakerType,
+  Driver,
+  Design,
+  SavedDesign,
+  AvailableDriver,
+  NewDriverForm,
+  BlueprintResults,
+  DisplayedDriverAnalysis,
+  DriverAnalysis,
+  DesignTemplate,
+  CostEstimate,
+  MaterialCost
+} from '@/lib/types/speaker-designer';
 
 export default function SpeakerDesignerPage() {
   const [designs, setDesigns] = useState<Design[]>([]);
   const [currentDesign, setCurrentDesign] = useState<Partial<Design> | null>(null);
   const [speakerType, setSpeakerType] = useState<SpeakerType>('line_array');
-  const [selectedTypes, setSelectedTypes] = useState<SpeakerType[]>(['passive']); // Multiple type selection
+  const [selectedTypes, setSelectedTypes] = useState<SpeakerType[]>(['passive']);
   const [selectedDrivers, setSelectedDrivers] = useState<Driver[]>([]);
-  const [availableDrivers, setAvailableDrivers] = useState<any[]>([]);
+  const [availableDrivers, setAvailableDrivers] = useState<AvailableDriver[]>([]);
+  
+  // Global loading state to prevent conflicting operations
+  const [isOperating, setIsOperating] = useState(false);
   const [loading, setLoading] = useState(false);
   const [researching, setResearching] = useState(false);
   const [generating, setGenerating] = useState(false);
@@ -66,12 +37,12 @@ export default function SpeakerDesignerPage() {
   
   // Store research data to pass to design generation
   const [blueprintResearch, setBlueprintResearch] = useState<string>('');
-  const [driverAnalysis, setDriverAnalysis] = useState<any[]>([]);
+  const [driverAnalysis, setDriverAnalysis] = useState<DriverAnalysis[]>([]);
   const [showBlueprintResults, setShowBlueprintResults] = useState(false);
-  const [blueprintResults, setBlueprintResults] = useState<any>(null);
-  const [displayedDriverAnalyses, setDisplayedDriverAnalyses] = useState<any[]>([]); // For displaying individual driver results
+  const [blueprintResults, setBlueprintResults] = useState<BlueprintResults | null>(null);
+  const [displayedDriverAnalyses, setDisplayedDriverAnalyses] = useState<DisplayedDriverAnalysis[]>([]);
   const [aiResponse, setAiResponse] = useState('');
-  const [newDriver, setNewDriver] = useState({
+  const [newDriver, setNewDriver] = useState<NewDriverForm>({
     name: "",
     driver_type: "",
     impedance: "",
@@ -85,10 +56,237 @@ export default function SpeakerDesignerPage() {
     vas: "",
     xmax_excursion: "",
   });
+  
+  // Saved designs management
+  const [savedDesigns, setSavedDesigns] = useState<SavedDesign[]>([]);
+  const [showSavedDesigns, setShowSavedDesigns] = useState(false);
+  const [selectedSavedDesign, setSelectedSavedDesign] = useState<SavedDesign | null>(null);
+  
+  // Templates
+  const [showTemplates, setShowTemplates] = useState(false);
+  const [designTemplates] = useState<DesignTemplate[]>([
+    {
+      id: '1',
+      name: 'Passive Line Array',
+      description: '2-way line array element with passive crossover',
+      speakerType: 'line_array',
+      additionalTypes: ['passive'],
+      recommendedDrivers: [
+        { type: 'mid', count: 2, specs: '6.5" mid-range, 8Ω, 200W' },
+        { type: 'tweeter', count: 1, specs: '1" compression driver, 8Ω, 50W' }
+      ],
+      estimatedDimensions: { width: 300, height: 600, depth: 400, volume: 72 }
+    },
+    {
+      id: '2',
+      name: 'Active Subwoofer',
+      description: 'Powered subwoofer with DSP and amplifier',
+      speakerType: 'sub',
+      additionalTypes: ['active'],
+      recommendedDrivers: [
+        { type: 'woofer', count: 1, specs: '18" woofer, 4Ω, 1000W' }
+      ],
+      estimatedDimensions: { width: 600, height: 700, depth: 700, volume: 294 }
+    },
+    {
+      id: '3',
+      name: 'Home Studio Monitor',
+      description: '2-way active monitor for home studio use',
+      speakerType: 'home_system',
+      additionalTypes: ['active'],
+      recommendedDrivers: [
+        { type: 'woofer', count: 1, specs: '8" woofer, 4Ω, 100W' },
+        { type: 'tweeter', count: 1, specs: '1" dome tweeter, 4Ω, 30W' }
+      ],
+      estimatedDimensions: { width: 250, height: 350, depth: 300, volume: 26.25 }
+    }
+  ]);
+  
+  // Cost estimate
+  const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
+  const [showCostEstimate, setShowCostEstimate] = useState(false);
 
   useEffect(() => {
     loadAvailableDrivers();
+    loadSavedDesigns();
   }, []);
+
+  // Helper: Fetch with timeout
+  async function fetchWithTimeout(url: string, options: RequestInit, timeout = 30000): Promise<Response> {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), timeout);
+    
+    try {
+      const response = await fetch(url, {
+        ...options,
+        signal: controller.signal
+      });
+      clearTimeout(id);
+      return response;
+    } catch (error) {
+      clearTimeout(id);
+      if (error instanceof Error && error.name === 'AbortError') {
+        throw new Error('Request timed out');
+      }
+      throw error;
+    }
+  }
+
+  // Load saved designs
+  async function loadSavedDesigns() {
+    try {
+      const { data, error } = await supabase
+        .from('speaker_designs')
+        .select('*')
+        .order('created_at', { ascending: false }) as any;
+
+      if (error) throw error;
+      setSavedDesigns((data || []) as SavedDesign[]);
+    } catch (err) {
+      console.error('Error loading saved designs:', err);
+    }
+  }
+
+  // Clear all and start fresh
+  function handleClearAll() {
+    if (selectedDrivers.length === 0 && !currentDesign) {
+      return; // Nothing to clear
+    }
+
+    const confirmed = confirm('Are you sure you want to clear all drivers, research data, and the current design? This cannot be undone.');
+    if (!confirmed) return;
+
+    setSelectedDrivers([]);
+    setCurrentDesign(null);
+    setBlueprintResearch('');
+    setDriverAnalysis([]);
+    setDisplayedDriverAnalyses([]);
+    setBlueprintResults(null);
+    setShowBlueprintResults(false);
+    setCostEstimate(null);
+    setShowCostEstimate(false);
+    setAiResponse('');
+    setResearchComplete(false);
+    alert('Workspace cleared successfully');
+  }
+
+  // Validate inputs before generation
+  function validateInputs(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+
+    if (selectedDrivers.length === 0) {
+      errors.push('At least one driver must be selected');
+    }
+
+    // Validate driver specs
+    selectedDrivers.forEach((driver, idx) => {
+      if (!driver.name || driver.name.trim() === '') {
+        errors.push(`Driver ${idx + 1} has no name`);
+      }
+    });
+
+    return {
+      valid: errors.length === 0,
+      errors
+    };
+  }
+
+  // Calculate cost estimate from blueprint
+  function calculateCostEstimate(blueprint: any) {
+    if (!blueprint) return null;
+
+    const woodCosts: MaterialCost[] = [];
+    const steelCosts: MaterialCost[] = [];
+    const hardwareCosts: MaterialCost[] = [];
+
+    // Wood costs
+    if (blueprint.woodCuts && Array.isArray(blueprint.woodCuts)) {
+      const plywoodSheets = Math.ceil(blueprint.woodCuts.length / 4); // Assume 4 panels per sheet
+      woodCosts.push({
+        item: '18mm Baltic Birch Plywood (4x8 sheet)',
+        quantity: plywoodSheets,
+        unit: 'sheet',
+        unitPrice: 85,
+        totalPrice: plywoodSheets * 85
+      });
+    }
+
+    // Steel costs
+    if (blueprint.steelCuts && Array.isArray(blueprint.steelCuts)) {
+      const totalSteel = blueprint.steelCuts.reduce((sum: number, cut: any) => {
+        const length = cut.length || 0;
+        const qty = cut.quantity || 1;
+        return sum + (length * qty / 1000); // Convert to meters
+      }, 0);
+      
+      steelCosts.push({
+        item: 'Steel angle iron (per meter)',
+        quantity: Math.ceil(totalSteel),
+        unit: 'meter',
+        unitPrice: 12,
+        totalPrice: Math.ceil(totalSteel) * 12
+      });
+    }
+
+    // Hardware
+    hardwareCosts.push(
+      { item: 'Wood screws', quantity: 1, unit: 'box', unitPrice: 15, totalPrice: 15 },
+      { item: 'Wood glue', quantity: 1, unit: 'bottle', unitPrice: 12, totalPrice: 12 },
+      { item: 'Acoustic dampening material', quantity: 1, unit: 'sheet', unitPrice: 25, totalPrice: 25 }
+    );
+
+    const total = 
+      woodCosts.reduce((sum, item) => sum + item.totalPrice, 0) +
+      steelCosts.reduce((sum, item) => sum + item.totalPrice, 0) +
+      hardwareCosts.reduce((sum, item) => sum + item.totalPrice, 0);
+
+    return {
+      wood: woodCosts,
+      steel: steelCosts,
+      hardware: hardwareCosts,
+      total
+    };
+  }
+
+  // Apply template
+  function applyTemplate(template: DesignTemplate) {
+    const confirmed = confirm(`Apply template "${template.name}"? This will reset your current selection.`);
+    if (!confirmed) return;
+
+    setSpeakerType(template.speakerType);
+    setSelectedTypes(template.additionalTypes);
+    setShowTemplates(false);
+    setAiResponse(`Template "${template.name}" applied. Recommended drivers: ${template.recommendedDrivers.map(d => `${d.count}x ${d.type} (${d.specs})`).join(', ')}`);
+  }
+
+  // Load saved design
+  function loadSavedDesign(design: SavedDesign) {
+    const confirmed = confirm(`Load design "${design.name}"? This will replace your current work.`);
+    if (!confirmed) return;
+
+    setSpeakerType(design.speaker_type as SpeakerType);
+    setSelectedTypes(design.additional_types as SpeakerType[]);
+    setSelectedDrivers(design.drivers);
+    setBlueprintResearch(design.blueprint_research || '');
+    setDriverAnalysis(design.driver_analysis || []);
+    
+    setCurrentDesign({
+      id: design.id,
+      name: design.name,
+      speakerType: design.speaker_type as SpeakerType,
+      drivers: design.drivers,
+      cabinetDimensions: design.cabinet_dimensions || undefined,
+      portSpecs: design.port_specs || undefined,
+      materials: design.materials || undefined,
+      blueprint: design.blueprint || undefined,
+      aiAnalysis: design.ai_analysis || undefined,
+      createdAt: design.created_at
+    });
+
+    setShowSavedDesigns(false);
+    setSelectedSavedDesign(design);
+    setAiResponse(`Loaded design: ${design.name}`);
+  }
 
   async function loadAvailableDrivers() {
     try {
@@ -170,6 +368,12 @@ export default function SpeakerDesignerPage() {
       return;
     }
 
+    if (isOperating) {
+      alert('Another operation is in progress. Please wait.');
+      return;
+    }
+
+    setIsOperating(true);
     setResearching(true);
     setAiResponse('Analyzing selected drivers...');
 
@@ -186,19 +390,23 @@ export default function SpeakerDesignerPage() {
       }
 
       let analysisResults = '';
-      const driverAnalysisData: any[] = [];
+      const driverAnalysisData: DriverAnalysis[] = [];
       
       for (const driver of selectedDrivers) {
-        const response = await fetch('/api/ai/research-speakers', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            task: 'analyze_driver',
-            driver: driver
-          })
-        });
+        try {
+          const response = await fetchWithTimeout('/api/ai/research-speakers', {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              task: 'analyze_driver',
+              driver: driver
+            })
+          }, 30000);
 
-        if (response.ok) {
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
           const data = await response.json();
           analysisResults += `\n\n=== ${driver.name} ===\n${data.analysis}`;
           setAiResponse(analysisResults);
@@ -215,6 +423,9 @@ export default function SpeakerDesignerPage() {
             analysis: data.analysis || '',
             used: false
           }]);
+        } catch (driverErr) {
+          console.error(`Error analyzing ${driver.name}:`, driverErr);
+          setAiResponse(prev => prev + `\n\n⚠️ Failed to analyze ${driver.name}: ${driverErr instanceof Error ? driverErr.message : 'Unknown error'}`);
         }
       }
       
@@ -223,11 +434,12 @@ export default function SpeakerDesignerPage() {
         setDriverAnalysis(driverAnalysisData);
       }
       
-      setResearching(false);
     } catch (err) {
       console.error('Error analyzing drivers:', err);
-      setAiResponse('Driver analysis failed. Please try again.');
+      setAiResponse(`Driver analysis failed: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`);
+    } finally {
       setResearching(false);
+      setIsOperating(false);
     }
   }
 
@@ -237,6 +449,12 @@ export default function SpeakerDesignerPage() {
       return;
     }
 
+    if (isOperating) {
+      alert('Another operation is in progress. Please wait.');
+      return;
+    }
+
+    setIsOperating(true);
     setResearching(true);
     const driverNames = selectedDrivers.map(d => d.name).join(', ');
     const types = [speakerType, ...selectedTypes].join(' + ');
@@ -254,7 +472,7 @@ export default function SpeakerDesignerPage() {
         console.warn('Auth session unavailable, continuing without auth:', authErr);
       }
 
-      const response = await fetch('/api/ai/research-speakers', {
+      const response = await fetchWithTimeout('/api/ai/research-speakers', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -263,9 +481,12 @@ export default function SpeakerDesignerPage() {
           drivers: selectedDrivers,
           task: 'research'
         })
-      });
+      }, 45000); // Longer timeout for research
 
-      if (!response.ok) throw new Error('Research failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Research failed (${response.status}): ${errorText}`);
+      }
 
       const data = await response.json();
       setAiResponse(data.analysis || 'Research complete');
@@ -278,9 +499,10 @@ export default function SpeakerDesignerPage() {
       setResearchComplete(true);
     } catch (err) {
       console.error('Error researching:', err);
-      setAiResponse('Research failed. Please try again.');
+      setAiResponse(`Research failed: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`);
     } finally {
       setResearching(false);
+      setIsOperating(false);
     }
   }
 
@@ -390,6 +612,9 @@ export default function SpeakerDesignerPage() {
 
       alert('Design saved successfully!');
       setAiResponse(`✓ Design "${designName}" saved to database`);
+      
+      // Reload saved designs list
+      await loadSavedDesigns();
     } catch (error) {
       console.error('Error saving design:', error);
       alert('Failed to save design: ' + (error instanceof Error ? error.message : 'Unknown error'));
@@ -501,11 +726,23 @@ export default function SpeakerDesignerPage() {
 }
 
   async function handleGenerateDesign() {
-    if (selectedDrivers.length === 0) {
-      alert('Please add at least one driver first');
+    // Validate inputs first
+    const validation = validateInputs();
+    if (!validation.valid) {
+      alert('Cannot generate design:\n' + validation.errors.join('\n'));
       return;
     }
 
+    if (isOperating) {
+      alert('Another operation is in progress. Please wait.');
+      return;
+    }
+
+    // Confirm before generation
+    const confirmMsg = `Generate design with ${selectedDrivers.length} driver(s)?\n\nDrivers: ${selectedDrivers.map(d => d.name).join(', ')}`;
+    if (!confirm(confirmMsg)) return;
+
+    setIsOperating(true);
     setGenerating(true);
     setAiResponse('Generating speaker cabinet design...');
 
@@ -521,7 +758,7 @@ export default function SpeakerDesignerPage() {
         console.warn('Auth session unavailable, continuing without auth:', authErr);
       }
 
-      const response = await fetch('/api/ai/research-speakers', {
+      const response = await fetchWithTimeout('/api/ai/research-speakers', {
         method: 'POST',
         headers,
         body: JSON.stringify({
@@ -534,9 +771,12 @@ export default function SpeakerDesignerPage() {
           blueprintResearch: blueprintResearch || undefined,
           driverAnalysis: driverAnalysis.length > 0 ? driverAnalysis : undefined
         })
-      });
+      }, 60000); // Longer timeout for design generation
 
-      if (!response.ok) throw new Error('Design generation failed');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Design generation failed (${response.status}): ${errorText}`);
+      }
 
       const data = await response.json();
       
@@ -558,9 +798,10 @@ export default function SpeakerDesignerPage() {
       setAiResponse(data.analysis || 'Design generated successfully');
     } catch (err) {
       console.error('Error generating design:', err);
-      setAiResponse('Design generation failed. Please try again.');
+      setAiResponse(`Design generation failed: ${err instanceof Error ? err.message : 'Unknown error'}. Please try again.`);
     } finally {
       setGenerating(false);
+      setIsOperating(false);
     }
   }
 
@@ -568,20 +809,45 @@ export default function SpeakerDesignerPage() {
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
         <div className="mb-6">
+          <button
+            onClick={() => window.history.back()}
+            className="mb-4 flex items-center gap-2 text-zinc-400 hover:text-white transition-colors"
+          >
+            <span>←</span>
+            <span>Back</span>
+          </button>
           <h1 className="text-3xl font-bold text-white mb-2">AI Speaker Cabinet Designer</h1>
           <p className="text-zinc-400">Design professional speaker cabinets using AI analysis and driver specifications</p>
         </div>
 
         {/* Control Panel */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
+          {/* Templates Button */}
+          <button
+            onClick={() => setShowTemplates(!showTemplates)}
+            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <span>📋</span>
+            Templates
+          </button>
+
+          {/* Saved Designs Button */}
+          <button
+            onClick={() => setShowSavedDesigns(!showSavedDesigns)}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
+          >
+            <span>💾</span>
+            Saved ({savedDesigns.length})
+          </button>
+
           {/* Research Button */}
           <button
             onClick={handleResearchDesigns}
-            disabled={researching || selectedDrivers.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={isOperating || researching || selectedDrivers.length === 0}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>🔬</span>
-            {researching ? 'Researching...' : 'Find Blueprints'}
+            {researching ? 'Researching...' : 'Research'}
           </button>
 
           {/* Add Driver Button */}
@@ -589,33 +855,141 @@ export default function SpeakerDesignerPage() {
             onClick={() => setShowDriverSelector(!showDriverSelector)}
             className={`${
               showDriverSelector ? 'bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'
-            } text-white px-6 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2`}
+            } text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2`}
           >
             <span>🔊</span>
-            {showDriverSelector ? 'Close Selector' : `Add Driver (${selectedDrivers.length})`}
+            Drivers ({selectedDrivers.length})
           </button>
 
           {/* Analyze Drivers Button */}
           <button
             onClick={handleAnalyzeDrivers}
-            disabled={researching || selectedDrivers.length === 0}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={isOperating || researching || selectedDrivers.length === 0}
+            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>🔍</span>
-            {researching ? 'Analyzing...' : 'Analyze Drivers'}
+            {researching ? 'Analyzing...' : 'Analyze'}
           </button>
 
           {/* Generate Design Button */}
           <button
             onClick={handleGenerateDesign}
-            disabled={generating || selectedDrivers.length === 0}
-            className="bg-amber-600 hover:bg-amber-700 text-white px-6 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            disabled={isOperating || generating || selectedDrivers.length === 0}
+            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>✨</span>
-            {generating ? 'Generating...' : 'Generate Design'}
+            {generating ? 'Generating...' : 'Generate'}
           </button>
         </div>
-        
+
+        {/* Clear All Button */}
+        {(selectedDrivers.length > 0 || currentDesign) && (
+          <div className="mb-6">
+            <button
+              onClick={handleClearAll}
+              className="bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 px-4 py-2 rounded-md text-sm font-medium transition-colors"
+            >
+              🗑️ Clear All
+            </button>
+          </div>
+        )}
+
+        {/* Templates Modal */}
+        {showTemplates && (
+          <div className="bg-cyan-900/30 border border-cyan-500/50 rounded-lg p-6 mb-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-semibold text-cyan-300">📋 Design Templates</h3>
+              <button
+                onClick={() => setShowTemplates(false)}
+                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {designTemplates.map(template => (
+                <div key={template.id} className="bg-zinc-900 border border-cyan-600/30 rounded-lg p-4 hover:border-cyan-500 transition-colors">
+                  <h4 className="text-lg font-semibold text-white mb-2">{template.name}</h4>
+                  <p className="text-sm text-zinc-400 mb-3">{template.description}</p>
+                  <div className="text-xs text-zinc-500 space-y-1 mb-4">
+                    <div><span className="text-zinc-400">Type:</span> {template.speakerType.replace(/_/g, ' ')} + {template.additionalTypes.join(', ')}</div>
+                    <div><span className="text-zinc-400">Drivers:</span></div>
+                    <ul className="list-disc list-inside ml-2">
+                      {template.recommendedDrivers.map((d, idx) => (
+                        <li key={idx}>{d.count}x {d.type} - {d.specs}</li>
+                      ))}
+                    </ul>
+                    <div><span className="text-zinc-400">Est. Size:</span> {template.estimatedDimensions.width}×{template.estimatedDimensions.height}×{template.estimatedDimensions.depth}mm</div>
+                  </div>
+                  <button
+                    onClick={() => applyTemplate(template)}
+                    className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md text-sm font-medium transition-colors"
+                  >
+                    Apply Template
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Saved Designs Modal */}
+        {showSavedDesigns && (
+          <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-lg p-6 mb-6">
+            <div className="flex justify-between items-start mb-4">
+              <h3 className="text-xl font-semibold text-emerald-300">💾 Saved Designs ({savedDesigns.length})</h3>
+              <button
+                onClick={() => setShowSavedDesigns(false)}
+                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
+              >
+                ✕
+              </button>
+            </div>
+            {savedDesigns.length === 0 ? (
+              <div className="text-center text-zinc-500 py-8">
+                <p>No saved designs yet</p>
+                <p className="text-sm mt-2">Generate a design and save it to see it here</p>
+              </div>
+            ) : (
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {savedDesigns.map(design => (
+                  <div key={design.id} className="bg-zinc-900 border border-emerald-600/30 rounded-lg p-4 hover:border-emerald-500 transition-colors">
+                    <div className="flex justify-between items-start mb-2">
+                      <div>
+                        <h4 className="text-lg font-semibold text-white">{design.name}</h4>
+                        <p className="text-sm text-zinc-400">{design.speaker_type.replace(/_/g, ' ')} {design.additional_types.length > 0 && `+ ${design.additional_types.join(', ')}`}</p>
+                      </div>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        design.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' :
+                        design.status === 'approved' ? 'bg-green-500/20 text-green-400' :
+                        design.status === 'built' ? 'bg-blue-500/20 text-blue-400' :
+                        'bg-zinc-500/20 text-zinc-400'
+                      }`}>
+                        {design.status}
+                      </span>
+                    </div>
+                    <div className="text-xs text-zinc-500 grid grid-cols-2 gap-2 mb-3">
+                      <div><span className="text-zinc-400">Drivers:</span> {design.drivers.length}</div>
+                      <div><span className="text-zinc-400">Created:</span> {new Date(design.created_at).toLocaleDateString()}</div>
+                      {design.cabinet_dimensions && (
+                        <div className="col-span-2">
+                          <span className="text-zinc-400">Dimensions:</span> {design.cabinet_dimensions.width}×{design.cabinet_dimensions.height}×{design.cabinet_dimensions.depth}mm
+                        </div>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => loadSavedDesign(design)}
+                      className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors"
+                    >
+                      Load Design
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Research Data Indicator */}
         {(blueprintResearch || driverAnalysis.length > 0) && (
           <div className="bg-green-900/30 border border-green-500/50 rounded-lg p-4 mb-6">
@@ -804,14 +1178,119 @@ export default function SpeakerDesignerPage() {
           <div className="bg-zinc-800 border border-amber-500 rounded-lg p-6 mb-6">
             <div className="flex justify-between items-start mb-4">
               <h2 className="text-xl font-semibold text-white">Current Design: {currentDesign.name}</h2>
-              <button
-                onClick={handleSaveDesign}
-                className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
-              >
-                <span>💾</span>
-                Save Design
-              </button>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    if (currentDesign.blueprint) {
+                      const estimate = calculateCostEstimate(currentDesign.blueprint);
+                      setCostEstimate(estimate);
+                      setShowCostEstimate(true);
+                    } else {
+                      alert('Generate a blueprint first to see cost estimate');
+                    }
+                  }}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  <span>💰</span>
+                  Cost Estimate
+                </button>
+                <button
+                  onClick={async () => {
+                    if (!currentDesign.blueprint) {
+                      alert('Generate a blueprint first to export');
+                      return;
+                    }
+                    
+                    // Create downloadable JSON
+                    const exportData = {
+                      ...currentDesign,
+                      exportedAt: new Date().toISOString(),
+                      version: '1.0'
+                    };
+                    
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `${(currentDesign.name || 'design').replace(/[^a-z0-9]/gi, '_')}_blueprint.json`;
+                    a.click();
+                    URL.revokeObjectURL(url);
+                    
+                    setAiResponse('✓ Blueprint exported as JSON');
+                  }}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  <span>📄</span>
+                  Export JSON
+                </button>
+                <button
+                  onClick={handleSaveDesign}
+                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-semibold transition-colors flex items-center gap-2"
+                >
+                  <span>💾</span>
+                  Save Design
+                </button>
+              </div>
             </div>
+
+            {/* Cost Estimate Display */}
+            {showCostEstimate && costEstimate && (
+              <div className="mb-4 bg-blue-900/30 border border-blue-500/50 rounded-lg p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <h3 className="text-lg font-semibold text-blue-300">💰 Cost Estimate</h3>
+                  <button
+                    onClick={() => setShowCostEstimate(false)}
+                    className="text-zinc-400 hover:text-white"
+                  >
+                    ✕
+                  </button>
+                </div>
+                
+                {costEstimate.wood.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium text-zinc-300 mb-2">Wood Materials</h4>
+                    {costEstimate.wood.map((item, idx) => (
+                      <div key={idx} className="flex justify-between text-sm text-zinc-400 mb-1">
+                        <span>{item.item} (×{item.quantity})</span>
+                        <span className="text-white">${item.totalPrice.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {costEstimate.steel.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium text-zinc-300 mb-2">Steel Materials</h4>
+                    {costEstimate.steel.map((item, idx) => (
+                      <div key={idx} className="flex justify-between text-sm text-zinc-400 mb-1">
+                        <span>{item.item} (×{item.quantity})</span>
+                        <span className="text-white">${item.totalPrice.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                {costEstimate.hardware.length > 0 && (
+                  <div className="mb-3">
+                    <h4 className="text-sm font-medium text-zinc-300 mb-2">Hardware & Supplies</h4>
+                    {costEstimate.hardware.map((item, idx) => (
+                      <div key={idx} className="flex justify-between text-sm text-zinc-400 mb-1">
+                        <span>{item.item}</span>
+                        <span className="text-white">${item.totalPrice.toFixed(2)}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                
+                <div className="border-t border-blue-500/30 pt-3 mt-3">
+                  <div className="flex justify-between text-lg font-bold">
+                    <span className="text-blue-300">Total Estimated Cost:</span>
+                    <span className="text-white">${costEstimate.total.toFixed(2)}</span>
+                  </div>
+                  <p className="text-xs text-zinc-500 mt-2">* Prices are estimates and may vary by location and supplier</p>
+                </div>
+              </div>
+            )}
             
             {currentDesign.cabinetDimensions && (
               <div className="mb-4">
