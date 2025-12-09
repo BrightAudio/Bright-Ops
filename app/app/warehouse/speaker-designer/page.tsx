@@ -64,7 +64,8 @@ export default function SpeakerDesignerPage() {
   
   // Templates
   const [showTemplates, setShowTemplates] = useState(false);
-  const [designTemplates] = useState<DesignTemplate[]>([
+  const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [designTemplates, setDesignTemplates] = useState<DesignTemplate[]>([
     {
       id: '1',
       name: 'Passive Line Array',
@@ -91,7 +92,7 @@ export default function SpeakerDesignerPage() {
     {
       id: '3',
       name: 'Home Studio Monitor',
-      description: '2-way active monitor for home studio use',
+      description: '2-way active monitor for home studio and entertainment use',
       speakerType: 'home_system',
       additionalTypes: ['active'],
       recommendedDrivers: [
@@ -99,6 +100,19 @@ export default function SpeakerDesignerPage() {
         { type: 'tweeter', count: 1, specs: '1" dome tweeter, 4Ω, 30W' }
       ],
       estimatedDimensions: { width: 250, height: 350, depth: 300, volume: 26.25 }
+    },
+    {
+      id: '4',
+      name: 'Home Entertainment System',
+      description: '3-way passive tower speaker for home theater',
+      speakerType: 'home_system',
+      additionalTypes: ['passive'],
+      recommendedDrivers: [
+        { type: 'woofer', count: 2, specs: '6.5" woofer, 8Ω, 150W' },
+        { type: 'mid', count: 1, specs: '4" mid-range, 8Ω, 75W' },
+        { type: 'tweeter', count: 1, specs: '1" dome tweeter, 8Ω, 40W' }
+      ],
+      estimatedDimensions: { width: 250, height: 1000, depth: 350, volume: 87.5 }
     }
   ]);
   
@@ -257,6 +271,50 @@ export default function SpeakerDesignerPage() {
     setSelectedTypes(template.additionalTypes);
     setShowTemplates(false);
     setAiResponse(`Template "${template.name}" applied. Recommended drivers: ${template.recommendedDrivers.map(d => `${d.count}x ${d.type} (${d.specs})`).join(', ')}`);
+  }
+
+  // Create template from current design
+  function createTemplateFromCurrentDesign() {
+    if (!currentDesign || selectedDrivers.length === 0) {
+      alert('Generate a design first before creating a template');
+      return;
+    }
+
+    const templateName = prompt('Enter a name for this template:');
+    if (!templateName) return;
+
+    const description = prompt('Enter a description for this template:');
+    if (!description) return;
+
+    // Group drivers by type and count
+    const driverGroups = selectedDrivers.reduce((acc, driver) => {
+      const existing = acc.find(g => g.type === driver.type);
+      if (existing) {
+        existing.count++;
+      } else {
+        acc.push({
+          type: driver.type,
+          count: 1,
+          specs: `${driver.specs?.diameter || ''} ${driver.type}, ${driver.specs?.impedance || ''}, ${driver.specs?.power_rating || ''}`
+        });
+      }
+      return acc;
+    }, [] as { type: string; count: number; specs: string }[]);
+
+    const newTemplate: DesignTemplate = {
+      id: `custom-${Date.now()}`,
+      name: templateName,
+      description: description,
+      speakerType: speakerType,
+      additionalTypes: selectedTypes,
+      recommendedDrivers: driverGroups,
+      estimatedDimensions: currentDesign.cabinetDimensions || { width: 0, height: 0, depth: 0, volume: 0 }
+    };
+
+    setDesignTemplates([...designTemplates, newTemplate]);
+    setShowCreateTemplate(false);
+    alert(`Template "${templateName}" created successfully!`);
+    setAiResponse(`✓ Custom template "${templateName}" added to templates list`);
   }
 
   // Load saved design
@@ -898,13 +956,22 @@ export default function SpeakerDesignerPage() {
         {showTemplates && (
           <div className="bg-cyan-900/30 border border-cyan-500/50 rounded-lg p-6 mb-6">
             <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold text-cyan-300">📋 Design Templates</h3>
-              <button
-                onClick={() => setShowTemplates(false)}
-                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
-              >
-                ✕
-              </button>
+              <h3 className="text-xl font-semibold text-cyan-300">📋 Design Templates ({designTemplates.length})</h3>
+              <div className="flex gap-2">
+                <button
+                  onClick={createTemplateFromCurrentDesign}
+                  disabled={!currentDesign || selectedDrivers.length === 0}
+                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-md text-sm font-medium transition-colors"
+                >
+                  + Create Template
+                </button>
+                <button
+                  onClick={() => setShowTemplates(false)}
+                  className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
+                >
+                  ✕
+                </button>
+              </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {designTemplates.map(template => (
