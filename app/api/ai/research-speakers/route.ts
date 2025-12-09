@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { task, speakerType, selectedTypes, driver, drivers, availableParts, blueprintResearch, driverAnalysis } = body;
+    const { task, speakerType, selectedTypes, driver, drivers, availableParts, blueprintResearch, driverAnalysis, templateGuidance } = body;
 
     const apiKey = process.env.OPENAI_API_KEY;
     if (!apiKey) {
@@ -115,9 +115,32 @@ Then provide cabinet design recommendations:
 
 Be specific with calculations and measurements. If you cannot find the exact driver, clearly state what information is missing.`;
     } else if (task === 'generate_design') {
-      const driverList = drivers.map((d: any) => `${d.name} (${d.subcategory || 'Unknown'})`).join(', ');
       const allTypes = [speakerType, ...(selectedTypes || [])];
       const typesStr = allTypes.map(t => t.replace(/_/g, ' ')).join(' + ');
+      
+      // Include template guidance if provided
+      let templateContext = '';
+      if (templateGuidance) {
+        templateContext = `\n\n=== TEMPLATE GUIDANCE ===
+Template: ${templateGuidance.name}
+Description: ${templateGuidance.description}
+Recommended Drivers:
+${templateGuidance.recommendedDrivers.map((d: any) => `  - ${d.count}x ${d.type}: ${d.specs}`).join('\n')}
+Estimated Dimensions: ${templateGuidance.estimatedDimensions.width}×${templateGuidance.estimatedDimensions.height}×${templateGuidance.estimatedDimensions.depth}mm (${templateGuidance.estimatedDimensions.volume}L)
+
+Use this template as a starting point and design guidance. Suggest specific drivers from available parts that match the template's recommended driver specifications.
+`;
+      }
+      
+      // Build driver list - if using template without drivers, indicate that
+      let driverList = '';
+      if (drivers && drivers.length > 0) {
+        driverList = `Using these selected drivers:\n${drivers.map((d: any) => `${d.name} (${d.subcategory || 'Unknown'})`).join(', ')}`;
+      } else if (templateGuidance) {
+        driverList = `Design based on template recommendations. Suggest specific drivers from available parts list.`;
+      } else {
+        driverList = 'No drivers specified';
+      }
       
       // Include research context if available
       let researchContext = '';
@@ -131,7 +154,8 @@ Be specific with calculations and measurements. If you cannot find the exact dri
         });
       }
       
-      prompt = `Design a ${typesStr} speaker cabinet using these drivers:
+      prompt = `Design a ${typesStr} speaker cabinet.
+${templateContext}
 ${driverList}
 ${researchContext ? `\nIMPORTANT - Use this research data to inform your design:\n${researchContext}` : ''}
 

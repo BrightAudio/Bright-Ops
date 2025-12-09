@@ -65,6 +65,7 @@ export default function SpeakerDesignerPage() {
   // Templates
   const [showTemplates, setShowTemplates] = useState(false);
   const [showCreateTemplate, setShowCreateTemplate] = useState(false);
+  const [appliedTemplate, setAppliedTemplate] = useState<DesignTemplate | null>(null);
   const [designTemplates, setDesignTemplates] = useState<DesignTemplate[]>([
     {
       id: '1',
@@ -91,6 +92,29 @@ export default function SpeakerDesignerPage() {
     },
     {
       id: '3',
+      name: 'Passive Subwoofer',
+      description: 'High-power passive subwoofer cabinet',
+      speakerType: 'sub',
+      additionalTypes: ['passive'],
+      recommendedDrivers: [
+        { type: 'woofer', count: 1, specs: '21" woofer, 8Ω, 1200W' }
+      ],
+      estimatedDimensions: { width: 700, height: 800, depth: 800, volume: 448 }
+    },
+    {
+      id: '4',
+      name: 'Active Speaker',
+      description: '2-way powered full-range speaker',
+      speakerType: 'active',
+      additionalTypes: [],
+      recommendedDrivers: [
+        { type: 'woofer', count: 1, specs: '15" woofer, 8Ω, 600W' },
+        { type: 'tweeter', count: 1, specs: '1.4" compression driver, 8Ω, 100W' }
+      ],
+      estimatedDimensions: { width: 450, height: 650, depth: 500, volume: 146.25 }
+    },
+    {
+      id: '5',
       name: 'Home Studio Monitor',
       description: '2-way active monitor for home studio and entertainment use',
       speakerType: 'home_system',
@@ -102,7 +126,7 @@ export default function SpeakerDesignerPage() {
       estimatedDimensions: { width: 250, height: 350, depth: 300, volume: 26.25 }
     },
     {
-      id: '4',
+      id: '6',
       name: 'Home Entertainment System',
       description: '3-way passive tower speaker for home theater',
       speakerType: 'home_system',
@@ -113,6 +137,20 @@ export default function SpeakerDesignerPage() {
         { type: 'tweeter', count: 1, specs: '1" dome tweeter, 8Ω, 40W' }
       ],
       estimatedDimensions: { width: 250, height: 1000, depth: 350, volume: 87.5 }
+    },
+    {
+      id: '7',
+      name: 'Segmented Home Audio System',
+      description: 'Complete home theater system with soundbar, satellite speakers, and subwoofer',
+      speakerType: 'home_system',
+      additionalTypes: ['active', 'passive'],
+      recommendedDrivers: [
+        { type: 'woofer', count: 3, specs: '3" full-range, 4Ω, 40W (soundbar center)' },
+        { type: 'tweeter', count: 2, specs: '0.75" dome tweeter, 4Ω, 20W (soundbar L/R)' },
+        { type: 'mid', count: 4, specs: '2.5" full-range, 8Ω, 25W (satellite speakers)' },
+        { type: 'woofer', count: 1, specs: '10" woofer, 4Ω, 200W (subwoofer)' }
+      ],
+      estimatedDimensions: { width: 800, height: 100, depth: 120, volume: 9.6 }
     }
   ]);
   
@@ -181,6 +219,7 @@ export default function SpeakerDesignerPage() {
     setShowCostEstimate(false);
     setAiResponse('');
     setResearchComplete(false);
+    setAppliedTemplate(null); // Clear template
     alert('Workspace cleared successfully');
   }
 
@@ -269,6 +308,7 @@ export default function SpeakerDesignerPage() {
 
     setSpeakerType(template.speakerType);
     setSelectedTypes(template.additionalTypes);
+    setAppliedTemplate(template); // Store template for use in design generation
     setShowTemplates(false);
     setAiResponse(`Template "${template.name}" applied. Recommended drivers: ${template.recommendedDrivers.map(d => `${d.count}x ${d.type} (${d.specs})`).join(', ')}`);
   }
@@ -784,11 +824,14 @@ export default function SpeakerDesignerPage() {
 }
 
   async function handleGenerateDesign() {
-    // Validate inputs first
-    const validation = validateInputs();
-    if (!validation.valid) {
-      alert('Cannot generate design:\n' + validation.errors.join('\n'));
-      return;
+    // If using template, allow generation without selected drivers
+    // Otherwise validate inputs first
+    if (!appliedTemplate) {
+      const validation = validateInputs();
+      if (!validation.valid) {
+        alert('Cannot generate design:\n' + validation.errors.join('\n'));
+        return;
+      }
     }
 
     if (isOperating) {
@@ -797,12 +840,17 @@ export default function SpeakerDesignerPage() {
     }
 
     // Confirm before generation
-    const confirmMsg = `Generate design with ${selectedDrivers.length} driver(s)?\n\nDrivers: ${selectedDrivers.map(d => d.name).join(', ')}`;
+    let confirmMsg;
+    if (appliedTemplate) {
+      confirmMsg = `Generate design using template "${appliedTemplate.name}"?\n\nThe AI will suggest drivers and create a complete design based on the template.`;
+    } else {
+      confirmMsg = `Generate design with ${selectedDrivers.length} driver(s)?\n\nDrivers: ${selectedDrivers.map(d => d.name).join(', ')}`;
+    }
     if (!confirm(confirmMsg)) return;
 
     setIsOperating(true);
     setGenerating(true);
-    setAiResponse('Generating speaker cabinet design...');
+    setAiResponse(appliedTemplate ? 'Generating design from template...' : 'Generating speaker cabinet design...');
 
     try {
       const headers: Record<string, string> = { 'Content-Type': 'application/json' };
@@ -823,8 +871,15 @@ export default function SpeakerDesignerPage() {
           task: 'generate_design',
           speakerType,
           selectedTypes,
-          drivers: selectedDrivers,
+          drivers: selectedDrivers.length > 0 ? selectedDrivers : undefined,
           availableParts: availableDrivers,
+          // Include template guidance if a template was applied
+          templateGuidance: appliedTemplate ? {
+            name: appliedTemplate.name,
+            description: appliedTemplate.description,
+            recommendedDrivers: appliedTemplate.recommendedDrivers,
+            estimatedDimensions: appliedTemplate.estimatedDimensions
+          } : undefined,
           // Include research data if available
           blueprintResearch: blueprintResearch || undefined,
           driverAnalysis: driverAnalysis.length > 0 ? driverAnalysis : undefined
@@ -932,7 +987,7 @@ export default function SpeakerDesignerPage() {
           {/* Generate Design Button */}
           <button
             onClick={handleGenerateDesign}
-            disabled={isOperating || generating || selectedDrivers.length === 0}
+            disabled={isOperating || generating || (!appliedTemplate && selectedDrivers.length === 0)}
             className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
           >
             <span>✨</span>
@@ -957,21 +1012,12 @@ export default function SpeakerDesignerPage() {
           <div className="bg-cyan-900/30 border border-cyan-500/50 rounded-lg p-6 mb-6">
             <div className="flex justify-between items-start mb-4">
               <h3 className="text-xl font-semibold text-cyan-300">📋 Design Templates ({designTemplates.length})</h3>
-              <div className="flex gap-2">
-                <button
-                  onClick={createTemplateFromCurrentDesign}
-                  disabled={!currentDesign || selectedDrivers.length === 0}
-                  className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-zinc-700 disabled:text-zinc-500 text-white rounded-md text-sm font-medium transition-colors"
-                >
-                  + Create Template
-                </button>
-                <button
-                  onClick={() => setShowTemplates(false)}
-                  className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
-                >
-                  ✕
-                </button>
-              </div>
+              <button
+                onClick={() => setShowTemplates(false)}
+                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
+              >
+                ✕
+              </button>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {designTemplates.map(template => (
