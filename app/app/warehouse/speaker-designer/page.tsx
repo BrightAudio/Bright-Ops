@@ -18,6 +18,23 @@ import type {
   MaterialCost
 } from '@/lib/types/speaker-designer';
 
+// Debounce hook for performance optimization
+function useDebounce<T>(value: T, delay: number): T {
+  const [debouncedValue, setDebouncedValue] = useState<T>(value);
+
+  useEffect(() => {
+    const handler = setTimeout(() => {
+      setDebouncedValue(value);
+    }, delay);
+
+    return () => {
+      clearTimeout(handler);
+    };
+  }, [value, delay]);
+
+  return debouncedValue;
+}
+
 export default function SpeakerDesignerPage() {
   const [designs, setDesigns] = useState<Design[]>([]);
   const [currentDesign, setCurrentDesign] = useState<Partial<Design> | null>(null);
@@ -157,6 +174,9 @@ export default function SpeakerDesignerPage() {
   // Cost estimate
   const [costEstimate, setCostEstimate] = useState<CostEstimate | null>(null);
   const [showCostEstimate, setShowCostEstimate] = useState(false);
+
+  // Debounce selected drivers for performance
+  const debouncedSelectedDrivers = useDebounce(selectedDrivers, 300);
 
   useEffect(() => {
     loadAvailableDrivers();
