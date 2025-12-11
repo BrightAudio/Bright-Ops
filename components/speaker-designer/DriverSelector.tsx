@@ -98,7 +98,14 @@ export default function DriverSelector({
                   )}
                 </div>
                 <button
-                  onClick={() => isSelected(driver) ? onRemoveDriver(driver as Driver) : onAddDriver(driver)}
+                  onClick={() => {
+                    if (isSelected(driver)) {
+                      const driverToRemove = selectedDrivers.find(d => d.id === driver.id || d.name === driver.name);
+                      if (driverToRemove) onRemoveDriver(driverToRemove);
+                    } else {
+                      onAddDriver(driver);
+                    }
+                  }}
                   className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
                     isSelected(driver)
                       ? 'bg-zinc-600 hover:bg-zinc-700 text-white'

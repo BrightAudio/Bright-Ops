@@ -19,7 +19,7 @@ interface FleetVehicle {
 const vehicleTypes = ["Box Truck", "Van", "Trailer", "Pickup Truck", "Flatbed", "Other"];
 const statuses = ["Active", "Maintenance", "Retired"];
 
-function statusColor(status: string) {
+function statusColor(status: string | null) {
   switch (status) {
     case "Active":
       return "bg-green-400/20 text-green-200 border-green-400/30";
@@ -75,7 +75,7 @@ export default function FleetPage() {
             name: vehicle.name,
             type: vehicle.type || "",
             license_plate: vehicle.license_plate || "",
-            status: vehicle.status,
+            status: vehicle.status || "Active",
             notes: vehicle.notes || ""
           }
         : {

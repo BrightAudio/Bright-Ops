@@ -77,5 +77,6 @@ export async function freeScanIn(
   qty: number = 1,
   opts?: { onSuccessBeep?: () => void; onFailBeep?: () => void }
 ): Promise<InventoryItem> {
-  // Lookup item
-  const { data: item, error: lookupErr } = await supabase
+  // Lookup item - INCOMPLETE ARCHIVED FILE
+  throw new Error('This function is incomplete and archived');
+}

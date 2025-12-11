@@ -66,8 +66,8 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
           .eq('name', jobData.client)
           .maybeSingle();
         
-        if (clientData) {
-          setSelectedClient(clientData);
+        if (clientData && clientData.name) {
+          setSelectedClient({ id: clientData.id, name: clientData.name });
         }
       }
 

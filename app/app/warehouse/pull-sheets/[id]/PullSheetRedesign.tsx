@@ -591,7 +591,7 @@ export default function PullSheetRedesign({
 
     // Only allow force scan for quantity items (cables, adapters, etc)
     // Prevent for unique barcoded items like speakers
-    const isQuantityItem = item.inventory_items?.is_quantity_item ?? false;
+    const isQuantityItem = (item.inventory_items as any)?.is_quantity_item ?? false;
     if (!isQuantityItem) {
       // Play error sound for non-quantity items
       const { playReject } = await import('@/lib/utils/sounds');

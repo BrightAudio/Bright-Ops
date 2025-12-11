@@ -26,6 +26,7 @@ export interface Driver {
   id: string;
   name: string;
   type: string; // woofer, mid, tweeter, compression_driver, etc.
+  subcategory?: string;
   specs?: DriverSpecs;
 }
 

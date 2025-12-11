@@ -115,33 +115,35 @@ Visitor Phone: ${conversation.visitor_phone || 'Not provided'}`;
         botResponse.toLowerCase().includes('consultation')) {
       
       // Try to create/update lead
-      const { data: existingLead } = await supabase
-        .from('leads')
-        .select('id')
-        .eq('email', conversation.visitor_email)
-        .single();
-
-      if (!existingLead && conversation.visitor_email) {
-        // Create new lead
-        const { data: newLead } = await supabase
+      if (conversation.visitor_email) {
+        const { data: existingLead } = await supabase
           .from('leads')
-          .insert({
-            name: conversation.visitor_name,
-            email: conversation.visitor_email,
-            phone: conversation.visitor_phone,
-            source: 'Website Chat',
-            status: 'new',
-            notes: `Initial chat: ${visitor_message}`,
-          })
+          .select('id')
+          .eq('email', conversation.visitor_email)
+          .single();
+
+        if (!existingLead) {
+          // Create new lead
+          const { data: newLead } = await supabase
+            .from('leads')
+            .insert({
+              email: conversation.visitor_email,
+              name: conversation.visitor_email.split('@')[0], // Use email prefix as fallback name
+              ...(conversation.visitor_phone && { phone: conversation.visitor_phone }),
+              source: 'Website Chat',
+              status: 'new',
+              notes: `Initial chat: ${visitor_message}`,
+            })
           .select()
           .single();
 
-        // Link conversation to lead
-        if (newLead) {
-          await supabase
-            .from('chat_conversations')
-            .update({ lead_id: newLead.id })
-            .eq('id', conversation_id);
+          // Link conversation to lead
+          if (newLead) {
+            await supabase
+              .from('chat_conversations')
+              .update({ lead_id: newLead.id })
+              .eq('id', conversation_id);
+          }
         }
       }
     }
