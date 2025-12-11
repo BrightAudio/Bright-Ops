@@ -3,6 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import ControlPanel from '@/components/speaker-designer/ControlPanel';
+import TemplatesModal from '@/components/speaker-designer/TemplatesModal';
+import SavedDesignsModal from '@/components/speaker-designer/SavedDesignsModal';
+import DriverSelector from '@/components/speaker-designer/DriverSelector';
+import CostEstimateDisplay from '@/components/speaker-designer/CostEstimateDisplay';
+import DesignDisplay from '@/components/speaker-designer/DesignDisplay';
 import type {
   SpeakerType,
   Driver,
@@ -954,173 +960,39 @@ export default function SpeakerDesignerPage() {
         </div>
 
         {/* Control Panel */}
-        <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mb-6">
-          {/* Templates Button */}
-          <button
-            onClick={() => setShowTemplates(!showTemplates)}
-            className="bg-cyan-600 hover:bg-cyan-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            <span>📋</span>
-            Templates
-          </button>
-
-          {/* Saved Designs Button */}
-          <button
-            onClick={() => setShowSavedDesigns(!showSavedDesigns)}
-            className="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            <span>💾</span>
-            Saved ({savedDesigns.length})
-          </button>
-
-          {/* Research Button */}
-          <button
-            onClick={handleResearchDesigns}
-            disabled={isOperating || researching || selectedDrivers.length === 0}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <span>🔬</span>
-            {researching ? 'Researching...' : 'Research'}
-          </button>
-
-          {/* Add Driver Button */}
-          <button
-            onClick={() => setShowDriverSelector(!showDriverSelector)}
-            className={`${
-              showDriverSelector ? 'bg-purple-700' : 'bg-purple-600 hover:bg-purple-700'
-            } text-white px-4 py-4 rounded-lg font-semibold transition-colors flex items-center justify-center gap-2`}
-          >
-            <span>🔊</span>
-            Drivers ({selectedDrivers.length})
-          </button>
-
-          {/* Analyze Drivers Button */}
-          <button
-            onClick={handleAnalyzeDrivers}
-            disabled={isOperating || researching || selectedDrivers.length === 0}
-            className="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <span>🔍</span>
-            {researching ? 'Analyzing...' : 'Analyze'}
-          </button>
-
-          {/* Generate Design Button */}
-          <button
-            onClick={handleGenerateDesign}
-            disabled={isOperating || generating || (!appliedTemplate && selectedDrivers.length === 0)}
-            className="bg-amber-600 hover:bg-amber-700 text-white px-4 py-4 rounded-lg font-semibold transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
-          >
-            <span>✨</span>
-            {generating ? 'Generating...' : 'Generate'}
-          </button>
-        </div>
-
-        {/* Clear All Button */}
-        {(selectedDrivers.length > 0 || currentDesign) && (
-          <div className="mb-6">
-            <button
-              onClick={handleClearAll}
-              className="bg-red-600/20 hover:bg-red-600/30 border border-red-500/50 text-red-300 px-4 py-2 rounded-md text-sm font-medium transition-colors"
-            >
-              🗑️ Clear All
-            </button>
-          </div>
-        )}
+        <ControlPanel
+          isOperating={isOperating}
+          researching={researching}
+          generating={generating}
+          selectedDriversCount={selectedDrivers.length}
+          savedDesignsCount={savedDesigns.length}
+          hasCurrentDesign={!!currentDesign}
+          appliedTemplate={appliedTemplate}
+          onShowTemplates={() => setShowTemplates(!showTemplates)}
+          onShowSavedDesigns={() => setShowSavedDesigns(!showSavedDesigns)}
+          onResearch={handleResearchDesigns}
+          onShowDriverSelector={() => setShowDriverSelector(!showDriverSelector)}
+          onAnalyze={handleAnalyzeDrivers}
+          onGenerate={handleGenerateDesign}
+          onClearAll={handleClearAll}
+        />
 
         {/* Templates Modal */}
         {showTemplates && (
-          <div className="bg-cyan-900/30 border border-cyan-500/50 rounded-lg p-6 mb-6">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold text-cyan-300">📋 Design Templates ({designTemplates.length})</h3>
-              <button
-                onClick={() => setShowTemplates(false)}
-                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {designTemplates.map(template => (
-                <div key={template.id} className="bg-zinc-900 border border-cyan-600/30 rounded-lg p-4 hover:border-cyan-500 transition-colors">
-                  <h4 className="text-lg font-semibold text-white mb-2">{template.name}</h4>
-                  <p className="text-sm text-zinc-400 mb-3">{template.description}</p>
-                  <div className="text-xs text-zinc-500 space-y-1 mb-4">
-                    <div><span className="text-zinc-400">Type:</span> {template.speakerType.replace(/_/g, ' ')} + {template.additionalTypes.join(', ')}</div>
-                    <div><span className="text-zinc-400">Drivers:</span></div>
-                    <ul className="list-disc list-inside ml-2">
-                      {template.recommendedDrivers.map((d, idx) => (
-                        <li key={idx}>{d.count}x {d.type} - {d.specs}</li>
-                      ))}
-                    </ul>
-                    <div><span className="text-zinc-400">Est. Size:</span> {template.estimatedDimensions.width}×{template.estimatedDimensions.height}×{template.estimatedDimensions.depth}mm</div>
-                  </div>
-                  <button
-                    onClick={() => applyTemplate(template)}
-                    className="w-full px-4 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-md text-sm font-medium transition-colors"
-                  >
-                    Apply Template
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
+          <TemplatesModal
+            templates={designTemplates}
+            onApplyTemplate={applyTemplate}
+            onClose={() => setShowTemplates(false)}
+          />
         )}
 
         {/* Saved Designs Modal */}
         {showSavedDesigns && (
-          <div className="bg-emerald-900/30 border border-emerald-500/50 rounded-lg p-6 mb-6">
-            <div className="flex justify-between items-start mb-4">
-              <h3 className="text-xl font-semibold text-emerald-300">💾 Saved Designs ({savedDesigns.length})</h3>
-              <button
-                onClick={() => setShowSavedDesigns(false)}
-                className="px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded-md text-sm"
-              >
-                ✕
-              </button>
-            </div>
-            {savedDesigns.length === 0 ? (
-              <div className="text-center text-zinc-500 py-8">
-                <p>No saved designs yet</p>
-                <p className="text-sm mt-2">Generate a design and save it to see it here</p>
-              </div>
-            ) : (
-              <div className="space-y-3 max-h-96 overflow-y-auto">
-                {savedDesigns.map(design => (
-                  <div key={design.id} className="bg-zinc-900 border border-emerald-600/30 rounded-lg p-4 hover:border-emerald-500 transition-colors">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <h4 className="text-lg font-semibold text-white">{design.name}</h4>
-                        <p className="text-sm text-zinc-400">{design.speaker_type.replace(/_/g, ' ')} {design.additional_types.length > 0 && `+ ${design.additional_types.join(', ')}`}</p>
-                      </div>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        design.status === 'draft' ? 'bg-yellow-500/20 text-yellow-400' :
-                        design.status === 'approved' ? 'bg-green-500/20 text-green-400' :
-                        design.status === 'built' ? 'bg-blue-500/20 text-blue-400' :
-                        'bg-zinc-500/20 text-zinc-400'
-                      }`}>
-                        {design.status}
-                      </span>
-                    </div>
-                    <div className="text-xs text-zinc-500 grid grid-cols-2 gap-2 mb-3">
-                      <div><span className="text-zinc-400">Drivers:</span> {design.drivers.length}</div>
-                      <div><span className="text-zinc-400">Created:</span> {new Date(design.created_at).toLocaleDateString()}</div>
-                      {design.cabinet_dimensions && (
-                        <div className="col-span-2">
-                          <span className="text-zinc-400">Dimensions:</span> {design.cabinet_dimensions.width}×{design.cabinet_dimensions.height}×{design.cabinet_dimensions.depth}mm
-                        </div>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => loadSavedDesign(design)}
-                      className="w-full px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition-colors"
-                    >
-                      Load Design
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <SavedDesignsModal
+            designs={savedDesigns}
+            onLoadDesign={loadSavedDesign}
+            onClose={() => setShowSavedDesigns(false)}
+          />
         )}
 
         {/* Research Data Indicator */}
