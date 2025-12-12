@@ -249,6 +249,10 @@ ALTER TABLE public.inventory_items ENABLE ROW LEVEL SECURITY;
 -- Drop any existing inventory RLS policies that might conflict
 DROP POLICY IF EXISTS "Users can view inventory from accessible warehouses" ON public.inventory_items;
 DROP POLICY IF EXISTS "Users can view all inventory" ON public.inventory_items;
+DROP POLICY IF EXISTS "Allow all access to inventory_items" ON public.inventory_items;
+DROP POLICY IF EXISTS "Users can insert inventory to accessible warehouses" ON public.inventory_items;
+DROP POLICY IF EXISTS "Users can update inventory from accessible warehouses" ON public.inventory_items;
+DROP POLICY IF EXISTS "Users can delete inventory from accessible warehouses" ON public.inventory_items;
 
 -- Create new policy: Users can only see inventory from warehouses they have access to
 CREATE POLICY "Users can view inventory from accessible warehouses"
