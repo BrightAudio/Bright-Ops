@@ -28,7 +28,7 @@ export default function OnboardingPage() {
   async function checkUser() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) {
-      router.push('/auth/signin');
+      router.push('/auth/login');
       return;
     }
     setUser(user);

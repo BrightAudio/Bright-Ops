@@ -33,12 +33,21 @@ export default function SignupPage() {
         password,
       });
 
-      if (signUpError) throw signUpError;
+      if (signUpError) {
+        console.error('Signup error:', signUpError);
+        throw signUpError;
+      }
 
-      // Update user profile after successful signup (trigger already creates it)
-      if (authData.user) {
+      if (!authData.user) {
+        throw new Error('No user data returned from signup');
+      }
+
+      console.log('User created:', authData.user.id);
+
+      // Update user profile after successful signup (trigger creates it automatically)
+      try {
         // Wait a moment for the trigger to complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
         const { error: profileError } = await supabaseAny
           .from('user_profiles')
@@ -51,14 +60,20 @@ export default function SignupPage() {
           .eq('id', authData.user.id);
 
         if (profileError) {
-          console.error('Failed to update profile:', profileError);
+          console.error('Profile update error:', profileError);
           // Don't fail signup if profile update fails, they can update later
+        } else {
+          console.log('Profile updated successfully');
         }
+      } catch (profileErr) {
+        console.error('Profile update exception:', profileErr);
+        // Continue even if profile update fails
       }
 
       alert("Account created! Check your email to confirm your account, then complete setup.");
       router.push("/onboarding");
     } catch (err: any) {
+      console.error('Signup exception:', err);
       setError(err.message || "Failed to sign up");
       setLoading(false);
     }
