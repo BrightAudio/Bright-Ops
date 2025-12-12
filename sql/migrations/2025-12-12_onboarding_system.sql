@@ -101,14 +101,21 @@ CREATE POLICY "Users can view own profile with org"
 
 ALTER TABLE public.organizations ENABLE ROW LEVEL SECURITY;
 
--- Users can view their own organization
+-- Users can view their own organization OR any organization during onboarding (before they have an org_id)
 DROP POLICY IF EXISTS "Users can view their organization" ON public.organizations;
 CREATE POLICY "Users can view their organization"
   ON public.organizations
   FOR SELECT
   USING (
+    -- Can see their assigned organization
     id IN (
       SELECT organization_id FROM public.user_profiles WHERE id = auth.uid()
+    )
+    OR
+    -- OR any organization if they don't have one yet (for onboarding)
+    NOT EXISTS (
+      SELECT 1 FROM public.user_profiles 
+      WHERE id = auth.uid() AND organization_id IS NOT NULL
     )
   );
 

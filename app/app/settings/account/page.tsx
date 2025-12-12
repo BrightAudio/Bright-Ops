@@ -66,6 +66,47 @@ export default function AccountSettingsPage() {
   const [stripeSecretKey, setStripeSecretKey] = useState("");
   const [isEditingStripe, setIsEditingStripe] = useState(false);
 
+  // Warehouse Access state
+  const [warehouses, setWarehouses] = useState<any[]>([]);
+  const [loadingWarehouses, setLoadingWarehouses] = useState(false);
+
+  // Load warehouses user has access to
+  useEffect(() => {
+    async function loadWarehouses() {
+      setLoadingWarehouses(true);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        // Get warehouse access
+        const { data: accessData } = await supabase
+          .from('user_warehouse_access')
+          .select('warehouse_id')
+          .eq('user_id', user.id);
+
+        if (!accessData || accessData.length === 0) {
+          setWarehouses([]);
+          return;
+        }
+
+        const warehouseIds = accessData.map((a: any) => a.warehouse_id);
+
+        // Get warehouse details
+        const { data: warehousesData } = await supabase
+          .from('warehouses')
+          .select('id, name, address, pin')
+          .in('id', warehouseIds);
+
+        setWarehouses(warehousesData || []);
+      } catch (error) {
+        console.error('Error loading warehouses:', error);
+      } finally {
+        setLoadingWarehouses(false);
+      }
+    }
+    loadWarehouses();
+  }, []);
+
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSaving(true);
@@ -529,6 +570,176 @@ export default function AccountSettingsPage() {
               </div>
             </div>
           )}
+        </div>
+
+        {/* Warehouse Access Card */}
+        <div style={{
+          background: "#fff",
+          border: "1px solid #e5e7eb",
+          borderRadius: "8px",
+          padding: "1.5rem"
+        }}>
+          <div style={{ 
+            display: "flex", 
+            justifyContent: "space-between", 
+            alignItems: "center",
+            marginBottom: "1.5rem"
+          }}>
+            <div>
+              <h2 style={{ margin: 0, fontSize: "1.25rem", fontWeight: 600 }}>
+                Warehouse Access
+              </h2>
+              <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.875rem", color: "#6b7280" }}>
+                Stock locations you have access to
+              </p>
+            </div>
+            <Link
+              href="/app/inventory/locations"
+              style={{
+                padding: "0.5rem 1rem",
+                backgroundColor: "#137CFB",
+                color: "#fff",
+                border: "none",
+                borderRadius: "6px",
+                cursor: "pointer",
+                fontSize: "0.875rem",
+                fontWeight: 500,
+                textDecoration: "none",
+                display: "inline-block"
+              }}
+            >
+              <i className="fas fa-plus" style={{ marginRight: "0.5rem" }}></i>
+              Join Warehouse
+            </Link>
+          </div>
+
+          {loadingWarehouses ? (
+            <div style={{ textAlign: "center", padding: "2rem", color: "#6b7280" }}>
+              <i className="fas fa-spinner fa-spin" style={{ fontSize: "1.5rem" }}></i>
+              <p style={{ marginTop: "0.5rem" }}>Loading warehouses...</p>
+            </div>
+          ) : warehouses.length === 0 ? (
+            <div style={{ 
+              textAlign: "center", 
+              padding: "3rem 1rem",
+              backgroundColor: "#f9fafb",
+              borderRadius: "6px",
+              border: "1px dashed #d1d5db"
+            }}>
+              <i className="fas fa-warehouse" style={{ fontSize: "2rem", color: "#9ca3af", marginBottom: "1rem" }}></i>
+              <p style={{ margin: "0.5rem 0 0 0", color: "#6b7280" }}>
+                You haven't joined any warehouses yet
+              </p>
+              <p style={{ margin: "0.5rem 0 0 0", fontSize: "0.875rem", color: "#9ca3af" }}>
+                Contact your administrator for warehouse access PINs
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: "1rem" }}>
+              {warehouses.map((warehouse: any) => (
+                <div
+                  key={warehouse.id}
+                  style={{
+                    padding: "1rem",
+                    border: "1px solid #e5e7eb",
+                    borderRadius: "6px",
+                    backgroundColor: "#fafafa",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "flex-start"
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ 
+                      display: "flex", 
+                      alignItems: "center", 
+                      gap: "0.5rem",
+                      marginBottom: "0.5rem"
+                    }}>
+                      <i className="fas fa-map-marker-alt" style={{ color: "#137CFB" }}></i>
+                      <span style={{ fontWeight: 600, fontSize: "1rem" }}>
+                        {warehouse.name}
+                      </span>
+                    </div>
+                    
+                    {warehouse.address && (
+                      <div style={{ 
+                        fontSize: "0.875rem", 
+                        color: "#6b7280",
+                        marginBottom: "0.75rem"
+                      }}>
+                        <i className="fas fa-location-dot" style={{ marginRight: "0.5rem", color: "#9ca3af" }}></i>
+                        {warehouse.address}
+                      </div>
+                    )}
+
+                    {warehouse.pin && (
+                      <div style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "0.5rem",
+                        padding: "0.375rem 0.75rem",
+                        backgroundColor: "#fff",
+                        border: "1px solid #e5e7eb",
+                        borderRadius: "4px",
+                        fontSize: "0.875rem"
+                      }}>
+                        <i className="fas fa-key" style={{ color: "#9ca3af", fontSize: "0.75rem" }}></i>
+                        <span style={{ fontFamily: "monospace", fontWeight: 500 }}>
+                          PIN: {warehouse.pin}
+                        </span>
+                        <button
+                          onClick={() => {
+                            navigator.clipboard.writeText(warehouse.pin);
+                            alert('PIN copied to clipboard!');
+                          }}
+                          style={{
+                            background: "none",
+                            border: "none",
+                            cursor: "pointer",
+                            color: "#137CFB",
+                            padding: "0.125rem 0.25rem"
+                          }}
+                          title="Copy PIN"
+                        >
+                          <i className="fas fa-copy"></i>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  <Link
+                    href="/app/inventory/locations"
+                    style={{
+                      padding: "0.5rem 0.75rem",
+                      fontSize: "0.875rem",
+                      color: "#137CFB",
+                      textDecoration: "none",
+                      border: "1px solid #137CFB",
+                      borderRadius: "4px",
+                      fontWeight: 500,
+                      display: "inline-block"
+                    }}
+                  >
+                    Manage
+                  </Link>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div style={{
+            marginTop: "1rem",
+            padding: "0.75rem",
+            backgroundColor: "#eff6ff",
+            border: "1px solid #bfdbfe",
+            borderRadius: "6px",
+            fontSize: "0.875rem",
+            color: "#1e40af"
+          }}>
+            <i className="fas fa-info-circle" style={{ marginRight: "0.5rem" }}></i>
+            Share the warehouse name and PIN with team members to grant them access to these locations.
+          </div>
         </div>
 
         {/* Password Card */}
