@@ -31,6 +31,14 @@ export default function SignupPage() {
       const { data: authData, error: signUpError } = await supabaseAny.auth.signUp({
         email,
         password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: fullName,
+            role: role,
+            department: department
+          },
+        },
       });
 
       if (signUpError) {
@@ -44,34 +52,18 @@ export default function SignupPage() {
 
       console.log('User created:', authData.user.id);
 
-      // Update user profile after successful signup (trigger creates it automatically)
-      try {
-        // Wait a moment for the trigger to complete
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
-        const { error: profileError } = await supabaseAny
-          .from('user_profiles')
-          .update({
-            email,
-            full_name: fullName,
-            role,
-            department
-          })
-          .eq('id', authData.user.id);
-
-        if (profileError) {
-          console.error('Profile update error:', profileError);
-          // Don't fail signup if profile update fails, they can update later
-        } else {
-          console.log('Profile updated successfully');
-        }
-      } catch (profileErr) {
-        console.error('Profile update exception:', profileErr);
-        // Continue even if profile update fails
+      // Trigger automatically creates user_profiles with metadata
+      // No need to manually update - trigger handles it
+      
+      if (authData.session) {
+        // Auto-login enabled (email confirmation disabled)
+        console.log('Session created, redirecting to onboarding');
+        router.push("/onboarding");
+      } else {
+        // Email confirmation required
+        alert("Account created! Check your email to confirm your account, then log in to complete setup.");
+        router.push("/auth/login");
       }
-
-      alert("Account created! Check your email to confirm your account, then complete setup.");
-      router.push("/onboarding");
     } catch (err: any) {
       console.error('Signup exception:', err);
       setError(err.message || "Failed to sign up");
