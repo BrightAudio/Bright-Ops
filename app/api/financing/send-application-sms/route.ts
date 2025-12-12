@@ -86,16 +86,24 @@ export async function POST(request: NextRequest) {
 
     } catch (vonageError: any) {
       console.error('❌ Vonage SDK Error:', vonageError);
+      const errorMsg = vonageError?.message || vonageError?.error || JSON.stringify(vonageError) || 'Unknown Vonage error';
       return NextResponse.json({
         success: false,
-        error: `Vonage API error: ${vonageError.message || 'Unknown error'}`
+        error: `Vonage API error: ${errorMsg}`,
+        details: vonageError
       }, { status: 500 });
     }
 
   } catch (error: any) {
     console.error('❌ General Error in SMS API:', error);
+    const errorMsg = error?.message || error?.error || JSON.stringify(error) || 'Internal server error';
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error', details: error.toString() },
+      { 
+        success: false, 
+        error: errorMsg,
+        details: error.toString(),
+        stack: error.stack
+      },
       { status: 500 }
     );
   }

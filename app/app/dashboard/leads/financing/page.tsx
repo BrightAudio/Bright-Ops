@@ -358,17 +358,26 @@ export default function FinancingPage() {
       } else {
         // Show actual error from API
         console.error('❌ SMS Error Details:', JSON.stringify(result, null, 2));
-        const errorMsg = result.error || 'Unknown error - check Vonage credentials in Settings';
-        alert(`❌ SMS Failed: ${errorMsg}\n\nApplication link copied to clipboard.`);
-        // Fallback: copy link to clipboard
-        navigator.clipboard.writeText(applicationUrl);
+        const errorMsg = result.error || result.details || 'Unknown error - check Vonage credentials in Settings';
+        
+        // Try to copy to clipboard (may fail if document not focused)
+        try {
+          await navigator.clipboard.writeText(applicationUrl);
+          alert(`❌ SMS Failed: ${errorMsg}\n\nApplication link copied to clipboard:\n${applicationUrl}`);
+        } catch (clipErr) {
+          alert(`❌ SMS Failed: ${errorMsg}\n\nApplication link:\n${applicationUrl}\n\n(Copy manually)`);
+        }
       }
     } catch (error: any) {
       console.error('❌ SMS Exception:', error);
-      // Fallback: copy link to clipboard
-      const applicationUrl = `${window.location.origin}/financing/apply`;
-      navigator.clipboard.writeText(applicationUrl);
-      alert(`❌ Error sending SMS: ${error.message || 'Unknown error'}\n\nApplication link copied to clipboard:\n${applicationUrl}\n\nYou can manually text this to ${phoneNumber}`);
+      
+      // Try to copy to clipboard (may fail if document not focused)
+      try {
+        await navigator.clipboard.writeText(applicationUrl);
+        alert(`❌ Error sending SMS: ${error.message || 'Unknown error'}\n\nApplication link copied to clipboard:\n${applicationUrl}\n\nYou can manually text this to ${phone}`);
+      } catch (clipErr) {
+        alert(`❌ Error sending SMS: ${error.message || 'Unknown error'}\n\nApplication link:\n${applicationUrl}\n\n(Copy manually and text to ${phone})`);
+      }
     }
   }
 
