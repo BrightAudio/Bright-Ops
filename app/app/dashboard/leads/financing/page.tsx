@@ -2624,12 +2624,12 @@ export default function FinancingPage() {
                         color: 'white',
                         fontWeight: 600,
                         cursor: 'pointer',
-                        opacity: newApp.client_phone && newApp.client_name ? 1 : 0.5,
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
                         gap: '0.5rem'
                       }}
+                      title="Send application link via SMS (phone number will be requested if blank)"
                     >
                       📱 Send via SMS
                     </button>
