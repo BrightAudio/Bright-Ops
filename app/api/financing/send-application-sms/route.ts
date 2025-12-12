@@ -60,29 +60,42 @@ export async function POST(request: NextRequest) {
     const from = vonage_from_number.replace(/\D/g, '');
     const to = formattedPhone;
 
-    const response = await vonage.sms.send({ to, from, text })
-      .then(resp => {
-        console.log('Message sent successfully');
-        console.log(resp);
-        return resp;
-      })
-      .catch(err => {
-        console.log('There was an error sending the message.');
-        console.error(err);
-        throw err;
+    console.log('📱 Attempting SMS send:', { from, to, textLength: text.length });
+
+    try {
+      const response = await vonage.sms.send({ to, from, text });
+      
+      console.log('✅ Vonage SMS Response:', JSON.stringify(response, null, 2));
+      
+      // Check if the message was accepted
+      const message = response.messages[0];
+      if (message.status !== '0') {
+        console.error('❌ Vonage returned error status:', message);
+        return NextResponse.json({
+          success: false,
+          error: `Vonage error: ${message['error-text'] || 'Status ' + message.status}`
+        }, { status: 400 });
+      }
+
+      return NextResponse.json({
+        success: true,
+        messageId: message['message-id'],
+        to: formattedPhone,
+        status: message.status
       });
 
-    return NextResponse.json({
-      success: true,
-      messageId: response.messages[0]['message-id'],
-      to: formattedPhone,
-      status: response.messages[0].status
-    });
+    } catch (vonageError: any) {
+      console.error('❌ Vonage SDK Error:', vonageError);
+      return NextResponse.json({
+        success: false,
+        error: `Vonage API error: ${vonageError.message || 'Unknown error'}`
+      }, { status: 500 });
+    }
 
   } catch (error: any) {
-    console.error('Error sending SMS:', error);
+    console.error('❌ General Error in SMS API:', error);
     return NextResponse.json(
-      { success: false, error: error.message || 'Internal server error' },
+      { success: false, error: error.message || 'Internal server error', details: error.toString() },
       { status: 500 }
     );
   }
