@@ -57,8 +57,16 @@ export default function OnboardingPage() {
       return;
     }
     
+    if (!user) {
+      alert('Please log in first');
+      router.push('/auth/login');
+      return;
+    }
+    
     setLoading(true);
     try {
+      console.log('Creating/joining organization:', { orgName: orgName.trim(), hasPin: !!businessPin });
+      
       // Check if organization with this name and PIN already exists
       const { data: existingOrg, error: searchError } = await supabase
         .from('organizations')
@@ -67,18 +75,23 @@ export default function OnboardingPage() {
         .eq('business_pin', businessPin)
         .maybeSingle();
       
-      if (searchError) throw searchError;
+      if (searchError) {
+        console.error('Search error:', searchError);
+        throw new Error(`Failed to search organizations: ${searchError.message}`);
+      }
       
       let organizationId: string;
       let secretId: string;
       
       if (existingOrg) {
         // Join existing organization
+        console.log('Found existing organization:', existingOrg.id);
         organizationId = existingOrg.id;
         secretId = existingOrg.secret_id;
         setIsJoiningExisting(true);
       } else {
         // Create new organization
+        console.log('Creating new organization');
         const { data: org, error: orgError } = await supabase
           .from('organizations')
           .insert({ 
@@ -88,18 +101,33 @@ export default function OnboardingPage() {
           .select('id, secret_id')
           .single();
         
-        if (orgError) throw orgError;
+        if (orgError) {
+          console.error('Org creation error:', orgError);
+          throw new Error(`Failed to create organization: ${orgError.message}`);
+        }
+        
+        if (!org) {
+          throw new Error('No organization data returned');
+        }
+        
+        console.log('Organization created:', org.id);
         organizationId = org.id;
         secretId = org.secret_id;
       }
       
       // Update user profile with organization_id
+      console.log('Updating user profile with organization_id:', organizationId);
       const { error: profileError } = await supabase
         .from('user_profiles')
         .update({ organization_id: organizationId })
         .eq('id', user.id);
       
-      if (profileError) throw profileError;
+      if (profileError) {
+        console.error('Profile update error:', profileError);
+        throw new Error(`Failed to update profile: ${profileError.message}`);
+      }
+      
+      console.log('Profile updated successfully');
       
       // Show secret ID to user
       if (!existingOrg) {
@@ -111,7 +139,8 @@ export default function OnboardingPage() {
       setStep(2);
     } catch (error: any) {
       console.error('Error with organization:', error);
-      alert('Error: ' + error.message);
+      const errorMsg = error?.message || error?.msg || JSON.stringify(error) || 'Unknown error occurred';
+      alert('Error: ' + errorMsg);
     } finally {
       setLoading(false);
     }
