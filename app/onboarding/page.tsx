@@ -14,6 +14,8 @@ export default function OnboardingPage() {
   
   // Organization data
   const [orgName, setOrgName] = useState('');
+  const [businessPin, setBusinessPin] = useState('');
+  const [isJoiningExisting, setIsJoiningExisting] = useState(false);
   
   // Warehouse location data
   const [locationName, setLocationName] = useState('');
@@ -50,29 +52,66 @@ export default function OnboardingPage() {
       return;
     }
     
+    if (!businessPin.trim() || businessPin.length < 4) {
+      alert('Please enter a business PIN (minimum 4 characters)');
+      return;
+    }
+    
     setLoading(true);
     try {
-      // Create organization
-      const { data: org, error: orgError } = await supabase
+      // Check if organization with this name and PIN already exists
+      const { data: existingOrg, error: searchError } = await supabase
         .from('organizations')
-        .insert({ name: orgName })
-        .select()
-        .single();
+        .select('id, name, secret_id')
+        .ilike('name', orgName.trim())
+        .eq('business_pin', businessPin)
+        .maybeSingle();
       
-      if (orgError) throw orgError;
+      if (searchError) throw searchError;
+      
+      let organizationId: string;
+      let secretId: string;
+      
+      if (existingOrg) {
+        // Join existing organization
+        organizationId = existingOrg.id;
+        secretId = existingOrg.secret_id;
+        setIsJoiningExisting(true);
+      } else {
+        // Create new organization
+        const { data: org, error: orgError } = await supabase
+          .from('organizations')
+          .insert({ 
+            name: orgName.trim(),
+            business_pin: businessPin
+          })
+          .select('id, secret_id')
+          .single();
+        
+        if (orgError) throw orgError;
+        organizationId = org.id;
+        secretId = org.secret_id;
+      }
       
       // Update user profile with organization_id
       const { error: profileError } = await supabase
         .from('user_profiles')
-        .update({ organization_id: org.id })
+        .update({ organization_id: organizationId })
         .eq('id', user.id);
       
       if (profileError) throw profileError;
       
+      // Show secret ID to user
+      if (!existingOrg) {
+        alert(`✅ Organization created!\n\nYour Secret ID: ${secretId}\n\nShare your business name and PIN with team members to join.`);
+      } else {
+        alert(`✅ Joined existing organization: ${existingOrg.name}`);
+      }
+      
       setStep(2);
     } catch (error: any) {
-      console.error('Error creating organization:', error);
-      alert('Error creating organization: ' + error.message);
+      console.error('Error with organization:', error);
+      alert('Error: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -170,8 +209,21 @@ export default function OnboardingPage() {
               Welcome to Bright Ops! 🎉
             </h1>
             <p style={{ color: '#6b7280', marginBottom: '2rem' }}>
-              Let's get your account set up. First, tell us about your business.
+              Let's get your account set up. Enter your business name and PIN to create or join an organization.
             </p>
+            
+            <div style={{ 
+              marginBottom: '1.5rem', 
+              padding: '1rem', 
+              background: '#eff6ff', 
+              borderRadius: '8px',
+              borderLeft: '4px solid #3b82f6'
+            }}>
+              <p style={{ fontSize: '14px', color: '#1e40af', margin: 0 }}>
+                <strong>Creating new?</strong> Choose a unique business name and create a secure PIN.<br/>
+                <strong>Joining existing?</strong> Enter the exact business name and PIN provided by your team.
+              </p>
+            </div>
             
             <div style={{ marginBottom: '1.5rem' }}>
               <label style={{
@@ -200,23 +252,53 @@ export default function OnboardingPage() {
               />
             </div>
             
+            <div style={{ marginBottom: '1.5rem' }}>
+              <label style={{
+                display: 'block',
+                fontWeight: '600',
+                color: '#374151',
+                marginBottom: '0.5rem'
+              }}>
+                Business PIN *
+              </label>
+              <input
+                type="password"
+                value={businessPin}
+                onChange={(e) => setBusinessPin(e.target.value)}
+                placeholder="Create or enter 4+ character PIN"
+                style={{
+                  width: '100%',
+                  padding: '0.75rem',
+                  border: '2px solid #e5e7eb',
+                  borderRadius: '8px',
+                  fontSize: '16px',
+                  outline: 'none'
+                }}
+                onFocus={(e) => e.target.style.borderColor = '#667eea'}
+                onBlur={(e) => e.target.style.borderColor = '#e5e7eb'}
+              />
+              <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '0.5rem' }}>
+                This PIN will be used to securely connect team members to your organization.
+              </p>
+            </div>
+            
             <button
               onClick={handleCreateOrganization}
-              disabled={loading || !orgName.trim()}
+              disabled={loading || !orgName.trim() || businessPin.length < 4}
               style={{
                 width: '100%',
                 padding: '1rem',
-                background: loading || !orgName.trim() ? '#9ca3af' : '#667eea',
+                background: loading || !orgName.trim() || businessPin.length < 4 ? '#9ca3af' : '#667eea',
                 color: 'white',
                 border: 'none',
                 borderRadius: '8px',
                 fontSize: '16px',
                 fontWeight: '600',
-                cursor: loading || !orgName.trim() ? 'not-allowed' : 'pointer',
+                cursor: loading || !orgName.trim() || businessPin.length < 4 ? 'not-allowed' : 'pointer',
                 transition: 'background 0.2s'
               }}
             >
-              {loading ? 'Creating...' : 'Continue'}
+              {loading ? 'Processing...' : 'Continue'}
             </button>
           </>
         )}

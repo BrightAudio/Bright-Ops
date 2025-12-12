@@ -35,21 +35,24 @@ export default function SignupPage() {
 
       if (signUpError) throw signUpError;
 
-      // Create user profile after successful signup
+      // Update user profile after successful signup (trigger already creates it)
       if (authData.user) {
+        // Wait a moment for the trigger to complete
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
         const { error: profileError } = await supabaseAny
           .from('user_profiles')
-          .insert({
-            id: authData.user.id,
+          .update({
             email,
             full_name: fullName,
             role,
             department
-          });
+          })
+          .eq('id', authData.user.id);
 
         if (profileError) {
-          console.error('Failed to create profile:', profileError);
-          // Don't fail signup if profile creation fails, they can update later
+          console.error('Failed to update profile:', profileError);
+          // Don't fail signup if profile update fails, they can update later
         }
       }
 
@@ -75,7 +78,7 @@ export default function SignupPage() {
       >
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ color: "#f3f4f6" }}>
-            Bright Audio
+            Bright Ops
           </h1>
           <p style={{ color: "#9ca3af" }}>Create your account</p>
         </div>

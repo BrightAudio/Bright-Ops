@@ -49,7 +49,7 @@ function LoginContent() {
       >
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold mb-2" style={{ color: "#f3f4f6" }}>
-            Bright Audio
+            Bright Ops
           </h1>
           <p style={{ color: "#9ca3af" }}>Sign in to your account</p>
         </div>
