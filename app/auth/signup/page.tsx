@@ -53,8 +53,8 @@ export default function SignupPage() {
         }
       }
 
-      alert("Check your email to confirm your account");
-      router.push("/auth/login");
+      alert("Account created! Check your email to confirm your account, then complete setup.");
+      router.push("/onboarding");
     } catch (err: any) {
       setError(err.message || "Failed to sign up");
       setLoading(false);
