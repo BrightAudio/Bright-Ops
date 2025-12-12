@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         console.error('❌ Vonage returned error status:', message);
         return NextResponse.json({
           success: false,
-          error: `Vonage error: ${(message as any).errorText || message['error-text'] || 'Status ' + message.status}`
+          error: `Vonage error: ${(message as any).errorText || 'Status ' + message.status}`
         }, { status: 400 });
       }
 
