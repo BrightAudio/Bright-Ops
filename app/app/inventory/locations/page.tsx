@@ -90,59 +90,31 @@ export default function StockLocationsPage() {
         return;
       }
 
-      // Find warehouse by name and PIN
-      const { data: warehouse, error: searchError } = await supabase
-        .from('warehouses')
-        .select('id, name, address, pin')
-        .ilike('name', warehouseName.trim())
-        .eq('pin', warehousePin)
-        .maybeSingle();
+      // Call the secure function to verify PIN and grant access
+      // This bypasses RLS so users can join warehouses they don't have access to yet
+      const { data, error } = await supabase.rpc('join_warehouse_with_pin', {
+        p_warehouse_name: warehouseName.trim(),
+        p_pin: warehousePin
+      });
 
-      if (searchError) {
-        console.error('Search error:', searchError);
-        setJoinError('Error searching for warehouse');
+      if (error) {
+        console.error('RPC error:', error);
+        setJoinError('Error verifying credentials. Please try again.');
         setJoining(false);
         return;
       }
 
-      if (!warehouse) {
-        setJoinError('No warehouse found with that name and PIN. Check your credentials.');
-        setJoining(false);
-        return;
-      }
-
-      // Check if user already has access
-      const { data: existingAccess } = await supabase
-        .from('user_warehouse_access')
-        .select('id')
-        .eq('user_id', user.id)
-        .eq('warehouse_id', warehouse.id)
-        .maybeSingle();
-
-      if (existingAccess) {
-        setJoinError('You already have access to this warehouse');
-        setJoining(false);
-        return;
-      }
-
-      // Grant access
-      const { error: insertError } = await supabase
-        .from('user_warehouse_access')
-        .insert({
-          user_id: user.id,
-          warehouse_id: warehouse.id,
-          granted_by: user.id
-        });
-
-      if (insertError) {
-        console.error('Insert error:', insertError);
-        setJoinError('Failed to grant warehouse access');
+      // Check result from function
+      const result = data?.[0];
+      
+      if (!result || !result.success) {
+        setJoinError(result?.message || 'Invalid warehouse name or PIN');
         setJoining(false);
         return;
       }
 
       // Success!
-      alert(`✅ Successfully joined ${warehouse.name}!`);
+      alert(`✅ Successfully joined ${result.warehouse_name}!`);
       setShowJoinModal(false);
       setWarehouseName("");
       setWarehousePin("");

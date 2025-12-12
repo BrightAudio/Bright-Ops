@@ -69,15 +69,24 @@ CREATE TABLE public.user_warehouse_access (
 ## Security Model
 
 ### Access Control Flow
-1. User enters warehouse name + PIN
-2. System searches for warehouse with ILIKE name match + exact PIN match
-3. If found, creates entry in `user_warehouse_access`
-4. User can now see and access that warehouse's inventory
+1. User enters warehouse name + PIN in the join modal
+2. **Secure Function** `join_warehouse_with_pin()` verifies credentials (bypasses RLS for lookup)
+3. If valid, function creates entry in `user_warehouse_access`
+4. User can now see that warehouse and its inventory
 5. User can remove their own access (requires PIN to rejoin)
 
-### RLS Policies
+### Key Security Features
+
+**Warehouses persist independently of user access:**
+- Warehouses exist in database even if no users have access
+- Inventory items remain tied to their warehouse location
+- If you lose access, you can't see the inventory, but it persists for others
+- Serial numbers and items stay attached to their warehouse
+
+**RLS Policies enforce access:**
+
 ```sql
--- Users can only view warehouses they have access to
+-- Users can ONLY view warehouses they have explicit access to
 CREATE POLICY "Users can view accessible warehouses"
   ON warehouses FOR SELECT
   USING (
@@ -87,7 +96,25 @@ CREATE POLICY "Users can view accessible warehouses"
       WHERE user_id = auth.uid()
     )
   );
+
+-- Users can ONLY see inventory from warehouses they have access to
+CREATE POLICY "Users can view inventory from accessible warehouses"
+  ON inventory_items FOR SELECT
+  USING (
+    location IN (
+      SELECT w.name
+      FROM warehouses w
+      JOIN user_warehouse_access uwa ON uwa.warehouse_id = w.id
+      WHERE uwa.user_id = auth.uid()
+    )
+  );
 ```
+
+**Secure join function:**
+- Uses `SECURITY DEFINER` to bypass RLS temporarily
+- Only for PIN verification during join process
+- Cannot be exploited to see other warehouses
+- Validates credentials before granting access
 
 ## Setup Instructions
 
@@ -156,13 +183,29 @@ All current users automatically get access to "NEW SOUND Warehouse" (PIN 6588) w
 
 ## Security Considerations
 
-- PINs should be 4+ characters (enforced in onboarding)
+### PIN Security
+- PINs should be 4+ characters (enforced in UI)
 - PINs are stored in plain text (consider hashing for production)
-- Name matching is case-insensitive (ILIKE)
+- Name matching is case-insensitive (LOWER comparison)
 - PIN matching is case-sensitive (exact match)
+
+### Access Control
 - Users can only grant access to themselves
 - Users can only remove their own access
-- RLS policies prevent unauthorized warehouse viewing
+- **Users CANNOT see warehouses they don't have access to**
+- **Users CANNOT see inventory from warehouses they don't have access to**
+
+### Data Persistence
+- **Warehouses persist even if no users have access**
+- **Inventory items persist even if you lose warehouse access**
+- Serial numbers remain attached to their warehouse location
+- If you rejoin with the PIN, you'll see all the same inventory
+
+### Database-Level Security
+- RLS policies on `warehouses` table prevent unauthorized viewing
+- RLS policies on `inventory_items` table filter by warehouse access
+- Secure function `join_warehouse_with_pin()` uses elevated privileges only for PIN verification
+- All other operations respect user permissions
 
 ## Files Modified
 
