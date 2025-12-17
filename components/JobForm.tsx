@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseClient';
 import { calculateTotalAmortizationForGear } from '@/lib/utils/jobAmortization';
+import { useLocation } from '@/lib/contexts/LocationContext';
 
 interface GearItem {
   id: string;
@@ -19,6 +20,7 @@ interface SelectedGear {
 }
 
 export default function JobForm() {
+  const { currentLocation } = useLocation();
   const [availableGear, setAvailableGear] = useState<GearItem[]>([]);
   const [selectedGear, setSelectedGear] = useState<SelectedGear[]>([]);
   const [clientName, setClientName] = useState('');
@@ -120,7 +122,8 @@ export default function JobForm() {
           gear_id: g.gear_id,
           quantity: g.quantity
         })),
-        total_price: parseFloat(totalPrice)
+        total_price: parseFloat(totalPrice),
+        warehouse_location: currentLocation // Include current warehouse location
       };
 
       // Submit to API
@@ -159,6 +162,14 @@ export default function JobForm() {
   return (
     <div className="max-w-4xl mx-auto p-6 bg-white rounded-lg shadow-md">
       <h2 className="text-2xl font-bold mb-6">Create New Job</h2>
+
+      {/* Warehouse indicator */}
+      {currentLocation && currentLocation !== 'All Locations' && (
+        <div className="mb-4 p-3 bg-blue-50 border border-blue-200 text-blue-700 rounded flex items-center gap-2">
+          <i className="fas fa-warehouse"></i>
+          <span>This job will be created for: <strong>{currentLocation}</strong></span>
+        </div>
+      )}
 
       {error && (
         <div className="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded">

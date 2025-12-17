@@ -198,7 +198,7 @@ export default function JobsPage() {
         // Open existing pull sheet
         router.push(`/app/warehouse/pull-sheets/${existingPullSheet.id}`);
       } else {
-        // Create new pull sheet
+        // Create new pull sheet - inherit warehouse_id from job
         const created = await createPullSheet({
           name: `${job.code ?? job.title ?? 'Job'} Pull Sheet`,
           job_id: job.id,
@@ -206,6 +206,7 @@ export default function JobsPage() {
           scheduled_out_at: job.start_at ?? null,
           expected_return_at: job.end_at ?? null,
           notes: job.notes ?? null,
+          warehouse_id: job.warehouse_id ?? null,
         });
         router.push(`/app/warehouse/pull-sheets/${created.id}`);
       }
@@ -546,7 +547,26 @@ export default function JobsPage() {
       {loading ? (
         <p className="text-zinc-500">Loading jobs...</p>
       ) : !jobs || jobs.length === 0 ? (
-        <p className="text-zinc-500">No jobs found. Create one to get started!</p>
+        <div className="text-center py-16 px-4">
+          <div className="inline-block p-6 bg-zinc-800/50 rounded-full mb-6">
+            <FileText className="w-16 h-16 text-zinc-600" />
+          </div>
+          <h3 className="text-2xl font-semibold text-zinc-300 mb-3">No Jobs Yet</h3>
+          <p className="text-zinc-500 mb-8 max-w-md mx-auto">
+            {showArchived 
+              ? "No archived jobs found." 
+              : "Get started by creating your first job. Jobs help you organize events, track equipment, and manage client relationships."}
+          </p>
+          {!showArchived && (
+            <button
+              onClick={() => setShowCreateForm(true)}
+              className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors"
+            >
+              <Plus className="w-5 h-5" />
+              Create Your First Job
+            </button>
+          )}
+        </div>
       ) : (
         <div className={viewMode === 'grid' ? 'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4' : 'space-y-4'}>
           {jobs.map(job => (

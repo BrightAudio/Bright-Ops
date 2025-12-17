@@ -75,8 +75,8 @@ export default function HomeAuth() {
   }
 
   return (
-    <div className="bg-zinc-800 border border-zinc-700 shadow-xl rounded-xl p-8 w-full max-w-md">
-      <div className="flex gap-6 mb-6">
+    <div className="w-full">
+      <div className="flex gap-6 mb-6 justify-center">
         <button
           type="button"
           onClick={() => {
@@ -86,8 +86,8 @@ export default function HomeAuth() {
           }}
           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             mode === "signup"
-              ? "border-amber-500 text-amber-500"
-              : "border-transparent text-gray-400 hover:text-white"
+              ? "border-purple-600 text-purple-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
           disabled={status === "loading"}
         >
@@ -102,8 +102,8 @@ export default function HomeAuth() {
           }}
           className={`pb-2 text-sm font-semibold border-b-2 transition-colors ${
             mode === "login"
-              ? "border-amber-500 text-amber-500"
-              : "border-transparent text-gray-400 hover:text-white"
+              ? "border-purple-600 text-purple-600"
+              : "border-transparent text-gray-500 hover:text-gray-700"
           }`}
           disabled={status === "loading"}
         >
@@ -111,11 +111,11 @@ export default function HomeAuth() {
         </button>
       </div>
 
-      <div className="space-y-2 mb-6">
-        <h2 className="text-2xl font-bold text-white">
+      <div className="space-y-2 mb-6 text-center">
+        <h2 className="text-2xl font-bold text-gray-900">
           {mode === "signup" ? "Create your account" : "Welcome back"}
         </h2>
-        <p className="text-sm text-gray-400">
+        <p className="text-sm text-gray-600">
           {mode === "signup"
             ? "Get started with your Bright Ops workspace"
             : "Log in to your account"}
@@ -125,12 +125,12 @@ export default function HomeAuth() {
       <form onSubmit={handleSubmit} className="space-y-4">
         {mode === "signup" && (
           <>
-            <label className="block text-sm font-medium text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Full Name
               <input
                 type="text"
                 placeholder="John Smith"
-                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
                 value={fullName}
                 onChange={(event) => setFullName(event.target.value)}
                 disabled={status === "loading" || status === "success"}
@@ -138,12 +138,12 @@ export default function HomeAuth() {
               />
             </label>
 
-            <label className="block text-sm font-medium text-gray-300">
+            <label className="block text-sm font-medium text-gray-700">
               Industry (Optional)
               <input
                 type="text"
                 placeholder="e.g., Audio Production, Event Production"
-                className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
+                className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
                 value={industry}
                 onChange={(event) => setIndustry(event.target.value)}
                 disabled={status === "loading" || status === "success"}
@@ -152,12 +152,12 @@ export default function HomeAuth() {
           </>
         )}
 
-        <label className="block text-sm font-medium text-gray-300">
+        <label className="block text-sm font-medium text-gray-700">
           Email
           <input
             type="email"
             placeholder="you@company.com"
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
             disabled={status === "loading" || status === "success"}
@@ -165,12 +165,12 @@ export default function HomeAuth() {
           />
         </label>
 
-        <label className="block text-sm font-medium text-gray-300">
+        <label className="block text-sm font-medium text-gray-700">
           Password
           <input
             type="password"
             placeholder="••••••••"
-            className="mt-2 w-full rounded-lg border border-zinc-700 bg-zinc-900 px-4 py-2.5 text-sm text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-transparent disabled:opacity-60"
+            className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
             disabled={status === "loading" || status === "success"}
@@ -185,7 +185,8 @@ export default function HomeAuth() {
         <button
           type="submit"
           disabled={status === "loading" || status === "success"}
-          className="w-full py-3 mt-2 rounded-lg bg-amber-500 text-black text-sm font-bold hover:bg-amber-400 transition disabled:opacity-60 disabled:cursor-not-allowed"
+          className="w-full py-3 mt-2 rounded-lg text-white text-sm font-bold transition disabled:opacity-60 disabled:cursor-not-allowed"
+          style={{ background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' }}
         >
           {status === "loading"
             ? mode === "signup"

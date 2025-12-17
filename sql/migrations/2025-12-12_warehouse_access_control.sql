@@ -218,9 +218,10 @@ BEGIN
   END IF;
   
   -- Check if user already has access
+  -- Use table alias to avoid ambiguous column references
   IF EXISTS (
-    SELECT 1 FROM public.user_warehouse_access
-    WHERE user_id = v_user_id AND warehouse_id = v_warehouse_id
+    SELECT 1 FROM public.user_warehouse_access uwa
+    WHERE uwa.user_id = v_user_id AND uwa.warehouse_id = v_warehouse_id
   ) THEN
     RETURN QUERY SELECT false, 'You already have access to this warehouse'::TEXT, v_warehouse_id, v_warehouse_name;
     RETURN;

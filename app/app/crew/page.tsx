@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { supabase } from "@/lib/supabaseClient";
+import { useLocation } from "@/lib/contexts/LocationContext";
 
 type Employee = {
   id: string;
@@ -16,6 +17,7 @@ type Employee = {
 };
 
 export default function CrewPage() {
+  const { currentLocation } = useLocation();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
@@ -54,6 +56,37 @@ export default function CrewPage() {
     setSaving(true);
 
     try {
+      // Get warehouse_id from current location
+      let warehouse_id = null;
+      if (currentLocation && currentLocation !== 'All Locations') {
+        const { data: warehouseData } = await supabase
+          .from('warehouses')
+          .select('id')
+          .eq('name', currentLocation)
+          .single();
+        
+        if (warehouseData) {
+          warehouse_id = warehouseData.id;
+        }
+      }
+      
+      // Fallback to user's first accessible warehouse
+      if (!warehouse_id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: accessData } = await supabase
+            .from('user_warehouse_access')
+            .select('warehouse_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+          
+          if (accessData) {
+            warehouse_id = accessData.warehouse_id;
+          }
+        }
+      }
+
       const supabaseAny = supabase as any;
       const { error } = await supabaseAny.from("employees").insert([
         {
@@ -62,6 +95,7 @@ export default function CrewPage() {
           phone: formData.phone || null,
           role: formData.role || null,
           hourly_rate: formData.hourly_rate ? parseFloat(formData.hourly_rate) : null,
+          warehouse_id: warehouse_id,
         },
       ]);
 

@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
 
     // Parse request body
     const body = await request.json();
-    const { client_name, job_date, gear, total_price } = body;
+    const { client_name, job_date, gear, total_price, warehouse_location } = body;
 
     // Validate required fields
     if (!client_name || !job_date || !gear || !total_price) {
@@ -45,6 +45,36 @@ export async function POST(request: NextRequest) {
         { success: false, error: 'Missing required fields' },
         { status: 400 }
       );
+    }
+
+    // Get warehouse_id from location name if provided
+    let warehouse_id = null;
+    if (warehouse_location && warehouse_location !== 'All Locations') {
+      const { data: warehouseData, error: warehouseError } = await supabase
+        .from('warehouses')
+        .select('id')
+        .eq('name', warehouse_location)
+        .single();
+
+      if (warehouseError) {
+        console.error('Error fetching warehouse:', warehouseError);
+      } else if (warehouseData) {
+        warehouse_id = warehouseData.id;
+      }
+    }
+
+    // If no warehouse specified, try to get user's first accessible warehouse
+    if (!warehouse_id) {
+      const { data: accessData } = await supabase
+        .from('user_warehouse_access')
+        .select('warehouse_id')
+        .eq('user_id', user.id)
+        .limit(1)
+        .single();
+
+      if (accessData) {
+        warehouse_id = accessData.warehouse_id;
+      }
     }
 
     // Fetch gear amortization data from inventory
@@ -93,7 +123,8 @@ export async function POST(request: NextRequest) {
         event_start_date: job_date,
         cost_estimate_amount: total_price,
         total_amortization: totalAmortization,
-        created_by: user.id
+        created_by: user.id,
+        warehouse_id: warehouse_id // Associate job with warehouse
       })
       .select()
       .single();

@@ -5,6 +5,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { Plus, Search, X, Trash2, Save } from "lucide-react";
+import { useLocation } from "@/lib/contexts/LocationContext";
 
 type InventoryItem = {
   id: string;
@@ -26,6 +27,7 @@ type SelectedItem = {
 
 export default function CreatePullSheetPage() {
   const router = useRouter();
+  const { currentLocation } = useLocation();
   const [pullSheetName, setPullSheetName] = useState("");
   const [jobId, setJobId] = useState<string>("");
   const [jobSearchQuery, setJobSearchQuery] = useState("");
@@ -277,16 +279,50 @@ export default function CreatePullSheetPage() {
       let scheduledOut = null;
       let expectedReturn = null;
       
+      // Get warehouse_id from job or current location
+      let warehouse_id = null;
+      
       if (jobId) {
         const { data: jobData } = await supabase
           .from('jobs')
-          .select('load_out_date, expected_return_date')
+          .select('load_out_date, expected_return_date, warehouse_id')
           .eq('id', jobId)
           .single();
         
         if (jobData) {
           scheduledOut = (jobData as any).load_out_date;
           expectedReturn = (jobData as any).expected_return_date;
+          warehouse_id = (jobData as any).warehouse_id;
+        }
+      }
+      
+      // If no warehouse from job, use current location
+      if (!warehouse_id && currentLocation && currentLocation !== 'All Locations') {
+        const { data: warehouseData } = await supabase
+          .from('warehouses')
+          .select('id')
+          .eq('name', currentLocation)
+          .single();
+        
+        if (warehouseData) {
+          warehouse_id = warehouseData.id;
+        }
+      }
+      
+      // Fallback to user's first accessible warehouse
+      if (!warehouse_id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: accessData } = await supabase
+            .from('user_warehouse_access')
+            .select('warehouse_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+          
+          if (accessData) {
+            warehouse_id = accessData.warehouse_id;
+          }
         }
       }
       
@@ -300,6 +336,7 @@ export default function CreatePullSheetPage() {
           scheduled_out_at: scheduledOut,
           expected_return_at: expectedReturn,
           notes: null,
+          warehouse_id: warehouse_id,
         }])
         .select()
         .single();

@@ -436,8 +436,31 @@ export default function ClientsPage() {
           ))}
         </div>
       ) : filtered.length === 0 ? (
-        <div className="text-center py-8 text-zinc-400">
-          {search ? 'No clients match your search' : 'No clients found. Clients will appear here when you add them to jobs.'}
+        <div className="text-center py-16 px-4">
+          <div className="inline-block p-6 bg-zinc-800/50 rounded-full mb-6">
+            <svg className="w-16 h-16 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+            </svg>
+          </div>
+          <h3 className="text-2xl font-semibold text-zinc-300 mb-3">
+            {search ? 'No Matching Clients' : 'No Clients Yet'}
+          </h3>
+          <p className="text-zinc-500 mb-8 max-w-md mx-auto">
+            {search 
+              ? 'Try adjusting your search terms.' 
+              : 'Clients are automatically created when you add them to jobs, or you can add them directly here.'}
+          </p>
+          {!search && (
+            <Link
+              href="/app/clients/new"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              Add Your First Client
+            </Link>
+          )}
         </div>
       ) : (
         <div className="grid gap-4">

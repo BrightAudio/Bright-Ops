@@ -491,10 +491,42 @@ export default function InventoryPage() {
 							})}
 						</div>
 					) : (
-						<div className="py-12 text-center">
-							<div className="text-5xl mb-3">📦</div>
-							<p className="text-xl font-semibold text-zinc-400">No items found</p>
-							<p className="text-sm text-zinc-500 mt-2">Try adjusting your filters or add a new item</p>
+						<div className="text-center py-16 px-4">
+							<div className="inline-block p-6 bg-zinc-800/50 rounded-full mb-6">
+								<svg className="w-16 h-16 text-zinc-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
+								</svg>
+							</div>
+						<h3 className="text-2xl font-semibold text-zinc-300 mb-3">
+							{(categoryFilter || subcategoryFilter || search) ? 'No Matching Items' : 'No Inventory Yet'}
+						</h3>
+						<p className="text-zinc-500 mb-8 max-w-md mx-auto">
+							{(categoryFilter || subcategoryFilter || search)
+								? 'Try adjusting your filters or search terms.'
+								: 'Start building your inventory by adding equipment items. You can add them manually or import from CSV.'}
+						</p>
+						{!(categoryFilter || subcategoryFilter || search) && (
+								<div className="flex gap-3 justify-center">
+									<Link
+										href="/app/inventory/new"
+										className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-black font-semibold rounded-lg transition-colors"
+									>
+										<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+										</svg>
+										Add Your First Item
+									</Link>
+									<button
+										onClick={() => setCsvModalOpen(true)}
+										className="inline-flex items-center gap-2 px-6 py-3 bg-zinc-700 hover:bg-zinc-600 text-white font-semibold rounded-lg transition-colors"
+									>
+										<svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+										</svg>
+										Import CSV
+									</button>
+								</div>
+							)}
 						</div>
 					)}
 				</>

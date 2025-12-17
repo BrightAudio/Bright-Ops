@@ -245,7 +245,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex justify-between items-center mb-6">
           <div className="flex items-center gap-4">
             <button
-              onClick={() => router.push("/app/dashboard/leads")}
+              onClick={() => router.back()}
               className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             >
               <i className="fas fa-arrow-left"></i>

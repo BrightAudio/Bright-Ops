@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLocation } from '@/lib/contexts/LocationContext';
 
 import { clientSchema, type ClientFormData } from '@/lib/schemas';
 import type { Database } from '@/types/database';
@@ -10,6 +11,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 
 export default function NewClientPage() {
   const router = useRouter();
+  const { currentLocation } = useLocation();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState<ClientFormData>({
@@ -22,14 +24,45 @@ export default function NewClientPage() {
     e.preventDefault();
     setLoading(true);
     setError(null);
-
     try {
       const validatedData = clientSchema.parse(formData);
-      const clientInsert: Database['public']['Tables']['clients']['Insert'] = {
+      
+      // Get warehouse_id from current location
+      let warehouse_id = null;
+      if (currentLocation && currentLocation !== 'All Locations') {
+        const { data: warehouseData } = await supabase
+          .from('warehouses')
+          .select('id')
+          .eq('name', currentLocation)
+          .single();
+        
+        if (warehouseData) {
+          warehouse_id = warehouseData.id;
+        }
+      }
+      
+      // If no warehouse from location, get user's first accessible warehouse
+      if (!warehouse_id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: accessData } = await supabase
+            .from('user_warehouse_access')
+            .select('warehouse_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+          
+          if (accessData) {
+            warehouse_id = accessData.warehouse_id;
+          }
+        }
+      }
+      
+      const clientInsert = {
         name: validatedData.name,
         email: validatedData.email || '',
         phone: validatedData.phone || '',
-        // id and created_at are optional and omitted
+        warehouse_id: warehouse_id, // Automatically assign to current warehouse
       };
       const { error: dbError } = await supabase
         .from('clients')
@@ -67,6 +100,20 @@ export default function NewClientPage() {
         </button>
         <h1 className="text-2xl font-bold text-amber-400">New Client</h1>
       </div>
+
+      {/* Warehouse indicator */}
+      {currentLocation && currentLocation !== 'All Locations' && (
+        <div className="mb-4 p-3 bg-blue-500/10 border border-blue-500/30 text-blue-400 rounded flex items-center gap-2">
+          <i className="fas fa-warehouse"></i>
+          <span>This client will be assigned to: <strong>{currentLocation}</strong></span>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-500/10 border border-red-500/30 text-red-400 rounded">
+          {error}
+        </div>
+      )}
 
       <form onSubmit={onSubmit} className="space-y-4">
         <div>

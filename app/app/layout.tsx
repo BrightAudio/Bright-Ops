@@ -9,7 +9,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
   } = await supabase.auth.getSession();
 
   if (!session) {
-    redirect("/");
+    redirect("/auth/login");
   }
 
   // DashboardLayout component now handles the sidebar and topbar

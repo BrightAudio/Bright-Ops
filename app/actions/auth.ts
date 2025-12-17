@@ -49,7 +49,7 @@ export async function signupAction(email: string, password: string, fullName: st
   if (data.session) {
     // Auto-login enabled (email confirmation disabled)
     revalidatePath("/", "layout");
-    redirect("/app/warehouse");
+    redirect("/onboarding");
   }
 
   // Email confirmation required
@@ -60,5 +60,5 @@ export async function logoutAction() {
   const supabase = await supabaseAction();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-  redirect("/");
+  redirect("/auth/login");
 }

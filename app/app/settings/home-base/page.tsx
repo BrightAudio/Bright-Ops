@@ -25,7 +25,7 @@ export default async function HomeBaseSettingsPage() {
     data: { session },
   } = await supabase.auth.getSession();
 
-  if (!session) redirect("/");
+  if (!session) redirect("/auth/login");
 
   const membershipResponse = await supabase
     .from("home_base_members")

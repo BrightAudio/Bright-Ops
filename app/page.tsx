@@ -44,7 +44,7 @@ export default async function HomeBasePage() {
 
       {/* Footer */}
       <footer className="mt-20 text-center text-xs text-gray-500">
-        © {new Date().getFullYear()} Bright Audio — All rights reserved
+
       </footer>
     </main>
   );

@@ -5,12 +5,19 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AccountSettingsPage() {
+  const [activeTab, setActiveTab] = useState<'account' | 'training'>('account');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
+  
+  // Training state
+  const [assignments, setAssignments] = useState<any[]>([]);
+  const [loadingTraining, setLoadingTraining] = useState(false);
+  const [expandedVideo, setExpandedVideo] = useState<string | null>(null);
+  const [trainingFilter, setTrainingFilter] = useState<'all' | 'assigned' | 'in_progress' | 'completed'>('all');
   
   // Profile form state
   const [profileForm, setProfileForm] = useState({
@@ -106,6 +113,81 @@ export default function AccountSettingsPage() {
     }
     loadWarehouses();
   }, []);
+
+  // Load training assignments
+  useEffect(() => {
+    if (activeTab === 'training') {
+      loadTrainingAssignments();
+    }
+  }, [activeTab]);
+
+  async function loadTrainingAssignments() {
+    setLoadingTraining(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('training_assignments')
+        .select(`
+          *,
+          training_modules (*),
+          training_progress (*)
+        `)
+        .eq('user_id', user.id)
+        .order('assigned_at', { ascending: false });
+
+      if (error) throw error;
+      setAssignments((data as any) || []);
+    } catch (error) {
+      console.error('Error loading training assignments:', error);
+    } finally {
+      setLoadingTraining(false);
+    }
+  }
+
+  async function toggleTrainingComplete(assignmentId: string, moduleId: string, currentStatus: boolean) {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const newStatus = !currentStatus;
+
+      // Update or insert progress
+      const { error: progressError } = await supabase
+        .from('training_progress')
+        .upsert({
+          assignment_id: assignmentId,
+          user_id: user.id,
+          module_id: moduleId,
+          marked_complete: newStatus,
+          completed_at: newStatus ? new Date().toISOString() : null,
+          watched: newStatus
+        }, {
+          onConflict: 'assignment_id'
+        });
+
+      if (progressError) throw progressError;
+
+      // Update assignment status
+      const { error: assignmentError } = await supabase
+        .from('training_assignments')
+        .update({
+          status: newStatus ? 'completed' : 'in_progress',
+          completed_at: newStatus ? new Date().toISOString() : null,
+          started_at: new Date().toISOString()
+        })
+        .eq('id', assignmentId);
+
+      if (assignmentError) throw assignmentError;
+
+      // Reload assignments
+      await loadTrainingAssignments();
+    } catch (error) {
+      console.error('Error updating completion:', error);
+      alert('Failed to update training progress');
+    }
+  }
 
   const handleProfileSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -219,8 +301,8 @@ export default function AccountSettingsPage() {
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <button
-            onClick={() => window.history.back()}
+          <Link
+            href="/app/dashboard/leads"
             style={{
               display: "flex",
               alignItems: "center",
@@ -232,12 +314,13 @@ export default function AccountSettingsPage() {
               borderRadius: "6px",
               cursor: "pointer",
               fontSize: "0.875rem",
-              fontWeight: 500
+              fontWeight: 500,
+              textDecoration: "none"
             }}
           >
             <i className="fas fa-arrow-left"></i>
             Back
-          </button>
+          </Link>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
               <Link 
@@ -351,6 +434,49 @@ export default function AccountSettingsPage() {
         )}
       </div>
 
+      {/* Tabs */}
+      <div style={{ 
+        display: 'flex', 
+        gap: '0.5rem', 
+        borderBottom: '2px solid #e5e7eb',
+        marginBottom: '2rem'
+      }}>
+        <button
+          onClick={() => setActiveTab('account')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'account' ? '2px solid #667eea' : '2px solid transparent',
+            color: activeTab === 'account' ? '#667eea' : '#6b7280',
+            cursor: 'pointer',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          Account Settings
+        </button>
+        <button
+          onClick={() => setActiveTab('training')}
+          style={{
+            padding: '0.75rem 1.5rem',
+            background: 'none',
+            border: 'none',
+            borderBottom: activeTab === 'training' ? '2px solid #667eea' : '2px solid transparent',
+            color: activeTab === 'training' ? '#667eea' : '#6b7280',
+            cursor: 'pointer',
+            fontSize: '0.9375rem',
+            fontWeight: 600,
+            marginBottom: '-2px',
+            transition: 'all 0.2s'
+          }}
+        >
+          Training
+        </button>
+      </div>
+
       {/* Success Message */}
       {successMessage && (
         <div style={{
@@ -369,8 +495,10 @@ export default function AccountSettingsPage() {
         </div>
       )}
 
-      <div style={{ display: "grid", gap: "1.5rem", maxWidth: "800px" }}>
-        {/* Profile Information Card */}
+      {/* Account Settings Tab */}
+      {activeTab === 'account' && (
+        <div style={{ display: "grid", gap: "1.5rem", maxWidth: "800px" }}>
+          {/* Profile Information Card */}
         <div style={{
           background: "#fff",
           border: "1px solid #e5e7eb",
@@ -1624,6 +1752,355 @@ export default function AccountSettingsPage() {
           </Link>
         </div>
       </div>
+      )}
+
+      {/* Training Tab */}
+      {activeTab === 'training' && (
+        <div>
+          {/* Stats Cards */}
+          <div style={{ 
+            display: 'grid', 
+            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', 
+            gap: '1rem',
+            marginBottom: '2rem'
+          }}>
+            <div style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              padding: '1rem'
+            }}>
+              <div style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                Total Trainings
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#667eea' }}>
+                {assignments.length}
+              </div>
+            </div>
+
+            <div style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              padding: '1rem'
+            }}>
+              <div style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                Completed
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#10b981' }}>
+                {assignments.filter(a => a.status === 'completed').length}
+              </div>
+            </div>
+
+            <div style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              padding: '1rem'
+            }}>
+              <div style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                In Progress
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#f59e0b' }}>
+                {assignments.filter(a => a.status === 'in_progress').length}
+              </div>
+            </div>
+
+            <div style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              padding: '1rem'
+            }}>
+              <div style={{ fontSize: '0.875rem', color: '#9ca3af', marginBottom: '0.5rem' }}>
+                Completion Rate
+              </div>
+              <div style={{ fontSize: '1.75rem', fontWeight: 'bold', color: '#667eea' }}>
+                {assignments.length > 0 ? Math.round((assignments.filter(a => a.status === 'completed').length / assignments.length) * 100) : 0}%
+              </div>
+            </div>
+          </div>
+
+          {/* Progress Bar */}
+          {assignments.length > 0 && (
+            <div style={{
+              background: '#2a2a2a',
+              border: '1px solid #333333',
+              borderRadius: '8px',
+              padding: '1.5rem',
+              marginBottom: '2rem'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '1rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <i className="fas fa-trophy" style={{ color: '#f59e0b', fontSize: '1.25rem' }}></i>
+                  <span style={{ fontSize: '1rem', fontWeight: '600', color: '#f3f4f6' }}>
+                    Training Progress
+                  </span>
+                </div>
+                <span style={{ fontSize: '0.875rem', color: '#9ca3af' }}>
+                  {assignments.filter(a => a.status === 'completed').length} of {assignments.length} completed
+                </span>
+              </div>
+              <div style={{
+                width: '100%',
+                height: '24px',
+                background: '#1a1a1a',
+                borderRadius: '12px',
+                overflow: 'hidden'
+              }}>
+                <div style={{
+                  width: `${assignments.length > 0 ? Math.round((assignments.filter(a => a.status === 'completed').length / assignments.length) * 100) : 0}%`,
+                  height: '100%',
+                  background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                  transition: 'width 0.3s ease'
+                }} />
+              </div>
+            </div>
+          )}
+
+          {/* Filters */}
+          <div style={{ marginBottom: '1.5rem' }}>
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+              {(['all', 'assigned', 'in_progress', 'completed'] as const).map(f => (
+                <button
+                  key={f}
+                  onClick={() => setTrainingFilter(f)}
+                  style={{
+                    padding: '0.5rem 1rem',
+                    background: trainingFilter === f ? '#667eea' : '#2a2a2a',
+                    border: '1px solid',
+                    borderColor: trainingFilter === f ? '#667eea' : '#333333',
+                    borderRadius: '6px',
+                    color: trainingFilter === f ? 'white' : '#e5e5e5',
+                    cursor: 'pointer',
+                    fontSize: '0.875rem',
+                    fontWeight: '500'
+                  }}
+                >
+                  {f === 'all' ? 'All' : f === 'in_progress' ? 'In Progress' : f.charAt(0).toUpperCase() + f.slice(1)}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Trainings List */}
+          <div>
+            <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#f3f4f6' }}>
+              {trainingFilter === 'all' ? 'All Assigned Trainings' : 
+               trainingFilter === 'assigned' ? 'New Assignments' :
+               trainingFilter === 'in_progress' ? 'In Progress' :
+               'Completed Trainings'}
+            </h2>
+
+            {loadingTraining ? (
+              <div style={{ textAlign: 'center', padding: '3rem', color: '#9ca3af' }}>
+                Loading trainings...
+              </div>
+            ) : assignments.filter(a => trainingFilter === 'all' || a.status === trainingFilter).length === 0 ? (
+              <div style={{
+                textAlign: 'center',
+                padding: '3rem',
+                background: '#2a2a2a',
+                borderRadius: '8px',
+                border: '1px solid #333333'
+              }}>
+                <i className="fas fa-book" style={{ fontSize: '3rem', color: '#9ca3af', marginBottom: '1rem' }}></i>
+                <p style={{ color: '#9ca3af', margin: 0 }}>
+                  {trainingFilter === 'all' ? 'No training assignments yet' :
+                   trainingFilter === 'completed' ? 'No completed trainings yet' :
+                   `No ${trainingFilter.replace('_', ' ')} trainings`}
+                </p>
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+                {assignments.filter(a => trainingFilter === 'all' || a.status === trainingFilter).map((assignment) => {
+                  const progress = assignment.training_progress?.[0];
+                  const isComplete = progress?.marked_complete || false;
+
+                  return (
+                    <div
+                      key={assignment.id}
+                      style={{
+                        background: '#2a2a2a',
+                        border: '1px solid #333333',
+                        borderRadius: '8px',
+                        overflow: 'hidden'
+                      }}
+                    >
+                      <div style={{
+                        padding: '1.25rem',
+                        display: 'flex',
+                        alignItems: 'flex-start',
+                        gap: '1rem'
+                      }}>
+                        {/* Thumbnail */}
+                        <div style={{
+                          width: '120px',
+                          height: '67px',
+                          background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                          borderRadius: '6px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                          position: 'relative',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => setExpandedVideo(expandedVideo === assignment.id ? null : assignment.id)}
+                        >
+                          <i className="fas fa-play" style={{ color: 'white', fontSize: '1.5rem' }}></i>
+                          <div style={{
+                            position: 'absolute',
+                            bottom: '4px',
+                            right: '4px',
+                            background: 'rgba(0,0,0,0.7)',
+                            color: 'white',
+                            padding: '2px 6px',
+                            borderRadius: '3px',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold'
+                          }}>
+                            {assignment.training_modules?.duration || 'N/A'}
+                          </div>
+                        </div>
+
+                        {/* Content */}
+                        <div style={{ flex: 1 }}>
+                          <h3 style={{ margin: '0 0 0.5rem 0', fontSize: '1rem', fontWeight: '600', color: '#f3f4f6' }}>
+                            {assignment.training_modules?.title || 'Untitled'}
+                          </h3>
+
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
+                            <span style={{
+                              padding: '0.25rem 0.75rem',
+                              background: '#333333',
+                              color: '#9ca3af',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500'
+                            }}>
+                              {assignment.training_modules?.category || 'General'}
+                            </span>
+
+                            <span style={{
+                              padding: '0.25rem 0.75rem',
+                              borderRadius: '4px',
+                              fontSize: '0.75rem',
+                              fontWeight: '500',
+                              border: '1px solid',
+                              ...(() => {
+                                const difficulty = assignment.training_modules?.difficulty;
+                                return {
+                                  background: difficulty === 'beginner' ? '#064e3b' : difficulty === 'intermediate' ? '#0c2d6b' : '#5f1313',
+                                  color: difficulty === 'beginner' ? '#6ee7b7' : difficulty === 'intermediate' ? '#60a5fa' : '#f87171',
+                                  borderColor: difficulty === 'beginner' ? '#059669' : difficulty === 'intermediate' ? '#2563eb' : '#dc2626'
+                                };
+                              })()
+                            }}>
+                              {assignment.training_modules?.difficulty || 'N/A'}
+                            </span>
+
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.25rem', color: '#9ca3af', fontSize: '0.875rem' }}>
+                              <i className="fas fa-clock" style={{ fontSize: '0.875rem' }}></i>
+                              <span>Assigned {assignment.assigned_at ? new Date(assignment.assigned_at).toLocaleDateString() : 'N/A'}</span>
+                            </div>
+                          </div>
+
+                          <p style={{ margin: 0, fontSize: '0.875rem', color: '#9ca3af', lineHeight: '1.4' }}>
+                            {assignment.training_modules?.description || 'No description available'}
+                          </p>
+                        </div>
+
+                        {/* Checkbox */}
+                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                          <button
+                            onClick={() => toggleTrainingComplete(assignment.id, assignment.training_modules?.id, isComplete)}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              cursor: 'pointer',
+                              padding: '0.5rem'
+                            }}
+                          >
+                            <i 
+                              className="fas fa-check-circle"
+                              style={{
+                                fontSize: '2rem',
+                                color: isComplete ? '#10b981' : '#4b5563'
+                              }}
+                            ></i>
+                          </button>
+                          <span style={{
+                            fontSize: '0.75rem',
+                            color: isComplete ? '#10b981' : '#9ca3af',
+                            fontWeight: '500'
+                          }}>
+                            {isComplete ? 'Complete' : 'Mark Done'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Expanded Video Player */}
+                      {expandedVideo === assignment.id && (
+                        <div style={{
+                          padding: '1.5rem',
+                          borderTop: '1px solid #333333',
+                          background: '#1a1a1a'
+                        }}>
+                          <iframe
+                            width="100%"
+                            height="400"
+                            src={`https://www.youtube.com/embed/${assignment.training_modules?.youtube_id}`}
+                            title={assignment.training_modules?.title}
+                            frameBorder="0"
+                            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                            allowFullScreen
+                            style={{ borderRadius: '8px' }}
+                          />
+                          <div style={{ marginTop: '1rem', display: 'flex', gap: '1rem' }}>
+                            <button
+                              onClick={() => window.open(`https://www.youtube.com/watch?v=${assignment.training_modules?.youtube_id}`, '_blank')}
+                              style={{
+                                padding: '0.625rem 1.5rem',
+                                background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                                color: 'white',
+                                border: 'none',
+                                borderRadius: '6px',
+                                cursor: 'pointer',
+                                fontSize: '0.875rem',
+                                fontWeight: '500'
+                              }}
+                            >
+                              Watch on YouTube
+                            </button>
+                            {!isComplete && (
+                              <button
+                                onClick={() => toggleTrainingComplete(assignment.id, assignment.training_modules?.id, false)}
+                                style={{
+                                  padding: '0.625rem 1.5rem',
+                                  background: '#10b981',
+                                  color: 'white',
+                                  border: 'none',
+                                  borderRadius: '6px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.875rem',
+                                  fontWeight: '500'
+                                }}
+                              >
+                                Mark as Complete
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

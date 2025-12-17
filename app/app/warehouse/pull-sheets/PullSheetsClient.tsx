@@ -12,6 +12,7 @@ import {
 } from "@/lib/hooks/usePullSheets";
 import type { PullsheetPermissions } from "@/lib/permissions";
 import { supabase } from "@/lib/supabaseClient";
+import { useLocation } from "@/lib/contexts/LocationContext";
 
 const STATUS_OPTIONS = [
   { label: "Draft", value: "draft" },
@@ -51,6 +52,7 @@ export default function PullSheetsClient({
   permissions: PullsheetPermissions;
 }) {
   const router = useRouter();
+  const { currentLocation } = useLocation();
   const { data: pullSheets, loading, error, refetch } = usePullSheets();
   const [jobs, setJobs] = useState<JobOption[]>([]);
   const [modalOpen, setModalOpen] = useState(false);
@@ -125,6 +127,53 @@ export default function PullSheetsClient({
         (selectedJob
           ? `${selectedJob.code ?? selectedJob.title ?? "Job"} Pull Sheet`
           : "Untitled Pull Sheet");
+      
+      // Get warehouse_id from job or current location
+      let warehouse_id = null;
+      
+      // If job selected, get warehouse from job
+      if (form.job_id) {
+        const { data: jobData } = await supabase
+          .from('jobs')
+          .select('warehouse_id')
+          .eq('id', form.job_id)
+          .single();
+        
+        if (jobData) {
+          warehouse_id = jobData.warehouse_id;
+        }
+      }
+      
+      // If no warehouse from job, use current location
+      if (!warehouse_id && currentLocation && currentLocation !== 'All Locations') {
+        const { data: warehouseData } = await supabase
+          .from('warehouses')
+          .select('id')
+          .eq('name', currentLocation)
+          .single();
+        
+        if (warehouseData) {
+          warehouse_id = warehouseData.id;
+        }
+      }
+      
+      // Fallback to user's first accessible warehouse
+      if (!warehouse_id) {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: accessData } = await supabase
+            .from('user_warehouse_access')
+            .select('warehouse_id')
+            .eq('user_id', user.id)
+            .limit(1)
+            .single();
+          
+          if (accessData) {
+            warehouse_id = accessData.warehouse_id;
+          }
+        }
+      }
+      
       const payload = {
         name,
         job_id: form.job_id || null,
@@ -132,6 +181,7 @@ export default function PullSheetsClient({
         scheduled_out_at: form.scheduled_out_at || null,
         expected_return_at: form.expected_return_at || null,
         notes: form.notes.trim() || null,
+        warehouse_id: warehouse_id,
       };
       const created = await createPullSheet(payload);
       closeModal();
@@ -269,8 +319,27 @@ export default function PullSheetsClient({
               </tr>
             ) : pullSheets.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-600">
-                  No pull sheets yet. Create one to start organizing your picks.
+                <td colSpan={6} className="px-6 py-16 text-center">
+                  <div className="inline-block p-6 bg-gray-100 rounded-full mb-4">
+                    <svg className="w-16 h-16 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" />
+                    </svg>
+                  </div>
+                  <div className="text-xl font-semibold text-gray-800 mb-2">No Pull Sheets Yet</div>
+                  <div className="text-gray-600 mb-6 max-w-md mx-auto">
+                    Pull sheets help you organize equipment picks for jobs. Create one from a job or start fresh.
+                  </div>
+                  {canCreate && (
+                    <button
+                      onClick={openModal}
+                      className="inline-flex items-center gap-2 px-6 py-3 bg-amber-500 hover:bg-amber-600 text-white font-semibold rounded-lg transition-colors"
+                    >
+                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      </svg>
+                      Create Your First Pull Sheet
+                    </button>
+                  )}
                 </td>
               </tr>
             ) : (

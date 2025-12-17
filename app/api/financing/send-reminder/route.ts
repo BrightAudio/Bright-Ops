@@ -177,7 +177,7 @@ async function sendPaymentReminder(params: any) {
             
             <div class="footer">
               <p>This is an automated reminder. Please do not reply to this email.</p>
-              <p>&copy; ${new Date().getFullYear()} Bright Audio. All rights reserved.</p>
+
             </div>
           </div>
         </body>

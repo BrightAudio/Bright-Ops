@@ -41,8 +41,22 @@ export default function OnboardingPage() {
       .single();
     
     if (profile?.organization_id) {
-      // User already onboarded, redirect to dashboard
-      router.push('/app/dashboard');
+      // Check if user has warehouse access (completed onboarding)
+      const { data: warehouseAccess } = await supabase
+        .from('user_warehouse_access')
+        .select('warehouse_id')
+        .eq('user_id', user.id)
+        .limit(1);
+      
+      if (warehouseAccess && warehouseAccess.length > 0) {
+        // User has completed onboarding, redirect to dashboard
+        console.log('User already onboarded, redirecting to dashboard');
+        router.push('/app/dashboard');
+      } else {
+        // User has organization but no warehouse access - continue onboarding at step 2
+        console.log('User has organization but no warehouse, starting at step 2');
+        setStep(2);
+      }
     }
   }
   
@@ -68,17 +82,19 @@ export default function OnboardingPage() {
       console.log('Creating/joining organization:', { orgName: orgName.trim(), hasPin: !!businessPin });
       
       // Check if organization with this name and PIN already exists
-      const { data: existingOrg, error: searchError } = await supabase
+      const { data: existingOrgs, error: searchError } = await supabase
         .from('organizations')
         .select('id, name, secret_id')
         .ilike('name', orgName.trim())
         .eq('business_pin', businessPin)
-        .maybeSingle();
+        .limit(1);
       
       if (searchError) {
         console.error('Search error:', searchError);
         throw new Error(`Failed to search organizations: ${searchError.message}`);
       }
+      
+      const existingOrg = existingOrgs && existingOrgs.length > 0 ? existingOrgs[0] : null;
       
       let organizationId: string;
       let secretId: string;
@@ -129,14 +145,62 @@ export default function OnboardingPage() {
       
       console.log('Profile updated successfully');
       
-      // Show secret ID to user
-      if (!existingOrg) {
-        alert(`✅ Organization created!\n\nYour Secret ID: ${secretId}\n\nShare your business name and PIN with team members to join.`);
-      } else {
-        alert(`✅ Joined existing organization: ${existingOrg.name}`);
-      }
+      // Check if organization already has warehouses
+      console.log('Checking for existing warehouses for org:', organizationId);
+      const { data: existingWarehouses, error: warehouseQueryError } = await supabase
+        .from('warehouses')
+        .select('id, name, address')
+        .eq('organization_id', organizationId);
       
-      setStep(2);
+      console.log('Warehouse query result:', { 
+        count: existingWarehouses?.length || 0, 
+        warehouses: existingWarehouses,
+        error: warehouseQueryError 
+      });
+      
+      if (existingWarehouses && existingWarehouses.length > 0) {
+        // Organization already has a warehouse - grant access and skip to completion
+        const warehouse = existingWarehouses[0];
+        console.log('Found existing warehouse, granting access and completing onboarding:', warehouse);
+        
+        // Grant user access to existing warehouse
+        const { error: accessError } = await supabase
+          .from('user_warehouse_access')
+          .upsert({
+            user_id: user.id,
+            warehouse_id: warehouse.id
+          }, {
+            onConflict: 'user_id,warehouse_id'
+          });
+        
+        if (accessError) {
+          console.error('Access grant error:', accessError);
+          throw new Error(`Failed to grant warehouse access: ${accessError.message}`);
+        }
+        
+        console.log('Successfully granted access to warehouse:', warehouse.name);
+        
+        // Show success message and skip to completion
+        if (!existingOrg) {
+          alert(`✅ Organization created!\n\nYour Secret ID: ${secretId}\n\nWarehouse: ${warehouse.name}\nYou're all set!`);
+        } else {
+          alert(`✅ Joined ${existingOrg.name}!\n\n✅ Access granted to warehouse: ${warehouse.name}\n\nYou're ready to go!`);
+        }
+        
+        // Skip step 2, go directly to step 3 (completion)
+        setStep(3);
+      } else {
+        // No existing warehouses - need to create one in step 2
+        console.log('No existing warehouses found');
+        if (!existingOrg) {
+          alert(`✅ Organization created!\n\nYour Secret ID: ${secretId}\n\nShare your business name and PIN with team members to join.`);
+        } else {
+          alert(`✅ Joined existing organization: ${existingOrg.name}\n\nNext: Add your first warehouse location.`);
+        }
+        
+        // Go to step 2 to create warehouse
+        setStep(2);
+      }
     } catch (error: any) {
       console.error('Error with organization:', error);
       const errorMsg = error?.message || error?.msg || JSON.stringify(error) || 'Unknown error occurred';
@@ -160,21 +224,49 @@ export default function OnboardingPage() {
         throw new Error('Organization not found');
       }
       
+      // Generate a random 4-digit PIN for the warehouse
+      const generatedPin = Math.floor(1000 + Math.random() * 9000).toString();
+      
       // Create warehouse location
-      const { error: warehouseError } = await supabase
+      const { data: newWarehouse, error: warehouseError } = await supabase
         .from('warehouses')
         .insert({
           name: locationName || 'Main Warehouse',
           address: locationAddress || '',
-          organization_id: profile.organization_id
+          organization_id: profile.organization_id,
+          pin: generatedPin
+        })
+        .select('id, pin')
+        .single();
+      
+      if (warehouseError) {
+        console.error('Warehouse creation error:', warehouseError);
+        throw new Error(warehouseError.message || 'Failed to create warehouse');
+      }
+      
+      if (!newWarehouse) {
+        throw new Error('No warehouse data returned');
+      }
+      
+      // Grant user access to the new warehouse
+      const { error: accessError } = await supabase
+        .from('user_warehouse_access')
+        .insert({
+          user_id: user.id,
+          warehouse_id: newWarehouse.id
         });
       
-      if (warehouseError) throw warehouseError;
+      if (accessError) {
+        console.error('Access grant error:', accessError);
+        // Continue anyway - warehouse was created
+      }
+      
+      alert(`✅ Warehouse created!\n\nWarehouse PIN: ${newWarehouse.pin}\n\nShare this PIN with team members who need access to this location.`);
       
       setStep(3);
     } catch (error: any) {
       console.error('Error creating warehouse:', error);
-      alert('Error creating warehouse: ' + error.message);
+      alert('Error creating warehouse: ' + (error.message || JSON.stringify(error)));
     } finally {
       setLoading(false);
     }

@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabaseClient";
 
 interface ProfileDropdownProps {
   userEmail?: string;
@@ -34,8 +35,8 @@ export default function ProfileDropdown({ userEmail, userName }: ProfileDropdown
   }, [isOpen]);
 
   const handleSignOut = async () => {
-    // TODO: Implement sign out logic
-    router.push("/");
+    await supabase.auth.signOut();
+    router.push("/auth/login");
   };
 
   const initials = userName
