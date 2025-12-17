@@ -302,19 +302,17 @@ export default function DashboardLayout({
       {/* Top Bar */}
       <header className="top-bar">
         <div className="left-section">
-          {/* Desktop sidebar toggle */}
+          {/* Unified menu toggle */}
           <button
-            className="sidebar-toggle hidden md:block"
-            onClick={toggleSidebar}
-            aria-label="Toggle sidebar"
-          >
-            ☰
-          </button>
-          {/* Mobile menu toggle */}
-          <button
-            className="sidebar-toggle md:hidden"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            aria-label="Toggle mobile menu"
+            className="sidebar-toggle"
+            onClick={() => {
+              if (window.innerWidth < 768) {
+                setMobileMenuOpen(!mobileMenuOpen);
+              } else {
+                toggleSidebar();
+              }
+            }}
+            aria-label="Toggle menu"
           >
             {mobileMenuOpen ? '×' : '☰'}
           </button>

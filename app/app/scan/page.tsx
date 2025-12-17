@@ -7,6 +7,11 @@ const BarcodeScanner = dynamic(
   () => import("./BarcodeScanner").then((m) => m.default),
   { ssr: false, loading: () => <div>Starting camera…</div> }
 );
+
+const MobileBarcodeScanner = dynamic(
+  () => import("@/components/MobileBarcodeScanner").then((m) => m.default),
+  { ssr: false }
+);
 // Use success.mp3 for success and fail.mp3 for failure
 const okBeep = typeof Audio !== "undefined" ? new Audio("/success.mp3") : null;
 const errBeep = typeof Audio !== "undefined" ? new Audio("/fail.mp3") : null;
@@ -31,6 +36,10 @@ export default function ScanConsole() {
   const [loading, setLoading] = useState<boolean>(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  
+  // Mobile scanner
+  const [showMobileScanner, setShowMobileScanner] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   
   // CSV Upload
   const [uploading, setUploading] = useState(false);
@@ -477,6 +486,15 @@ export default function ScanConsole() {
           View Pull Sheet
         </button>
       </div>
+      
+      {/* Mobile Camera Scanner Button */}
+      <button
+        className="w-full px-4 py-3 mb-4 rounded bg-purple-600 text-white font-semibold hover:bg-purple-700 flex items-center justify-center gap-2"
+        onClick={() => setShowMobileScanner(true)}
+      >
+        <i className="fas fa-camera"></i>
+        Scan with Camera
+      </button>
 
       {/* CSV Upload Section */}
       <div className="mb-6 p-4 bg-gray-50 border border-gray-200 rounded-lg">
@@ -547,6 +565,19 @@ export default function ScanConsole() {
       
       {msg && <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded text-green-700">{msg}</div>}
       {error && <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded text-red-700">❌ {error}</div>}
+      
+      {/* Mobile Scanner Modal */}
+      {showMobileScanner && (
+        <MobileBarcodeScanner
+          onScan={(scannedCode) => {
+            setCode(scannedCode);
+            setShowMobileScanner(false);
+            // Automatically add to pull sheet after scanning
+            setTimeout(() => send(), 100);
+          }}
+          onClose={() => setShowMobileScanner(false)}
+        />
+      )}
     </div>
   );
 }
