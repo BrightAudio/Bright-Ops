@@ -2,8 +2,14 @@
 
 import { useState, useRef, useEffect } from "react";
 import { supabase } from "@/lib/supabaseClient";
-import { Barcode, Package, Undo2, CheckCircle, X, AlertCircle } from "lucide-react";
+import { Barcode, Package, Undo2, CheckCircle, X, AlertCircle, Camera } from "lucide-react";
 import { playSuccess, playReject } from "@/lib/utils/sounds";
+import dynamic from "next/dynamic";
+
+const MobileBarcodeScanner = dynamic(
+  () => import("@/components/MobileBarcodeScanner").then((m) => m.default),
+  { ssr: false }
+);
 
 type ScannerProps = {
   pullSheetId: string;
@@ -24,6 +30,7 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
   const [scanType, setScanType] = useState<'pull' | 'return' | 'verify'>('pull');
   const [lastScan, setLastScan] = useState<ScanResult | null>(null);
   const [showResult, setShowResult] = useState(false);
+  const [showMobileScanner, setShowMobileScanner] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // Auto-focus input on mount and when scan completes
@@ -304,6 +311,14 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
             autoFocus
           />
           <button
+            type="button"
+            onClick={() => setShowMobileScanner(true)}
+            className="px-4 py-2 rounded font-medium text-white bg-purple-600 hover:bg-purple-500 border border-purple-500 transition-colors flex items-center gap-2"
+            title="Scan with camera"
+          >
+            <Camera size={20} />
+          </button>
+          <button
             type="submit"
             disabled={!barcode.trim() || scanning}
             className={`px-6 py-2 rounded font-medium text-white border transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${getScanTypeColor()}`}
@@ -350,6 +365,24 @@ export default function BarcodeScanner({ pullSheetId, soundTheme = 'ding', onSca
       <div className="mt-3 text-xs text-zinc-500">
         Tip: Use a barcode scanner for fastest operation
       </div>
+
+      {/* Mobile Scanner Modal */}
+      {showMobileScanner && (
+        <MobileBarcodeScanner
+          onScan={(scannedCode) => {
+            setBarcode(scannedCode);
+            setShowMobileScanner(false);
+            // Auto-trigger the scan after a brief delay
+            setTimeout(() => {
+              const form = document.querySelector('form');
+              if (form) {
+                form.requestSubmit();
+              }
+            }, 100);
+          }}
+          onClose={() => setShowMobileScanner(false)}
+        />
+      )}
     </div>
   );
 }

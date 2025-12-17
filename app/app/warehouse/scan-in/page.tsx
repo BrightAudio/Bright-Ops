@@ -3,6 +3,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { scanIn } from '@/lib/hooks/useInventory';
 import DashboardLayout from '@/components/layout/DashboardLayout';
+import { Camera } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const MobileBarcodeScanner = dynamic(
+  () => import("@/components/MobileBarcodeScanner").then((m) => m.default),
+  { ssr: false }
+);
 
 type ScanRow = {
   ts: string;
@@ -15,6 +22,7 @@ export default function ScanInPage() {
   const [barcode, setBarcode] = useState('');
   const [busy, setBusy] = useState(false);
   const [scans, setScans] = useState<ScanRow[]>([]);
+  const [showMobileScanner, setShowMobileScanner] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   // audio refs
@@ -75,6 +83,14 @@ export default function ScanInPage() {
           autoComplete="off"
         />
         <button
+          type="button"
+          onClick={() => setShowMobileScanner(true)}
+          className="px-4 py-2 rounded-md bg-purple-600 text-white hover:bg-purple-500 flex items-center gap-2"
+          title="Scan with camera"
+        >
+          <Camera size={20} />
+        </button>
+        <button
           type="submit"
           disabled={busy || !barcode.trim()}
           className="px-4 py-2 rounded-md bg-blue-600 text-white disabled:opacity-50 hover:bg-blue-500"
@@ -110,6 +126,24 @@ export default function ScanInPage() {
           )}
         </ul>
       </div>
+
+      {/* Mobile Scanner Modal */}
+      {showMobileScanner && (
+        <MobileBarcodeScanner
+          onScan={(scannedCode) => {
+            setBarcode(scannedCode);
+            setShowMobileScanner(false);
+            // Auto-submit after scanning
+            setTimeout(() => {
+              const form = document.querySelector('form');
+              if (form) {
+                form.requestSubmit();
+              }
+            }, 100);
+          }}
+          onClose={() => setShowMobileScanner(false)}
+        />
+      )}
     </div>
     </DashboardLayout>
   );

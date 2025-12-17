@@ -132,13 +132,22 @@ export default function PrepSheetClient({ jobId }: { jobId: string }) {
         return;
       }
 
-      const { data, error } = await supabase
+      console.log('Searching for:', newRowSearch);
+
+      const { data, error} = await supabase
         .from('inventory_items')
-        .select('id, name, barcode, category')
-        .or(`name.ilike.%${newRowSearch}%,barcode.ilike.%${newRowSearch}%,category.ilike.%${newRowSearch}%`)
+        .select('id, name, barcode, category, subcategory')
+        .or(`name.ilike.%${newRowSearch}%,barcode.ilike.%${newRowSearch}%,category.ilike.%${newRowSearch}%,subcategory.ilike.%${newRowSearch}%`)
         .limit(15);
 
+      console.log('Search results:', data, 'Error:', error);
+
+      if (error) {
+        console.error('Search error:', error);
+      }
+      
       if (!error && data) {
+        console.log('Setting results:', data.length, 'items');
         setNewRowResults(data);
       }
     };

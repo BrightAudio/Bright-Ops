@@ -268,6 +268,15 @@ export default function DashboardLayout({
     setSidebarCollapsed(!sidebarCollapsed);
   };
 
+  const handleMenuToggle = () => {
+    const isMobile = window.innerWidth < 768;
+    if (isMobile) {
+      setMobileMenuOpen(prev => !prev);
+    } else {
+      setSidebarCollapsed(prev => !prev);
+    }
+  };
+
   const handleNavClick = () => {
     // Collapse sidebar after clicking a nav item
     setSidebarCollapsed(true);
@@ -305,23 +314,18 @@ export default function DashboardLayout({
           {/* Unified menu toggle */}
           <button
             className="sidebar-toggle"
-            onClick={() => {
-              if (window.innerWidth < 768) {
-                setMobileMenuOpen(!mobileMenuOpen);
-              } else {
-                toggleSidebar();
-              }
-            }}
+            onClick={handleMenuToggle}
             aria-label="Toggle menu"
           >
-            {mobileMenuOpen ? '×' : '☰'}
+            ☰
           </button>
           <div className="app-title">Bright Ops</div>
         </div>
 
         <div className="right-actions">
-          {/* Goals Portal Link */}
+          {/* Goals Portal Link - Hidden on mobile */}
           <button 
+            className="hidden md:block"
             onClick={() => window.location.href = '/app/warehouse/financial/goals'}
             style={{
               fontFamily: "'Playfair Display', serif",
@@ -349,8 +353,9 @@ export default function DashboardLayout({
             GOALS
           </button>
 
-          {/* Leads Portal Link */}
+          {/* Leads Portal Link - Hidden on mobile */}
           <button 
+            className="hidden md:block"
             onClick={handleLeadsClick}
             style={{
               fontFamily: "'Playfair Display', serif",
@@ -378,10 +383,10 @@ export default function DashboardLayout({
             LEADS
           </button>
 
-          {/* Location Indicator */}
+          {/* Location Indicator - Hidden on mobile */}
           <Link 
             href="/app/inventory/locations"
-            className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm"
+            className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 hover:border-zinc-600 transition-colors text-sm"
           >
             <span className="text-blue-400">📍</span>
             <span className="text-zinc-300">{currentLocation}</span>
