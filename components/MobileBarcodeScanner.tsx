@@ -28,7 +28,22 @@ export default function MobileBarcodeScanner({ onScan, onClose }: MobileBarcodeS
 
       // Check if camera is available
       if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setError('Camera not supported on this device');
+        setError('Camera not supported. Please use HTTPS or enable camera permissions.');
+        return;
+      }
+
+      // Request camera permission first (important for iOS)
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { 
+            facingMode: 'environment' // Request back camera
+          } 
+        });
+        // Stop the test stream
+        stream.getTracks().forEach(track => track.stop());
+      } catch (permError: any) {
+        console.error('Permission error:', permError);
+        setError('Camera permission denied. Please allow camera access in your browser settings.');
         return;
       }
 
@@ -46,7 +61,8 @@ export default function MobileBarcodeScanner({ onScan, onClose }: MobileBarcodeS
       // Prefer back camera on mobile
       const backCamera = videoInputDevices.find(device => 
         device.label.toLowerCase().includes('back') || 
-        device.label.toLowerCase().includes('rear')
+        device.label.toLowerCase().includes('rear') ||
+        device.label.toLowerCase().includes('environment')
       );
       const selectedDeviceId = backCamera ? backCamera.deviceId : videoInputDevices[0].deviceId;
 
@@ -66,7 +82,7 @@ export default function MobileBarcodeScanner({ onScan, onClose }: MobileBarcodeS
       }
     } catch (err: any) {
       console.error('Scanner error:', err);
-      setError(err.message || 'Failed to start camera');
+      setError(err.message || 'Failed to start camera. Please ensure you are using HTTPS.');
     }
   }
 
