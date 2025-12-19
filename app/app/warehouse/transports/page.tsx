@@ -348,49 +348,51 @@ export default function Transports() {
       </div>
       
       <div className="overflow-x-auto rounded-xl border border-zinc-700 bg-zinc-800">
-        <table className="min-w-full">
-          <thead>
-            <tr className="text-left text-gray-400 text-sm">
-              <th className="px-4 py-3">Vehicle</th>
-              <th className="px-4 py-3">Driver</th>
-              <th className="px-4 py-3">Depart</th>
-              <th className="px-4 py-3">Arrive</th>
-              <th className="px-4 py-3">Status</th>
-              <th className="px-4 py-3">Notes</th>
-              <th className="px-4 py-3">Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {filtered.length === 0 && !jobIdFromUrl ? (
-              <tr>
-                <td colSpan={7} className="px-4 py-6 text-center text-gray-400">No transports found.</td>
+        <div className="min-w-[900px]">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-gray-400 text-sm">
+                <th className="px-4 py-3">Vehicle</th>
+                <th className="px-4 py-3">Driver</th>
+                <th className="px-4 py-3">Depart</th>
+                <th className="px-4 py-3">Arrive</th>
+                <th className="px-4 py-3">Status</th>
+                <th className="px-4 py-3">Notes</th>
+                <th className="px-4 py-3">Actions</th>
               </tr>
-            ) : filtered.length > 0 ? (
-              filtered.map((t) => (
-                <tr key={t.id} className="border-t border-zinc-700">
-                  <td className="px-4 py-3">{t.vehicle}</td>
-                  <td className="px-4 py-3">{t.driver}</td>
-                  <td className="px-4 py-3">{formatDateTime(t.depart_at ?? "")}</td>
-                  <td className="px-4 py-3">{formatDateTime(t.arrive_at ?? "")}</td>
-                  <td className="px-4 py-3">
-                    <span className={`inline-block px-3 py-1 rounded-full border text-xs font-semibold ${statusColor(t.status ?? "")}`}>{t.status ?? "Scheduled"}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <span className="text-sm text-gray-400">{t.notes || '-'}</span>
-                  </td>
-                  <td className="px-4 py-3">
-                    <button
-                      className="bg-zinc-700 text-white px-4 py-2 rounded hover:bg-zinc-600"
-                      onClick={() => openModal(t)}
-                    >
-                      Edit
-                    </button>
-                  </td>
+            </thead>
+            <tbody>
+              {filtered.length === 0 && !jobIdFromUrl ? (
+                <tr>
+                  <td colSpan={7} className="px-4 py-6 text-center text-gray-400">No transports found.</td>
                 </tr>
-              ))
-            ) : null}
-          </tbody>
-        </table>
+              ) : filtered.length > 0 ? (
+                filtered.map((t) => (
+                  <tr key={t.id} className="border-t border-zinc-700">
+                    <td className="px-4 py-3">{t.vehicle}</td>
+                    <td className="px-4 py-3">{t.driver}</td>
+                    <td className="px-4 py-3">{formatDateTime(t.depart_at ?? "")}</td>
+                    <td className="px-4 py-3">{formatDateTime(t.arrive_at ?? "")}</td>
+                    <td className="px-4 py-3">
+                      <span className={`inline-block px-3 py-1 rounded-full border text-xs font-semibold ${statusColor(t.status ?? "")}`}>{t.status ?? "Scheduled"}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="text-sm text-gray-400">{t.notes || '-'}</span>
+                    </td>
+                    <td className="px-4 py-3">
+                      <button
+                        className="bg-zinc-700 text-white px-4 py-2 rounded hover:bg-zinc-600"
+                        onClick={() => openModal(t)}
+                      >
+                        Edit
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : null}
+            </tbody>
+          </table>
+        </div>
       </div>
     </main>
     </DashboardLayout>
