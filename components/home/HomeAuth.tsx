@@ -25,12 +25,38 @@ export default function HomeAuth() {
 
   // Check if biometric authentication is available
   useEffect(() => {
-    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
-      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
-        .then(available => setBiometricAvailable(available))
-        .catch(() => setBiometricAvailable(false));
-    }
-  }, []);
+    // Check for biometric support on mobile devices
+    const checkBiometric = async () => {
+      if (typeof window === 'undefined') return;
+      
+      // Check if user has saved credentials
+      const storedEmail = localStorage.getItem('biometric_email');
+      const storedPassword = localStorage.getItem('biometric_password');
+      const hasCredentials = !!(storedEmail && storedPassword);
+      
+      // Simple check: if on iOS or Android and has saved credentials, show option
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      const isMobile = isIOS || isAndroid;
+      
+      if (hasCredentials && isMobile) {
+        setBiometricAvailable(true);
+        return;
+      }
+      
+      // For desktop, check WebAuthn support
+      if (window.PublicKeyCredential) {
+        try {
+          const available = await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable();
+          setBiometricAvailable(available && hasCredentials);
+        } catch {
+          setBiometricAvailable(false);
+        }
+      }
+    };
+    
+    checkBiometric();
+  }, [mode]); // Re-check when mode changes
 
   async function handleBiometricLogin() {
     setError(null);
@@ -48,23 +74,44 @@ export default function HomeAuth() {
         return;
       }
 
-      // Create a challenge for biometric authentication
-      const challenge = new Uint8Array(32);
-      crypto.getRandomValues(challenge);
+      // For iOS/mobile, directly attempt login (system will prompt Face ID/Touch ID)
+      const isIOS = /iPhone|iPad|iPod/.test(navigator.userAgent);
+      const isAndroid = /Android/.test(navigator.userAgent);
+      
+      if (isIOS || isAndroid) {
+        // Mobile devices: Just log in (browser/WebView will handle biometric prompt)
+        const result = await loginAction(storedEmail, storedPassword);
+        
+        if (result?.error) {
+          throw new Error(result.error);
+        }
+        return;
+      }
 
-      const publicKeyOptions: PublicKeyCredentialRequestOptions = {
-        challenge,
-        timeout: 60000,
-        userVerification: "required"
-      };
+      // Desktop: Use WebAuthn if available
+      if (window.PublicKeyCredential) {
+        const challenge = new Uint8Array(32);
+        crypto.getRandomValues(challenge);
 
-      // Request biometric authentication
-      const credential = await navigator.credentials.get({
-        publicKey: publicKeyOptions
-      });
+        const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+          challenge,
+          timeout: 60000,
+          userVerification: "required"
+        };
 
-      if (credential) {
-        // Biometric authentication successful, log in with stored credentials
+        const credential = await navigator.credentials.get({
+          publicKey: publicKeyOptions
+        });
+
+        if (credential) {
+          const result = await loginAction(storedEmail, storedPassword);
+          
+          if (result?.error) {
+            throw new Error(result.error);
+          }
+        }
+      } else {
+        // Fallback: just login
         const result = await loginAction(storedEmail, storedPassword);
         
         if (result?.error) {
@@ -75,8 +122,10 @@ export default function HomeAuth() {
       setStatus("idle");
       if (err.name === 'NotAllowedError') {
         setError("Biometric authentication cancelled.");
+      } else if (err.message) {
+        setError(err.message);
       } else {
-        setError("Biometric authentication failed. Please try manual login.");
+        setError("Authentication failed. Please try manual login.");
       }
     }
   }
