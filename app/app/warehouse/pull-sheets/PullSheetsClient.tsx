@@ -299,7 +299,7 @@ export default function PullSheetsClient({
       )}
 
       <div className="overflow-x-auto rounded-xl border border-gray-300 bg-gray-400 shadow-lg">
-        <div className="min-w-[800px]">
+        <div className="min-w-[1000px]">
           <table className="w-full">
             <thead>
               <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
