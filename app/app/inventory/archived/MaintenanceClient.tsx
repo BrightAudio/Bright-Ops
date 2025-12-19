@@ -157,19 +157,49 @@ export default function MaintenanceClient() {
                 <ArrowLeft size={20} />
                 <span>Back</span>
               </button>
-              <h1 className="text-3xl font-bold text-gray-900">Maintenance Queue</h1>
-              <p className="text-gray-600 mt-1">Equipment under maintenance or needing repairs</p>
+              <h1 className="text-3xl font-bold text-gray-900">Archived Equipment</h1>
+              <p className="text-gray-600 mt-1">Equipment under maintenance and salvaged parts</p>
             </div>
             <div className="text-right">
-              <div className="text-3xl font-bold text-orange-600">{items.length}</div>
-              <div className="text-sm text-gray-600">In Maintenance</div>
+              <div className="text-3xl font-bold text-orange-600">
+                {activeTab === 'maintenance' ? items.length : parts.length}
+              </div>
+              <div className="text-sm text-gray-600">
+                {activeTab === 'maintenance' ? 'In Maintenance' : 'Parts Available'}
+              </div>
             </div>
+          </div>
+          
+          {/* Tab Navigation */}
+          <div className="flex gap-2 mt-4 border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('maintenance')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'maintenance'
+                  ? 'text-orange-600 border-b-2 border-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Wrench size={16} className="inline mr-2" />
+              Maintenance
+            </button>
+            <button
+              onClick={() => setActiveTab('parts')}
+              className={`px-4 py-2 font-medium transition-colors ${
+                activeTab === 'parts'
+                  ? 'text-orange-600 border-b-2 border-orange-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              🔧 Parts/Drivers
+            </button>
           </div>
         </div>
       </div>
 
       <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {activeTab === 'maintenance' ? (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Items List */}
           <div className="lg:col-span-1">
             <div className="bg-white rounded-lg shadow">
@@ -286,6 +316,72 @@ export default function MaintenanceClient() {
             )}
           </div>
         </div>
+        ) : (
+          // Parts Tab
+          <div className="grid grid-cols-1 gap-4">
+            {loading ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">Loading parts...</div>
+            ) : parts.length === 0 ? (
+              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">No parts available</div>
+            ) : (
+              parts.map(part => (
+                <div key={part.id} className="bg-white rounded-lg shadow p-6">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h3 className="text-lg font-semibold text-gray-900">{part.name}</h3>
+                      <p className="text-sm text-gray-600 mt-1">{part.driver_type}</p>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
+                      part.is_available 
+                        ? 'bg-green-100 text-green-800' 
+                        : 'bg-red-100 text-red-800'
+                    }`}>
+                      {part.is_available ? 'Available' : 'In Use'}
+                    </span>
+                  </div>
+                  
+                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {part.source_item_name && (
+                      <div>
+                        <label className="block text-xs text-gray-500">Source</label>
+                        <p className="text-sm text-gray-900">{part.source_item_name}</p>
+                      </div>
+                    )}
+                    {part.impedance && (
+                      <div>
+                        <label className="block text-xs text-gray-500">Impedance</label>
+                        <p className="text-sm text-gray-900">{part.impedance}</p>
+                      </div>
+                    )}
+                    {part.power_rating && (
+                      <div>
+                        <label className="block text-xs text-gray-500">Power</label>
+                        <p className="text-sm text-gray-900">{part.power_rating}</p>
+                      </div>
+                    )}
+                    {part.diameter && (
+                      <div>
+                        <label className="block text-xs text-gray-500">Size</label>
+                        <p className="text-sm text-gray-900">{part.diameter}</p>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {part.notes && (
+                    <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-700">
+                      <span className="font-semibold">Notes: </span>{part.notes}
+                    </div>
+                  )}
+                  
+                  <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
+                    <span className="capitalize">Condition: <span className="font-medium">{part.condition}</span></span>
+                    <span>{new Date(part.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
