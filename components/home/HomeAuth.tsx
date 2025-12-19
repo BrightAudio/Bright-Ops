@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { loginAction, signupAction } from "@/app/actions/auth";
+import { Fingerprint } from "lucide-react";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -20,6 +21,65 @@ export default function HomeAuth() {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [mode, setMode] = useState<Mode>("signup");
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+
+  // Check if biometric authentication is available
+  useEffect(() => {
+    if (typeof window !== 'undefined' && window.PublicKeyCredential) {
+      PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable()
+        .then(available => setBiometricAvailable(available))
+        .catch(() => setBiometricAvailable(false));
+    }
+  }, []);
+
+  async function handleBiometricLogin() {
+    setError(null);
+    setMessage(null);
+    setStatus("loading");
+
+    try {
+      // Get stored credentials from localStorage
+      const storedEmail = localStorage.getItem('biometric_email');
+      const storedPassword = localStorage.getItem('biometric_password');
+
+      if (!storedEmail || !storedPassword) {
+        setError("No saved credentials. Please log in manually first.");
+        setStatus("idle");
+        return;
+      }
+
+      // Create a challenge for biometric authentication
+      const challenge = new Uint8Array(32);
+      crypto.getRandomValues(challenge);
+
+      const publicKeyOptions: PublicKeyCredentialRequestOptions = {
+        challenge,
+        timeout: 60000,
+        userVerification: "required"
+      };
+
+      // Request biometric authentication
+      const credential = await navigator.credentials.get({
+        publicKey: publicKeyOptions
+      });
+
+      if (credential) {
+        // Biometric authentication successful, log in with stored credentials
+        const result = await loginAction(storedEmail, storedPassword);
+        
+        if (result?.error) {
+          throw new Error(result.error);
+        }
+      }
+    } catch (err: any) {
+      setStatus("idle");
+      if (err.name === 'NotAllowedError') {
+        setError("Biometric authentication cancelled.");
+      } else {
+        setError("Biometric authentication failed. Please try manual login.");
+      }
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -62,6 +122,10 @@ export default function HomeAuth() {
         if (result?.error) {
           throw new Error(result.error);
         }
+        
+        // Save credentials for biometric login on successful login
+        localStorage.setItem('biometric_email', trimmedEmail);
+        localStorage.setItem('biometric_password', password);
         // If no result returned, redirect happened server-side
       }
     } catch (err) {
@@ -157,6 +221,7 @@ export default function HomeAuth() {
           <input
             type="email"
             placeholder="you@company.com"
+            autoComplete="email"
             className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
             value={email}
             onChange={(event) => setEmail(event.target.value)}
@@ -170,6 +235,7 @@ export default function HomeAuth() {
           <input
             type="password"
             placeholder="••••••••"
+            autoComplete={mode === "login" ? "current-password" : "new-password"}
             className="mt-2 w-full rounded-lg border border-gray-300 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent disabled:opacity-60"
             value={password}
             onChange={(event) => setPassword(event.target.value)}
@@ -201,6 +267,28 @@ export default function HomeAuth() {
                 : "Log in"}
         </button>
       </form>
+
+      {mode === "login" && biometricAvailable && (
+        <div className="mt-4">
+          <div className="relative">
+            <div className="absolute inset-0 flex items-center">
+              <div className="w-full border-t border-gray-300"></div>
+            </div>
+            <div className="relative flex justify-center text-sm">
+              <span className="px-2 bg-white text-gray-500">Or</span>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={handleBiometricLogin}
+            disabled={status === "loading"}
+            className="w-full mt-4 py-3 rounded-lg border-2 border-purple-600 text-purple-600 text-sm font-bold transition hover:bg-purple-50 disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+          >
+            <Fingerprint className="w-5 h-5" />
+            {status === "loading" ? "Authenticating..." : "Log in with Face ID"}
+          </button>
+        </div>
+      )}
 
       {message && (
         <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-3 text-sm text-green-400">
