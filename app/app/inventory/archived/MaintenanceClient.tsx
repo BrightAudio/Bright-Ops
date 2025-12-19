@@ -39,12 +39,26 @@ export default function MaintenanceClient() {
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null);
   const [maintenanceNotes, setMaintenanceNotes] = useState('');
   const [repairing, setRepairing] = useState(false);
+  const [showAddPartModal, setShowAddPartModal] = useState(false);
+  const [availableEquipment, setAvailableEquipment] = useState<any[]>([]);
+  const [partFormData, setPartFormData] = useState({
+    name: '',
+    driver_type: 'woofer',
+    source_item_id: '',
+    source_item_name: '',
+    impedance: '',
+    power_rating: '',
+    diameter: '',
+    condition: 'working',
+    notes: ''
+  });
 
   useEffect(() => {
     if (activeTab === 'maintenance') {
       loadMaintenanceItems();
     } else {
       loadParts();
+      loadAvailableEquipment();
     }
   }, [activeTab]);
 
@@ -80,6 +94,58 @@ export default function MaintenanceClient() {
       console.error('Error loading parts:', err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadAvailableEquipment = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('inventory_items')
+        .select('id, name, subcategory, maintenance_status')
+        .in('maintenance_status', ['needs_repair', 'retired', 'broken'])
+        .in('subcategory', ['tops', 'subs', 'monitor_wedges', 'active_speakers'])
+        .order('name');
+
+      if (error) throw error;
+      setAvailableEquipment(data || []);
+    } catch (err) {
+      console.error('Error loading equipment:', err);
+    }
+  };
+
+  const handleAddPart = async () => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from('speaker_parts')
+        .insert([{
+          ...partFormData,
+          source_item_id: partFormData.source_item_id || null,
+          is_available: true
+        }]);
+
+      if (error) throw error;
+
+      // Reload parts
+      loadParts();
+      setShowAddPartModal(false);
+      
+      // Reset form
+      setPartFormData({
+        name: '',
+        driver_type: 'woofer',
+        source_item_id: '',
+        source_item_name: '',
+        impedance: '',
+        power_rating: '',
+        diameter: '',
+        condition: 'working',
+        notes: ''
+      });
+      
+      alert('Part added successfully!');
+    } catch (err) {
+      console.error('Error adding part:', err);
+      alert('Failed to add part');
     }
   };
 
@@ -318,7 +384,19 @@ export default function MaintenanceClient() {
         </div>
         ) : (
           // Parts Tab
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4">
+            {/* Add Part Button */}
+            <div className="flex justify-end">
+              <button
+                onClick={() => setShowAddPartModal(true)}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 text-white rounded-lg font-medium flex items-center gap-2"
+              >
+                <span className="text-xl">+</span>
+                Add Part/Driver
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-4">
             {loading ? (
               <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">Loading parts...</div>
             ) : parts.length === 0 ? (
@@ -381,8 +459,145 @@ export default function MaintenanceClient() {
               ))
             )}
           </div>
+          </div>
         )}
       </div>
+
+      {/* Add Part Modal */}
+      {showAddPartModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+            <div className="p-6 border-b border-gray-200">
+              <h2 className="text-2xl font-bold text-gray-900">Add Speaker Part/Driver</h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Part Name *</label>
+                  <input
+                    type="text"
+                    value={partFormData.name}
+                    onChange={(e) => setPartFormData({...partFormData, name: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g., 18-inch Woofer"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Driver Type *</label>
+                  <select
+                    value={partFormData.driver_type}
+                    onChange={(e) => setPartFormData({...partFormData, driver_type: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="woofer">Woofer</option>
+                    <option value="mid">Mid</option>
+                    <option value="tweeter">Tweeter</option>
+                    <option value="compression_driver">Compression Driver</option>
+                    <option value="passive_radiator">Passive Radiator</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Source Equipment</label>
+                  <select
+                    value={partFormData.source_item_id}
+                    onChange={(e) => {
+                      const selected = availableEquipment.find(eq => eq.id === e.target.value);
+                      setPartFormData({
+                        ...partFormData, 
+                        source_item_id: e.target.value,
+                        source_item_name: selected?.name || ''
+                      });
+                    }}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="">Select equipment (optional)</option>
+                    {availableEquipment.map(eq => (
+                      <option key={eq.id} value={eq.id}>{eq.name}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Condition *</label>
+                  <select
+                    value={partFormData.condition}
+                    onChange={(e) => setPartFormData({...partFormData, condition: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                  >
+                    <option value="working">Working</option>
+                    <option value="needs_testing">Needs Testing</option>
+                    <option value="damaged">Damaged</option>
+                    <option value="unknown">Unknown</option>
+                  </select>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Impedance</label>
+                  <input
+                    type="text"
+                    value={partFormData.impedance}
+                    onChange={(e) => setPartFormData({...partFormData, impedance: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g., 8 ohm"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Power Rating</label>
+                  <input
+                    type="text"
+                    value={partFormData.power_rating}
+                    onChange={(e) => setPartFormData({...partFormData, power_rating: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g., 500W RMS"
+                  />
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Diameter/Size</label>
+                  <input
+                    type="text"
+                    value={partFormData.diameter}
+                    onChange={(e) => setPartFormData({...partFormData, diameter: e.target.value})}
+                    className="w-full border border-gray-300 rounded px-3 py-2"
+                    placeholder="e.g., 18 inch"
+                  />
+                </div>
+              </div>
+              
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                <textarea
+                  value={partFormData.notes}
+                  onChange={(e) => setPartFormData({...partFormData, notes: e.target.value})}
+                  className="w-full border border-gray-300 rounded px-3 py-2"
+                  rows={3}
+                  placeholder="Additional notes about this part..."
+                />
+              </div>
+            </div>
+            
+            <div className="p-6 border-t border-gray-200 flex justify-end gap-3">
+              <button
+                onClick={() => setShowAddPartModal(false)}
+                className="px-4 py-2 border border-gray-300 rounded text-gray-700 hover:bg-gray-50"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleAddPart}
+                disabled={!partFormData.name}
+                className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 text-white rounded font-medium"
+              >
+                Add Part
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
