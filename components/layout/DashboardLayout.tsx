@@ -272,6 +272,10 @@ export default function DashboardLayout({
     const isMobile = window.innerWidth < 768;
     if (isMobile) {
       setMobileMenuOpen(prev => !prev);
+      // On mobile, also ensure sidebar is expanded when opening
+      if (!mobileMenuOpen) {
+        setSidebarCollapsed(false);
+      }
     } else {
       setSidebarCollapsed(prev => !prev);
     }
