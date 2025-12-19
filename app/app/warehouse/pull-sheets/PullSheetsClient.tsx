@@ -299,25 +299,25 @@ export default function PullSheetsClient({
       )}
 
       <div className="overflow-x-auto rounded-xl border border-gray-300 bg-gray-400 shadow-lg">
-        <table className="min-w-full">
-          <thead>
-            <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
-              <th className="px-6 py-4">Code</th>
-              <th className="px-6 py-4">Name</th>
-              <th className="px-6 py-4">Scheduled Out</th>
-              <th className="px-6 py-4">Expected Return</th>
-              <th className="px-6 py-4">Status</th>
-              <th className="px-6 py-4 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="text-sm bg-white">
-            {loading ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-gray-600">
-                  Loading pull sheets...
-                </td>
+        <div className="min-w-[800px]">
+          <table className="w-full">
+            <thead>
+              <tr className="text-left text-xs uppercase tracking-wide text-gray-900 font-bold bg-gray-300">
+                <th className="px-6 py-4">Code</th>
+                <th className="px-6 py-4">Name</th>
+                <th className="px-6 py-4">Scheduled Out</th>
+                <th className="px-6 py-4">Expected Return</th>
+                <th className="px-6 py-4">Status</th>
+                <th className="px-6 py-4 text-right">Actions</th>
               </tr>
-            ) : pullSheets.length === 0 ? (
+            </thead>
+            <tbody className="text-sm bg-white">{loading ? (
+                <tr>
+                  <td colSpan={6} className="px-6 py-8 text-center text-gray-600">
+                    Loading pull sheets...
+                  </td>
+                </tr>
+              ) : pullSheets.length === 0 ? (
               <tr>
                 <td colSpan={6} className="px-6 py-16 text-center">
                   <div className="inline-block p-6 bg-gray-100 rounded-full mb-4">
@@ -429,6 +429,7 @@ export default function PullSheetsClient({
             )}
           </tbody>
         </table>
+        </div>
       </div>
 
       {modalOpen && (
