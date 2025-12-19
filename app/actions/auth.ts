@@ -46,14 +46,25 @@ export async function signupAction(email: string, password: string, fullName: st
     return { error: error.message, success: false };
   }
 
+  // Check if email confirmation is required
+  if (data.user && !data.session) {
+    // Email confirmation required - user created but not logged in
+    return { 
+      success: true, 
+      message: "Account created! Check your email for a verification link. Once verified, you can log in.",
+      requiresVerification: true 
+    };
+  }
+
   if (data.session) {
-    // Auto-login enabled (email confirmation disabled)
+    // Auto-login enabled (email confirmation disabled in Supabase)
+    // Still allow this flow for development/testing
     revalidatePath("/", "layout");
     redirect("/onboarding");
   }
 
-  // Email confirmation required
-  return { success: true, message: "Check your email to confirm your account. Once confirmed, you can log in!" };
+  // Fallback message
+  return { success: true, message: "Account created! Please check your email to verify your account." };
 }
 
 export async function logoutAction() {
