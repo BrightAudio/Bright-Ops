@@ -16,7 +16,7 @@ export default function RigDetailPage() {
   
   const { data: rig, loading, error, reload } = useRigContainer(id);
   const [editMode, setEditMode] = useState(false);
-  const [form, setForm] = useState({ name: "", description: "", category: "" });
+  const [form, setForm] = useState({ name: "", description: "", category: "", location: "", current_location: "" });
   const [saving, setSaving] = useState(false);
   const [addItemModalOpen, setAddItemModalOpen] = useState(false);
   const [search, setSearch] = useState("");
@@ -50,6 +50,8 @@ export default function RigDetailPage() {
         name: rig.name || "",
         description: rig.description || "",
         category: rig.category || "",
+        location: rig.location || "",
+        current_location: rig.current_location || "",
       });
     }
   }, [rig]);
@@ -82,6 +84,8 @@ export default function RigDetailPage() {
         name: form.name,
         description: form.description,
         category: form.category,
+        location: form.location,
+        current_location: form.current_location,
       });
       setEditMode(false);
       reload();
@@ -176,11 +180,53 @@ export default function RigDetailPage() {
                 <textarea
                   value={form.description}
                   onChange={(e) => setForm({ ...form, description: e.target.value })}
-                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-zinc-300"
+                  className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-zinc-300 mb-3"
                   rows={2}
+                  placeholder="Description..."
                 />
               ) : (
-                rig.description && <p className="text-zinc-400">{rig.description}</p>
+                rig.description && <p className="text-zinc-400 mb-3">{rig.description}</p>
+              )}
+              
+              {/* Location Fields */}
+              {editMode ? (
+                <div className="grid grid-cols-2 gap-4 mb-3">
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Default Location</label>
+                    <input
+                      type="text"
+                      value={form.location}
+                      onChange={(e) => setForm({ ...form, location: e.target.value })}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white text-sm"
+                      placeholder="e.g., Warehouse Bay 3"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs text-zinc-500 mb-1">Current Location</label>
+                    <input
+                      type="text"
+                      value={form.current_location}
+                      onChange={(e) => setForm({ ...form, current_location: e.target.value })}
+                      className="w-full bg-zinc-800 border border-zinc-700 rounded px-3 py-2 text-white text-sm"
+                      placeholder="e.g., Out for Event"
+                    />
+                  </div>
+                </div>
+              ) : (
+                <div className="flex gap-6 text-sm">
+                  {rig.location && (
+                    <div>
+                      <span className="text-zinc-500">Default Location:</span>{" "}
+                      <span className="text-zinc-300">{rig.location}</span>
+                    </div>
+                  )}
+                  {rig.current_location && (
+                    <div>
+                      <span className="text-zinc-500">Current Location:</span>{" "}
+                      <span className="text-zinc-300">{rig.current_location}</span>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
             

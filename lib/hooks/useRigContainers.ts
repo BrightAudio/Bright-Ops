@@ -8,6 +8,8 @@ export type RigContainer = {
   description: string | null;
   category: string | null;
   barcode: string | null;
+  location: string | null;
+  current_location: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -82,6 +84,7 @@ export async function createRigContainer(input: {
   name: string;
   description?: string;
   category?: string;
+  location?: string;
 }): Promise<RigContainer> {
   const { data, error } = await supabase
     .from("rig_containers")
@@ -89,6 +92,8 @@ export async function createRigContainer(input: {
       name: input.name,
       description: input.description || null,
       category: input.category || null,
+      location: input.location || null,
+      current_location: input.location || null,
     }] as any)
     .select("*")
     .single();
@@ -103,6 +108,8 @@ export async function updateRigContainer(
     name: string;
     description: string;
     category: string;
+    location: string;
+    current_location: string;
   }>
 ): Promise<void> {
   const { error } = await (supabase as any)

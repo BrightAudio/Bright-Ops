@@ -13,6 +13,7 @@ export default function RigContainersPage() {
     name: "",
     description: "",
     category: "",
+    location: "",
   });
   const [creating, setCreating] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
@@ -31,8 +32,9 @@ export default function RigContainersPage() {
         name: form.name.trim(),
         description: form.description.trim() || undefined,
         category: form.category || undefined,
+        location: form.location.trim() || undefined,
       });
-      setForm({ name: "", description: "", category: "" });
+      setForm({ name: "", description: "", category: "", location: "" });
       setShowForm(false);
       reload();
     } catch (err) {
@@ -123,6 +125,18 @@ export default function RigContainersPage() {
                   <option value="other">Other</option>
                 </select>
               </div>
+              <div>
+                <label className="block text-sm font-medium text-zinc-200 mb-1">
+                  Default Location
+                </label>
+                <input
+                  type="text"
+                  value={form.location}
+                  onChange={(e) => setForm({ ...form, location: e.target.value })}
+                  className="w-full px-3 py-2 rounded-md border border-zinc-700 bg-zinc-900 text-white"
+                  placeholder="e.g., Warehouse Bay 3, Storage Room A"
+                />
+              </div>
               {localError && (
                 <div className="text-red-400 text-sm">{localError}</div>
               )}
@@ -131,7 +145,7 @@ export default function RigContainersPage() {
                   type="button"
                   onClick={() => {
                     setShowForm(false);
-                    setForm({ name: "", description: "", category: "" });
+                    setForm({ name: "", description: "", category: "", location: "" });
                     setLocalError(null);
                   }}
                   className="px-4 py-2 border border-zinc-600 text-zinc-200 rounded-md hover:bg-zinc-700"
