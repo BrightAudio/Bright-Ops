@@ -396,69 +396,69 @@ export default function MaintenanceClient() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
             {loading ? (
               <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">Loading parts...</div>
             ) : parts.length === 0 ? (
               <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">No parts available</div>
             ) : (
-              parts.map(part => (
-                <div key={part.id} className="bg-white rounded-lg shadow p-6">
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-lg font-semibold text-gray-900">{part.name}</h3>
-                      <p className="text-sm text-gray-600 mt-1">{part.driver_type}</p>
-                    </div>
-                    <span className={`px-3 py-1 rounded-full text-xs font-medium ${
-                      part.is_available 
-                        ? 'bg-green-100 text-green-800' 
-                        : 'bg-red-100 text-red-800'
-                    }`}>
-                      {part.is_available ? 'Available' : 'In Use'}
-                    </span>
-                  </div>
-                  
-                  <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {part.source_item_name && (
-                      <div>
-                        <label className="block text-xs text-gray-500">Source</label>
-                        <p className="text-sm text-gray-900">{part.source_item_name}</p>
-                      </div>
-                    )}
-                    {part.impedance && (
-                      <div>
-                        <label className="block text-xs text-gray-500">Impedance</label>
-                        <p className="text-sm text-gray-900">{part.impedance}</p>
-                      </div>
-                    )}
-                    {part.power_rating && (
-                      <div>
-                        <label className="block text-xs text-gray-500">Power</label>
-                        <p className="text-sm text-gray-900">{part.power_rating}</p>
-                      </div>
-                    )}
-                    {part.diameter && (
-                      <div>
-                        <label className="block text-xs text-gray-500">Size</label>
-                        <p className="text-sm text-gray-900">{part.diameter}</p>
-                      </div>
-                    )}
-                  </div>
-                  
-                  {part.notes && (
-                    <div className="mt-4 p-3 bg-gray-50 rounded text-sm text-gray-700">
-                      <span className="font-semibold">Notes: </span>{part.notes}
-                    </div>
-                  )}
-                  
-                  <div className="mt-4 flex items-center justify-between text-xs text-gray-500">
-                    <span className="capitalize">Condition: <span className="font-medium">{part.condition}</span></span>
-                    <span>{new Date(part.created_at).toLocaleDateString()}</span>
-                  </div>
-                </div>
-              ))
+              <div className="bg-white rounded-lg shadow overflow-hidden">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Part Name</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Source</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Specs</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Condition</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Status</th>
+                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Date Added</th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {parts.map(part => (
+                      <tr key={part.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm font-medium text-gray-900">{part.name}</div>
+                          {part.notes && (
+                            <div className="text-xs text-gray-500 mt-1">{part.notes}</div>
+                          )}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900 capitalize">{part.driver_type?.replace('_', ' ')}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{part.source_item_name || 'N/A'}</div>
+                        </td>
+                        <td className="px-6 py-4">
+                          <div className="text-sm text-gray-900 space-y-1">
+                            {part.impedance && <div>Ω: {part.impedance}</div>}
+                            {part.power_rating && <div>Power: {part.power_rating}</div>}
+                            {part.diameter && <div>Size: {part.diameter}</div>}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800 capitalize">
+                            {part.condition?.replace('_', ' ')}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className={`px-2 py-1 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                            part.is_available 
+                              ? 'bg-green-100 text-green-800' 
+                              : 'bg-red-100 text-red-800'
+                          }`}>
+                            {part.is_available ? 'Available' : 'In Use'}
+                          </span>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          {new Date(part.created_at).toLocaleDateString()}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
-          </div>
           </div>
         )}
       </div>
