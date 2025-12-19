@@ -48,6 +48,7 @@ export default function JobDetailPage() {
   const [selectedRole, setSelectedRole] = useState('');
   const [rateType, setRateType] = useState<'hourly' | 'daily'>('hourly');
   const [rateAmount, setRateAmount] = useState('');
+  const [estimatedHours, setEstimatedHours] = useState('');
   const [assigningCrew, setAssigningCrew] = useState(false);
   const [showEditJobModal, setShowEditJobModal] = useState(false);
   const [editForm, setEditForm] = useState({ title: '', code: '', status: '', start_at: '', end_at: '', venue: '', notes: '' });
@@ -128,6 +129,7 @@ export default function JobDetailPage() {
           status,
           rate_type,
           rate_amount,
+          estimated_hours,
           employees:employee_id (id, name)
         `)
         .eq('job_id', job.id);
@@ -151,7 +153,8 @@ export default function JobDetailPage() {
           role: selectedRole,
           status: 'assigned',
           rate_type: rateType,
-          rate_amount: rateAmount ? parseFloat(rateAmount) : null
+          rate_amount: rateAmount ? parseFloat(rateAmount) : null,
+          estimated_hours: rateType === 'hourly' && estimatedHours ? parseFloat(estimatedHours) : null
         });
       
       if (error) throw error;
@@ -182,6 +185,7 @@ export default function JobDetailPage() {
           status,
           rate_type,
           rate_amount,
+          estimated_hours,
           employees:employee_id (id, name)
         `)
         .eq('job_id', job.id);
@@ -192,6 +196,7 @@ export default function JobDetailPage() {
       setSelectedRole('');
       setRateType('hourly');
       setRateAmount('');
+      setEstimatedHours('');
       setShowAssignCrewModal(false);
     } catch (err) {
       console.error('Error assigning crew:', err);
@@ -533,12 +538,15 @@ export default function JobDetailPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="bg-zinc-900 rounded p-3">
-                      <div className="text-xs text-zinc-500">Hourly Crew</div>
+                      <div className="text-xs text-zinc-500">Hourly Crew (Estimated)</div>
                       <div className="text-xl font-bold text-white">
                         ${assignments
                           .filter(a => a.rate_type === 'hourly' && a.rate_amount)
-                          .reduce((sum, a) => sum + (a.rate_amount || 0), 0)
-                          .toFixed(2)}/hr
+                          .reduce((sum, a) => sum + ((a.rate_amount || 0) * (a.estimated_hours || 0)), 0)
+                          .toFixed(2)}
+                      </div>
+                      <div className="text-xs text-zinc-400 mt-1">
+                        {assignments.filter(a => a.rate_type === 'hourly' && a.rate_amount).reduce((sum, a) => sum + (a.estimated_hours || 0), 0).toFixed(1)} total hours
                       </div>
                     </div>
                     <div className="bg-zinc-900 rounded p-3">
@@ -581,6 +589,11 @@ export default function JobDetailPage() {
                           {assignment.rate_amount && (
                             <div className="text-sm text-green-400">
                               ${assignment.rate_amount}/{assignment.rate_type === 'hourly' ? 'hr' : 'day'}
+                              {assignment.rate_type === 'hourly' && assignment.estimated_hours && (
+                                <span className="ml-2 text-zinc-400">
+                                  × {assignment.estimated_hours}h = <span className="text-green-300 font-semibold">${(assignment.rate_amount * assignment.estimated_hours).toFixed(2)}</span>
+                                </span>
+                              )}
                             </div>
                           )}
                         </div>
@@ -674,6 +687,23 @@ export default function JobDetailPage() {
                           onChange={e => setRateAmount(e.target.value)}
                         />
                       </div>
+
+                      {rateType === 'hourly' && (
+                        <div>
+                          <label className="block text-sm font-medium text-zinc-300 mb-1">
+                            Estimated Hours
+                          </label>
+                          <input
+                            type="number"
+                            step="0.5"
+                            min="0"
+                            className="w-full bg-zinc-900 border border-zinc-700 rounded px-3 py-2 text-white"
+                            placeholder="8.0"
+                            value={estimatedHours}
+                            onChange={e => setEstimatedHours(e.target.value)}
+                          />
+                        </div>
+                      )}
                     </div>
                     
                     <div className="flex gap-2">
@@ -691,6 +721,7 @@ export default function JobDetailPage() {
                           setSelectedRole('');
                           setRateType('hourly');
                           setRateAmount('');
+                          setEstimatedHours('');
                         }}
                         disabled={assigningCrew}
                         className="px-6 py-2 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700"

@@ -34,6 +34,7 @@ export default function ArchiveJobsClient() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState<string | null>(null);
 
   useEffect(() => {
     loadArchivedJobs();
@@ -82,25 +83,53 @@ export default function ArchiveJobsClient() {
   const selectedJob = selectedJobId ? jobs.find(j => j.id === selectedJobId) : null;
   const selectedManifest = selectedJobId ? manifests[selectedJobId] : null;
 
+  const handlePermanentDelete = async (jobId: string, jobCode: string) => {
+    if (!confirm(`PERMANENTLY DELETE JOB "${jobCode}"?\n\nThis action CANNOT be undone. All job data, crew assignments, and pull sheets will be deleted.\n\nAre you absolutely sure?`)) {
+      return;
+    }
+
+    try {
+      setDeleting(jobId);
+
+      // Delete related data first
+      await supabase.from('job_assignments').delete().eq('job_id', jobId);
+      await supabase.from('pull_sheets').delete().eq('job_id', jobId);
+      await supabase.from('return_manifests').delete().eq('job_id', jobId);
+      
+      // Delete the job
+      const { error } = await supabase.from('jobs').delete().eq('id', jobId);
+      
+      if (error) throw error;
+
+      // Remove from local state
+      setJobs(jobs.filter(j => j.id !== jobId));
+      if (selectedJobId === jobId) {
+        setSelectedJobId(null);
+      }
+
+      alert('Job permanently deleted.');
+    } catch (error) {
+      console.error('Error deleting job:', error);
+      alert('Failed to delete job. Please try again.');
+    } finally {
+      setDeleting(null);
+    }
+  };
+
   return (
     <DashboardLayout>
       <div className="p-6 max-w-7xl mx-auto">
-        {/* Header with Tabs */}
+        {/* Header with Back Button and Title */}
         <div className="mb-6">
-          <h1 className="text-3xl font-bold text-white mb-4">Archive</h1>
-          <div className="flex gap-2 border-b border-zinc-700">
-            <Link
-              href="/app/archive/jobs"
-              className="px-4 py-2 text-amber-400 border-b-2 border-amber-400 font-medium"
+          <div className="flex items-center gap-3 mb-4">
+            <button
+              onClick={() => router.back()}
+              className="md:hidden flex items-center gap-2 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-zinc-300 hover:bg-zinc-700 transition-colors"
             >
-              Completed Jobs
-            </Link>
-            <Link
-              href="/app/archive/parts"
-              className="px-4 py-2 text-zinc-400 hover:text-white transition-colors"
-            >
-              Speaker Parts/Drivers
-            </Link>
+              <ArrowLeft size={20} />
+              <span>Back</span>
+            </button>
+            <h1 className="text-3xl font-bold text-white">Archived Jobs</h1>
           </div>
         </div>
 
@@ -134,17 +163,17 @@ export default function ArchiveJobsClient() {
                     <button
                       key={job.id}
                       onClick={() => setSelectedJobId(job.id)}
-                      className={`w-full text-left p-4 border-b border-gray-100 hover:bg-blue-50 transition ${
-                        selectedJobId === job.id ? 'bg-blue-50 border-l-4 border-l-blue-600' : ''
+                      className={`w-full text-left p-4 border-b border-zinc-700 hover:bg-zinc-700 transition ${
+                        selectedJobId === job.id ? 'bg-zinc-700 border-l-4 border-l-amber-400' : ''
                       }`}
                     >
-                      <div className="font-semibold text-gray-900">{job.code}</div>
-                      <div className="text-sm text-gray-600">{job.title}</div>
-                      <div className="text-xs text-gray-500 mt-1">
+                      <div className="font-semibold text-white">{job.code}</div>
+                      <div className="text-sm text-zinc-300">{job.title}</div>
+                      <div className="text-xs text-zinc-400 mt-1">
                         {new Date(job.created_at).toLocaleDateString()}
                       </div>
                       {manifests[job.id] && (
-                        <div className="text-xs text-green-600 font-semibold mt-1">✓ Returned</div>
+                        <div className="text-xs text-green-400 font-semibold mt-1">✓ Returned</div>
                       )}
                     </button>
                   ))}
@@ -156,70 +185,80 @@ export default function ArchiveJobsClient() {
           {/* Job Details */}
           <div className="lg:col-span-2">
             {!selectedJob ? (
-              <div className="bg-white rounded-lg shadow p-8 text-center text-gray-500">
+              <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-8 text-center text-zinc-400">
                 Select a job to view details
               </div>
             ) : (
               <div className="space-y-6">
                 {/* Job Summary Card */}
-                <div className="bg-white rounded-lg shadow p-6">
-                  <h2 className="text-2xl font-bold text-gray-900 mb-4">{selectedJob.code}</h2>
+                <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+                  <div className="flex items-start justify-between mb-4">
+                    <h2 className="text-2xl font-bold text-white">{selectedJob.code}</h2>
+                    <button
+                      onClick={() => handlePermanentDelete(selectedJob.id, selectedJob.code)}
+                      disabled={deleting === selectedJob.id}
+                      className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded font-medium disabled:opacity-50 flex items-center gap-2"
+                    >
+                      <i className="fas fa-trash-alt"></i>
+                      {deleting === selectedJob.id ? 'Deleting...' : 'Permanently Delete'}
+                    </button>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div>
-                      <div className="text-sm text-gray-600">Job Title</div>
-                      <div className="font-semibold text-gray-900">{selectedJob.title}</div>
+                      <div className="text-sm text-zinc-400">Job Title</div>
+                      <div className="font-semibold text-white">{selectedJob.title}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Client</div>
-                      <div className="font-semibold text-gray-900">{selectedJob.client || 'N/A'}</div>
+                      <div className="text-sm text-zinc-400">Client</div>
+                      <div className="font-semibold text-white">{selectedJob.client || 'N/A'}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Status</div>
-                      <div className="font-semibold text-green-600 capitalize">{selectedJob.status || 'Completed'}</div>
+                      <div className="text-sm text-zinc-400">Status</div>
+                      <div className="font-semibold text-green-400 capitalize">{selectedJob.status || 'Completed'}</div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Expected Return Date</div>
-                      <div className="font-semibold text-gray-900">
+                      <div className="text-sm text-zinc-400">Expected Return Date</div>
+                      <div className="font-semibold text-white">
                         {selectedJob.expected_return_date
                           ? new Date(selectedJob.expected_return_date).toLocaleDateString()
                           : 'N/A'}
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Created</div>
-                      <div className="font-semibold text-gray-900">
+                      <div className="text-sm text-zinc-400">Created</div>
+                      <div className="font-semibold text-white">
                         {new Date(selectedJob.created_at).toLocaleDateString()}
                       </div>
                     </div>
                     <div>
-                      <div className="text-sm text-gray-600">Archived</div>
-                      <div className="font-semibold text-blue-600">Yes</div>
+                      <div className="text-sm text-zinc-400">Archived</div>
+                      <div className="font-semibold text-amber-400">Yes</div>
                     </div>
                   </div>
                 </div>
 
                 {/* Return Manifest Card */}
                 {selectedManifest ? (
-                  <div className="bg-white rounded-lg shadow p-6">
-                    <h3 className="text-lg font-bold text-gray-900 mb-4">Return Manifest</h3>
+                  <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6">
+                    <h3 className="text-lg font-bold text-white mb-4">Return Manifest</h3>
                     
                     <div className="space-y-4">
                       <div>
-                        <div className="text-sm text-gray-600">Finalized By</div>
-                        <div className="font-semibold text-gray-900">{selectedManifest.finalized_by}</div>
+                        <div className="text-sm text-zinc-400">Finalized By</div>
+                        <div className="font-semibold text-white">{selectedManifest.finalized_by}</div>
                       </div>
 
                       <div>
-                        <div className="text-sm text-gray-600">Finalized At</div>
-                        <div className="font-semibold text-gray-900">
+                        <div className="text-sm text-zinc-400">Finalized At</div>
+                        <div className="font-semibold text-white">
                           {new Date(selectedManifest.finalized_at).toLocaleString()}
                         </div>
                       </div>
 
                       {selectedManifest.manifest_data && (
                         <div>
-                          <div className="text-sm text-gray-600 mb-2">Return Summary</div>
-                          <div className="bg-gray-50 p-3 rounded text-sm">
+                          <div className="text-sm text-zinc-400 mb-2">Return Summary</div>
+                          <div className="bg-zinc-900 p-3 rounded text-sm text-white">
                             <div>Items Returned: <span className="font-semibold">{selectedManifest.manifest_data.total_returned} / {selectedManifest.manifest_data.total_required}</span></div>
                           </div>
                         </div>
@@ -227,19 +266,19 @@ export default function ArchiveJobsClient() {
 
                       {selectedManifest.signature && (
                         <div>
-                          <div className="text-sm text-gray-600 mb-2">Signature</div>
+                          <div className="text-sm text-zinc-400 mb-2">Signature</div>
                           <img
                             src={selectedManifest.signature}
                             alt="Signature"
-                            className="border border-gray-300 rounded max-w-xs"
+                            className="border border-zinc-700 rounded max-w-xs"
                           />
                         </div>
                       )}
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-yellow-50 border border-yellow-200 rounded p-4">
-                    <p className="text-sm text-yellow-800">No return manifest found for this job</p>
+                  <div className="bg-yellow-900/20 border border-yellow-700 rounded p-4">
+                    <p className="text-sm text-yellow-300">No return manifest found for this job</p>
                   </div>
                 )}
               </div>
