@@ -23,6 +23,11 @@ const nextConfig = {
     optimizeCss: true,
     optimizePackageImports: ['react-icons', '@supabase/supabase-js', 'lucide-react'],
   },
+
+  // Turbopack configuration (replaces deprecated experimental.turbo)
+  turbopack: {
+    // Add any turbopack-specific configs here if needed
+  },
   
   // Modularize imports for better tree shaking
   modularizeImports: {

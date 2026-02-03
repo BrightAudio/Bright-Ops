@@ -8,6 +8,7 @@ import { supabase } from "@/lib/supabaseClient";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Plus, Search, FileText, Undo2, Truck, X } from "lucide-react";
+import { JobCompletionButton, JobStatusBadge } from "@/components/JobCompletion";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 
 const STATUS_OPTIONS = [
@@ -585,13 +586,10 @@ export default function JobsPage() {
                       <div className="text-sm text-zinc-400">Client: {job.client_name}</div>
                     )}
                   </div>
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${
-                    job.status === 'complete' ? 'bg-green-900 text-green-200' :
-                    job.status === 'active' ? 'bg-blue-900 text-blue-200' :
-                    'bg-zinc-700 text-zinc-300'
-                  }`}>
-                    {job.status}
-                  </span>
+                  <JobStatusBadge 
+                    status={job.status || 'pending'} 
+                    completedAt={(job as any)?.completed_at}
+                  />
                 </div>
                 
                 {/* Financial Summary */}
@@ -650,6 +648,13 @@ export default function JobsPage() {
                   <Truck size={14} />
                   <span>Transport</span>
                 </Link>
+                {job.status !== 'complete' && (
+                  <JobCompletionButton
+                    jobId={job.id}
+                    jobTitle={job.title || 'Untitled Job'}
+                    onSuccess={reload}
+                  />
+                )}
                 <button
                   onClick={(e) => handleArchiveToggle(e, job.id, (job as any).archived)}
                   disabled={archiving === job.id}

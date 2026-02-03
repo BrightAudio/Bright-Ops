@@ -2,24 +2,43 @@
 
 import WidgetCard from "./WidgetCard";
 import { useState, useEffect } from "react";
-import { supabaseBrowser } from "@/lib/supabaseClient";
+import { supabase } from "@/lib/supabaseClient";
 
 // @ts-ignore - tasks table may not be in generated types
 type Task = any;
 
+type Employee = {
+  id: string;
+  name: string;
+  email: string | null;
+};
+
 export default function Tasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
+  const [employees, setEmployees] = useState<Employee[]>([]);
   const [loading, setLoading] = useState(true);
   const [newTaskTitle, setNewTaskTitle] = useState("");
   const [newTaskDueDate, setNewTaskDueDate] = useState("");
   const [showAddTask, setShowAddTask] = useState(false);
+  const [selectedTaskForAssignment, setSelectedTaskForAssignment] = useState<string | null>(null);
+  const [selectedEmployeeId, setSelectedEmployeeId] = useState<string>("");
+  const [assigningTask, setAssigningTask] = useState(false);
+  const [currentUserId, setCurrentUserId] = useState<string>("");
 
   useEffect(() => {
+    fetchCurrentUser();
     fetchTasks();
+    fetchEmployees();
   }, []);
 
+  async function fetchCurrentUser() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      setCurrentUserId(user.id);
+    }
+  }
+
   async function fetchTasks() {
-    const supabase = supabaseBrowser();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) {
@@ -27,6 +46,7 @@ export default function Tasks() {
       return;
     }
 
+    // Fetch tasks created by the user
     const { data, error } = await supabase
       .from("tasks")
       .select("*")
@@ -39,8 +59,21 @@ export default function Tasks() {
     setLoading(false);
   }
 
+  async function fetchEmployees() {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("employees")
+        .select("id, name, email")
+        .order("name");
+
+      if (error) throw error;
+      setEmployees(data || []);
+    } catch (err) {
+      console.error("Error loading employees:", err);
+    }
+  }
+
   async function toggleTask(taskId: string, currentStatus: string) {
-    const supabase = supabaseBrowser();
     const newStatus = currentStatus === "completed" ? "pending" : "completed";
     const completedAt = newStatus === "completed" ? new Date().toISOString() : null;
 
@@ -60,7 +93,6 @@ export default function Tasks() {
   async function addTask() {
     if (!newTaskTitle.trim()) return;
 
-    const supabase = supabaseBrowser();
     const { data: { user } } = await supabase.auth.getUser();
     
     if (!user) return;
@@ -82,9 +114,48 @@ export default function Tasks() {
     }
   }
 
-  async function deleteTask(taskId: string) {
-    const supabase = supabaseBrowser();
+  async function assignTaskToEmployee(taskId: string, employeeId: string) {
+    if (!employeeId) return;
     
+    setAssigningTask(true);
+    try {
+      const { error } = await (supabase as any)
+        .from("task_assignments")
+        .insert({
+          task_id: taskId,
+          employee_id: employeeId,
+          assigned_by: currentUserId,
+          status: "pending"
+        });
+
+      if (error) {
+        console.error("Error assigning task:", error);
+        alert("Failed to assign task");
+        return;
+      }
+
+      // Update the task to mark it as assigned
+      await (supabase as any)
+        .from("tasks")
+        .update({
+          assigned_to: employeeId,
+          assigned_by: currentUserId,
+          assigned_at: new Date().toISOString()
+        })
+        .eq("id", taskId);
+
+      setSelectedTaskForAssignment(null);
+      setSelectedEmployeeId("");
+      fetchTasks();
+    } catch (err) {
+      console.error("Error:", err);
+      alert("Failed to assign task");
+    } finally {
+      setAssigningTask(false);
+    }
+  }
+
+  async function deleteTask(taskId: string) {
     const { error } = await supabase
       .from("tasks")
       .delete()
@@ -141,6 +212,11 @@ export default function Tasks() {
     } else {
       return "later";
     }
+  }
+
+  function getAssignedEmployeeName(employeeId: string): string {
+    const employee = employees.find(e => e.id === employeeId);
+    return employee ? employee.name : "Unknown";
   }
 
   return (
@@ -225,7 +301,55 @@ export default function Tasks() {
                 <div className={`task-title${task.status === "completed" ? " completed" : ""}`}>
                   {task.title}
                 </div>
-                <div className="task-meta">{task.assignees || "Assigned to you"}</div>
+                <div className="task-meta flex items-center gap-2">
+                  {task.assigned_to ? (
+                    <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+                      Assigned to {getAssignedEmployeeName(task.assigned_to)}
+                    </span>
+                  ) : (
+                    <>
+                      {selectedTaskForAssignment === task.id ? (
+                        <div className="flex gap-1 items-center">
+                          <select
+                            value={selectedEmployeeId}
+                            onChange={(e) => setSelectedEmployeeId(e.target.value)}
+                            className="text-xs px-2 py-1 border border-gray-300 rounded"
+                          >
+                            <option value="">Select employee...</option>
+                            {employees.map((emp) => (
+                              <option key={emp.id} value={emp.id}>
+                                {emp.name}
+                              </option>
+                            ))}
+                          </select>
+                          <button
+                            onClick={() => assignTaskToEmployee(task.id, selectedEmployeeId)}
+                            disabled={!selectedEmployeeId || assigningTask}
+                            className="text-xs px-2 py-1 bg-green-500 text-white rounded hover:bg-green-600 disabled:bg-gray-300"
+                          >
+                            {assigningTask ? "..." : "✓"}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setSelectedTaskForAssignment(null);
+                              setSelectedEmployeeId("");
+                            }}
+                            className="text-xs px-2 py-1 bg-gray-300 text-gray-700 rounded hover:bg-gray-400"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => setSelectedTaskForAssignment(task.id)}
+                          className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded hover:bg-gray-200"
+                        >
+                          <i className="fas fa-user-plus mr-1"></i> Assign
+                        </button>
+                      )}
+                    </>
+                  )}
+                </div>
               </div>
               <div className={`task-due ${getDueStatus(task)}`}>{getDueLabel(task)}</div>
               <button
