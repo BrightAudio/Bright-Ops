@@ -105,7 +105,8 @@ async function setupIPC(): Promise<void> {
 
   // Basic app handlers
   ipcMain.handle('app:isOffline', () => {
-    return !navigator.onLine;
+    // Main process is always "online" - check actual network later if needed
+    return false;
   });
 
   ipcMain.handle('app:getVersion', () => {

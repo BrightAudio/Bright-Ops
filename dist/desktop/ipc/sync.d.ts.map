@@ -1,0 +1,1 @@
+{"version":3,"file":"sync.d.ts","sourceRoot":"","sources":["../../../desktop/ipc/sync.ts"],"names":[],"mappings":"AAAA;;;GAGG;AAMH,MAAM,MAAM,UAAU,GAAG;IACvB,OAAO,EAAE,MAAM,CAAC;IAChB,MAAM,EAAE,MAAM,CAAC;IACf,MAAM,EAAE,MAAM,CAAC;IACf,UAAU,EAAE,MAAM,GAAG,IAAI,CAAC;CAC3B,CAAC;AAEF;;GAEG;AACH,wBAAgB,oBAAoB,IAAI,IAAI,CAyI3C"}

@@ -5,8 +5,26 @@
 
 import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
-import { InventoryItem } from '@/db/repositories/InventoryRepo';
 import { v4 as uuidv4 } from 'uuid';
+
+/**
+ * Type definition for inventory items (matches database schema)
+ */
+interface InventoryItem {
+  id: string;
+  name: string;
+  barcode: string | null;
+  qty_in_warehouse: number;
+  category: string;
+  location: string;
+  unit_value: number;
+  purchase_cost: number;
+  purchase_date: string | null;
+  maintenance_status: string;
+  repair_cost: number;
+  image_url: string | null;
+  updated_at: string;
+}
 
 /**
  * Register all inventory handlers
