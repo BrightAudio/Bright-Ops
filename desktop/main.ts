@@ -7,6 +7,10 @@ import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import isDev from 'electron-is-dev';
 import { initializeDatabase, closeDatabase } from './db/sqlite';
+import { runMigrations } from './db/migrations';
+import { registerInventoryHandlers } from './ipc/inventory';
+import { registerPullSheetHandlers } from './ipc/pullsheets';
+import { registerSyncHandlers } from './ipc/sync';
 
 let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
@@ -54,6 +58,12 @@ app.on('ready', async () => {
     // Initialize database
     await initializeDatabase();
     
+    // Run migrations
+    await runMigrations();
+    
+    // Setup IPC handlers
+    setupIPC();
+    
     // Create window
     createWindow();
     
@@ -87,9 +97,14 @@ app.on('quit', () => {
  * Import and register all IPC modules
  */
 async function setupIPC(): Promise<void> {
-  // Will import and register IPC handlers here
-  // For now, basic handlers:
-  
+  console.log('🔌 Setting up IPC handlers...');
+
+  // Register module handlers
+  registerInventoryHandlers();
+  registerPullSheetHandlers();
+  registerSyncHandlers();
+
+  // Basic app handlers
   ipcMain.handle('app:isOffline', () => {
     return !navigator.onLine;
   });
@@ -101,6 +116,8 @@ async function setupIPC(): Promise<void> {
   ipcMain.handle('app:quit', () => {
     app.quit();
   });
+
+  console.log('✅ IPC handlers registered');
 }
 
 // Setup IPC after app is ready

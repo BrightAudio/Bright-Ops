@@ -7,7 +7,10 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "import:inventory": "tsx scripts/import-inventory.ts"
+    "import:inventory": "tsx scripts/import-inventory.ts",
+    "electron-dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron-build": "next build && electron-builder",
+    "electron-dist": "electron-builder --publish never"
   },
   "dependencies": {
     "@builder.io/react": "^8.2.8",
@@ -23,10 +26,12 @@
     "@zxing/browser": "^0.1.5",
     "@zxing/library": "^0.21.3",
     "axios": "^1.13.2",
+    "better-sqlite3": "^11.0.0",
     "bwip-js": "^4.7.0",
     "cheerio": "^1.1.2",
     "clsx": "^2.1.1",
     "critters": "^0.0.23",
+    "electron-is-dev": "^2.0.0",
     "framer-motion": "^12.23.24",
     "inter-ui": "^4.1.1",
     "jsbarcode": "^3.12.1",
@@ -41,18 +46,24 @@
     "react-icons": "^5.5.0",
     "recharts": "^3.4.1",
     "stripe": "^20.0.0",
+    "uuid": "^9.0.1",
     "zod": "^4.1.12"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",
     "@tailwindcss/postcss": "^4",
+    "@types/better-sqlite3": "^7.6.8",
     "@types/node": "^20",
     "@types/papaparse": "^5.5.0",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/supertest": "^6.0.3",
+    "@types/uuid": "^9.0.7",
+    "concurrently": "^8.2.2",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.3",
+    "electron": "^30.0.0",
+    "electron-builder": "^25.1.1",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
     "supabase": "^2.58.5",
@@ -60,9 +71,33 @@
     "tailwindcss": "^4",
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
-    "vitest": "^3.2.4"
+    "vitest": "^3.2.4",
+    "wait-on": "^7.0.1"
   },
   "engines": {
     "node": "20.x"
+  },
+  "main": "electron/main.ts",
+  "homepage": "./",
+  "build": {
+    "appId": "com.brightaudio.app",
+    "productName": "Bright Audio",
+    "files": [
+      "out/**/*",
+      "public/**/*"
+    ],
+    "directories": {
+      "buildResources": "public"
+    },
+    "win": {
+      "target": [
+        "portable",
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
   }
 }
