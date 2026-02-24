@@ -18,7 +18,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as InventoryItem[]) || [];
   }
 
   async getById(id: string): Promise<InventoryItem | null> {
@@ -33,30 +33,30 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return null;
     }
 
-    return data;
+    return data as unknown as InventoryItem;
   }
 
   async create(item: Omit<InventoryItem, 'id'>): Promise<InventoryItem> {
     const { data, error } = await supabase
       .from('inventory_items')
-      .insert([item])
+      .insert([item as any])
       .select()
       .single();
 
     if (error) throw new Error(`Failed to create item: ${error.message}`);
-    return data;
+    return data as unknown as InventoryItem;
   }
 
   async update(id: string, changes: Partial<InventoryItem>): Promise<InventoryItem> {
     const { data, error } = await supabase
       .from('inventory_items')
-      .update(changes)
+      .update(changes as any)
       .eq('id', id)
       .select()
       .single();
 
     if (error) throw new Error(`Failed to update item: ${error.message}`);
-    return data;
+    return data as unknown as InventoryItem;
   }
 
   async delete(id: string): Promise<boolean> {
@@ -85,7 +85,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return null;
     }
 
-    return data;
+    return data as unknown as InventoryItem;
   }
 
   async searchByName(name: string): Promise<InventoryItem[]> {
@@ -99,7 +99,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as InventoryItem[]) || [];
   }
 
   async getByCategory(category: string): Promise<InventoryItem[]> {
@@ -113,7 +113,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as InventoryItem[]) || [];
   }
 
   async getByLocation(location: string): Promise<InventoryItem[]> {
@@ -127,7 +127,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       return [];
     }
 
-    return data || [];
+    return (data as unknown as InventoryItem[]) || [];
   }
 
   async updateQuantity(id: string, qty: number): Promise<InventoryItem> {
@@ -139,7 +139,7 @@ export class InventorySupabaseRepository implements IInventoryRepository {
       .single();
 
     if (error) throw new Error(`Failed to update quantity: ${error.message}`);
-    return data;
+    return data as unknown as InventoryItem;
   }
 
   async checkoutItem(id: string, qty: number): Promise<InventoryItem> {

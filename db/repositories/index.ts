@@ -4,9 +4,11 @@
  */
 
 import { isDesktop } from './base';
-import { IInventoryRepository, InventorySupabaseRepository } from './InventoryRepo';
+import { IInventoryRepository } from './InventoryRepo';
+import { InventorySupabaseRepository } from './InventorySupabaseRepository';
 import { InventorySqliteRepository } from './InventorySqliteRepository';
-import { IPullSheetRepository, PullSheetSupabaseRepository } from './PullSheetRepo';
+import { IPullSheetRepository } from './PullSheetRepo';
+import { PullSheetSupabaseRepository } from './PullSheetSupabaseRepository';
 import { PullSheetSqliteRepository } from './PullSheetSqliteRepository';
 
 // Singleton instances
@@ -42,9 +44,9 @@ export function getPullSheetRepository(): IPullSheetRepository {
 }
 
 // Export all repository types and implementations
-export type { IInventoryRepository } from './InventoryRepo';
+export type { IInventoryRepository, InventoryItem } from './InventoryRepo';
 export type { IPullSheetRepository, PullSheet, PullSheetItem } from './PullSheetRepo';
-export { InventorySupabaseRepository } from './InventoryRepo';
+export { InventorySupabaseRepository } from './InventorySupabaseRepository';
 export { InventorySqliteRepository } from './InventorySqliteRepository';
-export { PullSheetSupabaseRepository } from './PullSheetRepo';
+export { PullSheetSupabaseRepository } from './PullSheetSupabaseRepository';
 export { PullSheetSqliteRepository } from './PullSheetSqliteRepository';
