@@ -11,6 +11,7 @@ exports.localServerPort = exports.mainWindow = void 0;
 const electron_1 = require("electron");
 const path_1 = __importDefault(require("path"));
 const electron_is_dev_1 = __importDefault(require("electron-is-dev"));
+const http_1 = __importDefault(require("http"));
 const sqlite_1 = require("./db/sqlite");
 const migrations_1 = require("./db/migrations");
 const inventory_1 = require("./ipc/inventory");
@@ -21,9 +22,36 @@ exports.mainWindow = mainWindow;
 let localServerPort = 3000;
 exports.localServerPort = localServerPort;
 /**
+ * Wait for server to be ready before loading URL
+ */
+async function waitForServer(url) {
+    console.log(`⏳ Waiting for server: ${url}`);
+    for (let i = 0; i < 120; i++) {
+        try {
+            await new Promise((resolve, reject) => {
+                http_1.default.get(url, (res) => {
+                    if (res.statusCode === 200 || res.statusCode === 307) {
+                        resolve(true);
+                    }
+                    else {
+                        reject(new Error(`Status ${res.statusCode}`));
+                    }
+                }).on('error', reject).setTimeout(2000);
+            });
+            console.log('✅ Server is ready!');
+            return;
+        }
+        catch (e) {
+            // Server not ready yet
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000));
+    }
+    throw new Error('Failed to connect to dev server');
+}
+/**
  * Create the browser window
  */
-function createWindow() {
+async function createWindow() {
     exports.mainWindow = mainWindow = new electron_1.BrowserWindow({
         width: 1400,
         height: 900,
@@ -38,8 +66,10 @@ function createWindow() {
     });
     // Load app
     if (electron_is_dev_1.default) {
-        // Development: load from localhost
-        mainWindow.loadURL(`http://localhost:${localServerPort}`);
+        // Development: load from localhost (server should already be running)
+        const url = `http://localhost:${localServerPort}`;
+        console.log(`🔗 Loading: ${url}`);
+        mainWindow.loadURL(url);
         mainWindow.webContents.openDevTools();
     }
     else {
@@ -53,7 +83,7 @@ function createWindow() {
 /**
  * App lifecycle
  */
-electron_1.app.on('ready', async () => {
+electron_1.app.whenReady().then(async () => {
     try {
         console.log('🚀 Bright Audio Desktop starting...');
         // Initialize database
@@ -63,7 +93,7 @@ electron_1.app.on('ready', async () => {
         // Setup IPC handlers
         setupIPC();
         // Create window
-        createWindow();
+        await createWindow();
         console.log('✅ App ready');
     }
     catch (error) {
@@ -109,6 +139,4 @@ async function setupIPC() {
     });
     console.log('✅ IPC handlers registered');
 }
-// Setup IPC after app is ready
-electron_1.app.once('ready', setupIPC);
 //# sourceMappingURL=main.js.map

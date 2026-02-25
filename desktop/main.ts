@@ -6,6 +6,7 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
 import isDev from 'electron-is-dev';
+import http from 'http';
 import { initializeDatabase, closeDatabase } from './db/sqlite';
 import { runMigrations } from './db/migrations';
 import { registerInventoryHandlers } from './ipc/inventory';
@@ -16,9 +17,37 @@ let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
 
 /**
+ * Wait for server to be ready before loading URL
+ */
+async function waitForServer(url: string): Promise<void> {
+  console.log(`⏳ Waiting for server: ${url}`);
+  
+  for (let i = 0; i < 120; i++) {
+    try {
+      await new Promise((resolve, reject) => {
+        http.get(url, (res) => {
+          if (res.statusCode === 200 || res.statusCode === 307) {
+            resolve(true);
+          } else {
+            reject(new Error(`Status ${res.statusCode}`));
+          }
+        }).on('error', reject).setTimeout(2000);
+      });
+      console.log('✅ Server is ready!');
+      return;
+    } catch (e) {
+      // Server not ready yet
+    }
+    await new Promise(resolve => setTimeout(resolve, 1000));
+  }
+  
+  throw new Error('Failed to connect to dev server');
+}
+
+/**
  * Create the browser window
  */
-function createWindow(): void {
+async function createWindow(): Promise<void> {
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
@@ -34,8 +63,10 @@ function createWindow(): void {
 
   // Load app
   if (isDev) {
-    // Development: load from localhost
-    mainWindow.loadURL(`http://localhost:${localServerPort}`);
+    // Development: load from localhost (server should already be running)
+    const url = `http://localhost:${localServerPort}`;
+    console.log(`🔗 Loading: ${url}`);
+    mainWindow.loadURL(url);
     mainWindow.webContents.openDevTools();
   } else {
     // Production: load from file
@@ -50,7 +81,7 @@ function createWindow(): void {
 /**
  * App lifecycle
  */
-app.on('ready', async () => {
+app.whenReady().then(async () => {
   try {
     console.log('🚀 Bright Audio Desktop starting...');
     
@@ -64,7 +95,7 @@ app.on('ready', async () => {
     setupIPC();
     
     // Create window
-    createWindow();
+    await createWindow();
     
     console.log('✅ App ready');
   } catch (error) {
@@ -119,8 +150,5 @@ async function setupIPC(): Promise<void> {
 
   console.log('✅ IPC handlers registered');
 }
-
-// Setup IPC after app is ready
-app.once('ready', setupIPC);
 
 export { mainWindow, localServerPort };

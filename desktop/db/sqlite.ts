@@ -67,7 +67,7 @@ async function runMigrations(): Promise<void> {
       console.log('🔄 Running initial schema...');
       
       // Read schema file
-      const schemaPath = path.join(__dirname, '..', 'db', 'schema.sql');
+      const schemaPath = path.join(__dirname, 'schema.sql');
       const schema = fs.readFileSync(schemaPath, 'utf-8');
 
       // Execute schema

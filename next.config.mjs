@@ -48,8 +48,13 @@ const nextConfig = {
   
   // Webpack optimizations to fix large string serialization warning
   webpack: (config, { dev, isServer }) => {
-    // Optimize cache for better performance
-    if (config.cache && !isServer) {
+    // Disable webpack cache in dev to avoid slow serialization issues
+    if (dev && config.cache) {
+      config.cache = false;
+    }
+    
+    // Optimize cache for better performance in production
+    if (!dev && config.cache && !isServer) {
       config.cache.compression = 'gzip';
     }
     

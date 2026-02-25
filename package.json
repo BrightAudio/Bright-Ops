@@ -2,16 +2,18 @@
   "name": "bright-audio-app",
   "version": "0.1.0",
   "private": true,
+  "main": "dist/desktop/main.js",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "import:inventory": "tsx scripts/import-inventory.ts",
-    "electron-dev": "npm run build-electron && concurrently \"npm run dev\" \"wait-on http://localhost:3001 && electron .\"",
-    "build-electron": "tsc --project tsconfig.electron.json || echo 'Build completed with warnings'",
-    "electron-build": "npm run build-electron && next build && electron-builder",
-    "electron-dist": "npm run build-electron && electron-builder --publish never"
+    "copy:sql": "node -e \"require('fs').mkdirSync('dist/desktop/db', {recursive: true}); require('fs').copyFileSync('desktop/db/schema.sql', 'dist/desktop/db/schema.sql');\"",
+    "electron": "electron .",
+    "electron:compile": "tsc --project tsconfig.electron.json",
+    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:compile && npm run electron\"",
+    "electron:build": "next build && tsc --project tsconfig.electron.json && npm run copy:sql && electron-builder --publish never"
   },
   "dependencies": {
     "@builder.io/react": "^8.2.8",
@@ -63,7 +65,7 @@
     "concurrently": "^8.2.2",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.3",
-    "electron": "^30.0.0",
+    "electron": "^30.5.1",
     "electron-builder": "^25.1.1",
     "electron-rebuild": "^3.2.9",
     "eslint": "^9",
@@ -74,17 +76,17 @@
     "tsx": "^4.20.6",
     "typescript": "^5.9.3",
     "vitest": "^3.2.4",
-    "wait-on": "^7.0.1"
+    "wait-on": "^7.2.0"
   },
   "engines": {
     "node": "20.x"
   },
-  "main": "dist/desktop/main.js",
   "homepage": "./",
   "build": {
     "appId": "com.brightaudio.app",
     "productName": "Bright Audio",
     "files": [
+      "dist/**/*",
       "out/**/*",
       "public/**/*"
     ],
