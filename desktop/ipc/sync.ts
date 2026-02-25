@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
+import { OutboxSyncService } from '../../lib/sync/outboxSync';
 
 export type SyncStatus = {
   pending: number;
@@ -13,6 +14,23 @@ export type SyncStatus = {
   failed: number;
   lastSyncAt: string | null;
 };
+
+// Global sync service instance
+let syncService: OutboxSyncService | null = null;
+
+/**
+ * Initialize sync service with auth token
+ */
+export function initializeSyncService(authToken: string): void {
+  syncService = new OutboxSyncService({
+    authToken,
+    apiUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sync/changes`,
+  });
+
+  const db = getDatabase();
+  syncService.setDatabase(db);
+  console.log('✅ Sync service initialized');
+}
 
 /**
  * Register all sync handlers
@@ -92,10 +110,17 @@ export function registerSyncHandlers(): void {
   });
 
   /**
-   * Manual sync now (MVP: just queue, actual push happens later)
+   * Manual sync now - Actually syncs to Supabase
    */
   ipcMain.handle('sync:syncNow', async () => {
     try {
+      if (!syncService) {
+        return {
+          success: false,
+          error: 'Sync service not initialized. Please log in first.',
+        };
+      }
+
       const db = getDatabase();
       const syncId = uuidv4();
 
@@ -105,35 +130,40 @@ export function registerSyncHandlers(): void {
         VALUES (?, 'started', 0, 0, NULL)
       `).run(syncId);
 
-      // For MVP: just prepare changes, don't actually push yet
-      const pending = db
-        .prepare('SELECT COUNT(*) as count FROM changes_outbox WHERE synced_at IS NULL')
-        .get() as any;
+      console.log('🔄 Starting sync to Supabase...');
 
-      console.log(`🔄 Sync started: ${pending.count} pending changes`);
+      // Perform actual sync
+      const result = await syncService.syncPending();
 
-      // TODO: In Phase 2, implement actual push to Supabase API
+      console.log(
+        `✅ Sync complete: ${result.synced} synced, ${result.failed} failed`
+      );
 
-      // Simulate sync completion
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Record sync complete
+      // Record sync completion
       db.prepare(`
-        UPDATE sync_log SET status = 'completed', entries_pushed = ? WHERE id = ?
-      `).run(pending.count || 0, syncId);
+        UPDATE sync_log SET status = 'completed', entries_pushed = ?, error = ? WHERE id = ?
+      `).run(
+        result.synced,
+        result.failed > 0 ? JSON.stringify(result.errors) : null,
+        syncId
+      );
 
       const status = await getStatus();
 
       return {
-        success: true,
+        success: result.failed === 0,
         data: {
-          message: `Sync complete: ${pending.count} changes queued`,
+          message: `Sync complete: ${result.synced} synced, ${result.failed} failed`,
           status,
+          details: result,
         },
       };
     } catch (error) {
       console.error('Error during sync:', error);
-      return { success: false, error: (error as any).message };
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      };
     }
   });
 
