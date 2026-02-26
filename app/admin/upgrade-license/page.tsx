@@ -1,13 +1,41 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { supabaseBrowser } from '@/lib/supabaseClient';
+import { useRouter } from 'next/navigation';
 
 export default function UpgradeLicensePage() {
+  const router = useRouter();
   const [secretId, setSecretId] = useState('');
   const [plan, setPlan] = useState('pro');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [isError, setIsError] = useState(false);
+  const [isAuthorized, setIsAuthorized] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
+
+  useEffect(() => {
+    async function checkAuth() {
+      const sb = supabaseBrowser();
+      const { data: { user } } = await sb.auth.getUser();
+      
+      if (!user) {
+        router.push('/auth/login');
+        return;
+      }
+
+      // Only allow user with specific email (replace with your email)
+      if (user.email === 'bright@example.com') {
+        setIsAuthorized(true);
+      } else {
+        router.push('/app/dashboard');
+      }
+      
+      setCheckingAuth(false);
+    }
+
+    checkAuth();
+  }, [router]);
 
   async function handleUpgrade() {
     if (!secretId.trim()) {
@@ -48,6 +76,42 @@ export default function UpgradeLicensePage() {
     }
   }
 
+  if (checkingAuth) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f3f4f6',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <p style={{ color: '#6b7280' }}>Checking authorization...</p>
+      </div>
+    );
+  }
+
+  if (!isAuthorized) {
+    return (
+      <div style={{
+        minHeight: '100vh',
+        backgroundColor: '#f3f4f6',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center'
+      }}>
+        <div style={{
+          backgroundColor: 'white',
+          borderRadius: '8px',
+          padding: '2rem',
+          textAlign: 'center'
+        }}>
+          <h1 style={{ color: '#dc2626' }}>Access Denied</h1>
+          <p style={{ color: '#6b7280' }}>You don't have permission to access this page.</p>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -71,7 +135,7 @@ export default function UpgradeLicensePage() {
           marginBottom: '0.5rem',
           color: '#111'
         }}>
-          Upgrade License
+          Upgrade License (TEST ONLY)
         </h1>
         <p style={{
           color: '#6b7280',
