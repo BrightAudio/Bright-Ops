@@ -49,6 +49,65 @@ export function registerInventoryHandlers(): void {
   });
 
   /**
+   * Get inventory items with pagination
+   * Supports cursor-based pagination for efficient loading
+   */
+  ipcMain.handle('inventory:listPaginated', async (_event, options: { pageSize?: number; cursor?: string } = {}) => {
+    try {
+      const db = getDatabase();
+      const pageSize = options.pageSize || 50;
+      const cursor = options.cursor || '';
+
+      let query = 'SELECT * FROM inventory_items';
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const params: any[] = [];
+
+      if (cursor) {
+        query += ' WHERE id > ?';
+        params.push(cursor);
+      }
+
+      query += ' ORDER BY id ASC LIMIT ?';
+      params.push(pageSize + 1); // Fetch one extra to determine if more exist
+
+      const items = db.prepare(query).all(...params) as InventoryItem[];
+
+      const hasMore = items.length > pageSize;
+      const pageItems = items.slice(0, pageSize);
+      const nextCursor = hasMore ? pageItems[pageItems.length - 1]?.id : null;
+
+      return {
+        success: true,
+        data: {
+          items: pageItems,
+          hasMore,
+          nextCursor,
+          count: pageItems.length,
+        },
+      };
+    } catch (error) {
+      console.error('Error paginating inventory:', error);
+      return { success: false, error: (error as any).message };
+    }
+  });
+
+  /**
+   * Get total inventory count
+   */
+  ipcMain.handle('inventory:getCount', async () => {
+    try {
+      const db = getDatabase();
+      const result = db
+        .prepare('SELECT COUNT(*) as count FROM inventory_items')
+        .get() as { count: number };
+      return { success: true, data: result.count };
+    } catch (error) {
+      console.error('Error getting inventory count:', error);
+      return { success: false, error: (error as any).message };
+    }
+  });
+
+  /**
    * Get inventory item by ID
    */
   ipcMain.handle('inventory:getById', async (_event, id: string) => {

@@ -148,6 +148,16 @@ async function setupIPC(): Promise<void> {
     app.quit();
   });
 
+  /**
+   * Navigate to sync widget page
+   */
+  ipcMain.handle('app:openSyncWidget', () => {
+    if (mainWindow) {
+      mainWindow.webContents.send('navigate', '/desktop-sync');
+    }
+    return { success: true };
+  });
+
   console.log('✅ IPC handlers registered');
 }
 
