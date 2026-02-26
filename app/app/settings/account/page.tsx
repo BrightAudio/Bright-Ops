@@ -21,6 +21,7 @@ export default function AccountSettingsPage() {
   const [organizationSecretId, setOrganizationSecretId] = useState<string>('');
   const [organizationLoading, setOrganizationLoading] = useState(true);
   const [isCreatingOrganization, setIsCreatingOrganization] = useState(false);
+  const [isSecretRevealed, setIsSecretRevealed] = useState(false);
   
   // Training state
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -170,6 +171,14 @@ export default function AccountSettingsPage() {
       alert('Something went wrong: ' + (err as any).message);
     } finally {
       setIsCreatingOrganization(false);
+    }
+  }
+
+  // Handle secret reveal on Ctrl+Shift+Right Click
+  function handleOrganizationContextMenu(e: React.MouseEvent) {
+    if (e.ctrlKey && e.shiftKey) {
+      e.preventDefault();
+      setIsSecretRevealed(!isSecretRevealed);
     }
   }
 
@@ -480,15 +489,19 @@ export default function AccountSettingsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>
+                  <span 
+                    style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af', cursor: 'pointer', userSelect: 'none' }}
+                    onContextMenu={handleOrganizationContextMenu}
+                    title="Ctrl+Shift+Right Click to reveal secret ID"
+                  >
                     {organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}
                   </span>
-                  {isAdmin && organizationSecretId && (
+                  {isSecretRevealed && organizationSecretId && (
                     <span style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace', backgroundColor: '#e0e7ff', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
                       {organizationSecretId}
                     </span>
                   )}
-                  {isAdmin && organizationSecretId && (
+                  {isSecretRevealed && organizationSecretId && (
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(organizationSecretId);
