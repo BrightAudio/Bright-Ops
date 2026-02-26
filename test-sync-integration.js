@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/ban-ts-comment */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 /**
  * Phase 2 Integration Test: Full Sync Workflow
  * Tests desktop app changes syncing to Supabase via API

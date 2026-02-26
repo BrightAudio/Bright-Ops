@@ -58,12 +58,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   // Idempotency: check if event already processed
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const { data: existing } = (await supabase
     .from('stripe_events')
     .select('id')
     .eq('id', event.id)
-    .single()) as any;
+    .single()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
   if (existing?.id) {
     return NextResponse.json({ received: true });
@@ -78,12 +77,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         if (!customerId) break;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: lic } = (await supabase
           .from('licenses')
           .select('id, delinquent_since')
           .eq('stripe_customer_id', customerId)
-          .single()) as any;
+          .single()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         if (lic) {
           await supabase
@@ -110,12 +108,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
         if (!customerId) break;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: lic } = (await supabase
           .from('licenses')
           .select('id')
           .eq('stripe_customer_id', customerId)
-          .single()) as any;
+          .single()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         if (lic) {
           await supabase
@@ -149,12 +146,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           ? new Date(sub.current_period_end * 1000).toISOString()
           : null;
 
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
         const { data: lic } = (await supabase
           .from('licenses')
           .select('id, plan')
           .eq('stripe_customer_id', customerId)
-          .single()) as any;
+          .single()) as any; // eslint-disable-line @typescript-eslint/no-explicit-any
 
         if (lic) {
           // Only update plan if lookup_key is present (Stripe config requirement)
