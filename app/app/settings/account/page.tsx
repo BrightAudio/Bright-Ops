@@ -494,7 +494,7 @@ export default function AccountSettingsPage() {
                     onContextMenu={handleOrganizationContextMenu}
                     title="Ctrl+Shift+Right Click to reveal secret ID"
                   >
-                    {organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}
+                    {organizationLoading ? 'Loading...' : ((profile as any)?.company_name || organizationName || 'Not assigned')}
                   </span>
                   {isSecretRevealed && organizationSecretId && (
                     <span style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace', backgroundColor: '#e0e7ff', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
