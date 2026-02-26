@@ -407,32 +407,34 @@ export default function AccountSettingsPage() {
             }}>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>{organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>
+                    {organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}
+                  </span>
                   {organizationSecretId && (
-                    <>
-                      <span style={{ color: '#bfdbfe' }}>•</span>
-                      <code style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>{organizationSecretId.slice(0, 8)}...</code>
-                      <button
-                        onClick={() => {
-                          navigator.clipboard.writeText(organizationSecretId);
-                          alert('Secret ID copied to clipboard');
-                        }}
-                        style={{
-                          marginLeft: 'auto',
-                          padding: '0.25rem 0.75rem',
-                          background: '#2563eb',
-                          color: 'white',
-                          border: 'none',
-                          borderRadius: '4px',
-                          cursor: 'pointer',
-                          fontSize: '0.75rem',
-                          fontWeight: 600
-                        }}
-                      >
-                        Copy ID
-                      </button>
-                    </>
+                    <span style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace', backgroundColor: '#e0e7ff', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
+                      {organizationSecretId}
+                    </span>
+                  )}
+                  {organizationSecretId && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(organizationSecretId);
+                        alert('Secret ID copied to clipboard');
+                      }}
+                      style={{
+                        padding: '0.25rem 0.75rem',
+                        background: '#2563eb',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      Copy
+                    </button>
                   )}
                 </div>
               </div>
