@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabaseClient";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 import LeadScraperSection from "@/components/LeadScraperSection";
+import { logQuestEvent } from "@/lib/utils/questEvents";
 
 type Lead = {
   id: string;
@@ -163,6 +164,9 @@ export default function LeadsPage() {
 
     try {
       const supabaseAny = supabase as any;
+      
+      const oldStatus = selectedLeadForEmail.status;
+      
       // Save follow-up email record
       const { error } = await supabaseAny
         .from('leads')
@@ -175,6 +179,30 @@ export default function LeadsPage() {
         .eq('id', selectedLeadForEmail.id);
 
       if (error) throw error;
+
+      // Log quest event for reachout
+      await logQuestEvent('lead_reachout_sent', 'lead', selectedLeadForEmail.id, {
+        metricValue: 1, // Count-based: one reachout action
+        source: 'leads',
+        metadata: {
+          subject: emailData.subject,
+          body_length: emailData.body.length,
+          old_status: oldStatus,
+          new_status: 'contacted',
+        },
+      });
+
+      // Log status change event if it changed
+      if (oldStatus !== 'contacted') {
+        await logQuestEvent('lead_status_updated', 'lead', selectedLeadForEmail.id, {
+          metricValue: 1, // Count-based: one status update
+          source: 'leads',
+          metadata: {
+            old_status: oldStatus,
+            new_status: 'contacted',
+          },
+        });
+      }
 
       setShowEmailModal(false);
       setSelectedLeadForEmail(null);
@@ -196,7 +224,7 @@ export default function LeadsPage() {
     try {
       const supabaseAny = supabase as any;
       // Save meeting to database
-      const { error } = await supabaseAny
+      const { data: meetingData, error } = await supabaseAny
         .from('scheduled_meetings')
         .insert([
           {
@@ -209,9 +237,24 @@ export default function LeadsPage() {
             notes: scheduleData.notes,
             status: 'scheduled'
           }
-        ]);
+        ])
+        .select()
+        .single();
 
       if (error) throw error;
+
+      // Log quest event for meeting booked
+      await logQuestEvent('lead_meeting_booked', 'meeting', meetingData?.id || selectedLeadForSchedule.id, {
+        metricValue: 1, // Count-based: one meeting booked
+        source: 'leads',
+        metadata: {
+          lead_id: selectedLeadForSchedule.id,
+          lead_name: selectedLeadForSchedule.name,
+          meeting_date: scheduleData.date,
+          meeting_time: scheduleData.time,
+          meeting_type: scheduleData.type,
+        },
+      });
 
       setShowScheduleModal(false);
       setSelectedLeadForSchedule(null);

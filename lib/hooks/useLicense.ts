@@ -33,19 +33,43 @@ export function useLicense(): UseLicense {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Check if we're in Electron
-  const isElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer;
-
-  const getIPC = useCallback(() => {
-    if (!isElectron) return null;
-    return (window as any).electron.ipcRenderer;
-  }, [isElectron]);
-
   // Load current license state from cache
   const refresh = useCallback(async (): Promise<void> => {
-    const ipc = getIPC();
+    // Check if we're in Electron
+    const isElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer;
+    const ipc = isElectron ? (window as any).electron.ipcRenderer : null;
+
     if (!ipc) {
-      setError('Not in Electron context');
+      // Browser testing mode - check localStorage
+      if (typeof window !== 'undefined') {
+        try {
+          const stored = localStorage.getItem('test_license_state');
+          if (stored) {
+            const data = JSON.parse(stored);
+            setLicense(data);
+            setError(null);
+          } else {
+            // Default test license (Pro tier)
+            const defaultLicense: CachedLicenseState = {
+              license_id: 'test-license',
+              plan: 'pro',
+              status: 'active',
+              last_verified_at: new Date().toISOString(),
+              next_verify_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+              grace_expires_at: null,
+              cached_features: 'all',
+              cached_sync_enabled: 1,
+              cached_can_create_jobs: 1,
+              cached_can_add_inventory: 1,
+            };
+            setLicense(defaultLicense);
+            setError(null);
+          }
+        } catch (err) {
+          const errorMsg = err instanceof Error ? err.message : 'Failed to load test license';
+          setError(errorMsg);
+        }
+      }
       setLoading(false);
       return;
     }
@@ -64,12 +88,14 @@ export function useLicense(): UseLicense {
     } finally {
       setLoading(false);
     }
-  }, [getIPC]);
+  }, []);
 
   // Verify license with server and update cache
   const verify = useCallback(
     async (userId: string, deviceId: string, appVersion: string): Promise<boolean> => {
-      const ipc = getIPC();
+      const isElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer;
+      const ipc = isElectron ? (window as any).electron.ipcRenderer : null;
+
       if (!ipc) {
         setError('Not in Electron context');
         return false;
@@ -100,13 +126,15 @@ export function useLicense(): UseLicense {
         setLoading(false);
       }
     },
-    [getIPC, refresh]
+    [refresh]
   );
 
   // Check if user can perform an action
   const canPerform = useCallback(
     async (action: 'sync' | 'create_job' | 'add_inventory'): Promise<boolean> => {
-      const ipc = getIPC();
+      const isElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer;
+      const ipc = isElectron ? (window as any).electron.ipcRenderer : null;
+
       if (!ipc) {
         return false;
       }
@@ -122,15 +150,13 @@ export function useLicense(): UseLicense {
         return false;
       }
     },
-    [getIPC]
+    []
   );
 
   // Load on mount
   useEffect(() => {
-    if (isElectron) {
-      refresh();
-    }
-  }, [isElectron, refresh]);
+    refresh();
+  }, [refresh]);
 
   return {
     license,
@@ -140,6 +166,33 @@ export function useLicense(): UseLicense {
     canPerform,
     refresh,
   };
+}
+
+/**
+ * Set test license tier for browser testing
+ * Usage in browser console: window.setTestLicenseTier('pro')
+ */
+export function setTestLicenseTier(plan: 'basic' | 'pro' | 'enterprise'): void {
+  const testLicense: CachedLicenseState = {
+    license_id: 'test-license',
+    plan,
+    status: 'active',
+    last_verified_at: new Date().toISOString(),
+    next_verify_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+    grace_expires_at: null,
+    cached_features: plan === 'basic' ? 'basic' : 'all',
+    cached_sync_enabled: 1,
+    cached_can_create_jobs: 1,
+    cached_can_add_inventory: 1,
+  };
+  localStorage.setItem('test_license_state', JSON.stringify(testLicense));
+  // Force page reload to pick up new license
+  window.location.reload();
+}
+
+// Make test setter available in browser console
+if (typeof window !== 'undefined') {
+  (window as any).setTestLicenseTier = setTestLicenseTier;
 }
 
 export default useLicense;

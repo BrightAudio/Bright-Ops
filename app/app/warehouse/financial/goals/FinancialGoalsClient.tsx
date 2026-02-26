@@ -6,6 +6,24 @@ import { supabaseBrowser } from '@/lib/supabaseClient';
 import { ArrowLeft, Zap, TrendingUp, Target, Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLicense } from '@/lib/hooks/useLicense';
+import { FinancialDashboard } from '@/components/FinancialDashboard';
+import { useQuarterlyRevenue } from '@/lib/hooks/useQuarterlyRevenue';
+import GoalScenarios from '@/components/GoalScenarios';
+import QuarterDateEditor from '@/components/QuarterDateEditor';
+import QuestChain from '@/components/QuestChain';
+import GoalTemplates from '@/components/GoalTemplates';
+import IndustryBenchmarksComponent from '@/components/IndustryBenchmarks';
+import {
+  calculateForecast,
+  generateScenarios,
+  calculatePaceMetrics,
+  ForecastResult,
+  GoalScenario,
+  PaceMetrics,
+} from '@/lib/utils/goalForecasting';
+import { generateQuestLine, QuestLine } from '@/lib/utils/questSystem';
+import { createRewardTracker, RewardTracker } from '@/lib/utils/questRewards';
+import { calculateAllRealMetrics } from '@/lib/utils/calculateRealMetrics';
 
 type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
@@ -20,6 +38,9 @@ interface FinancialMetrics {
   profitMargin: number;
   monthlyTrend: number[];
   costPercentage: number;
+  equipmentUtilization: number;
+  onTimeDeliveryRate: number;
+  jobProfitabilityRate: number;
 }
 
 interface GoalsAnalysis {
@@ -51,11 +72,24 @@ interface CalendarEvent {
   income?: number;
 }
 
+interface QuarterDates {
+  Q1: { startDate: string; endDate: string };
+  Q2: { startDate: string; endDate: string };
+  Q3: { startDate: string; endDate: string };
+  Q4: { startDate: string; endDate: string };
+}
+
 export default function FinancialGoalsClient() {
   const router = useRouter();
   const { license, loading: licenseLoading } = useLicense();
   const [currentQuarter, setCurrentQuarter] = useState<Quarter>('Q1');
+  const [activeTab, setActiveTab] = useState<'analysis' | 'dashboard' | 'quests' | 'templates' | 'benchmarks'>('analysis');
+  const [selectedScenario, setSelectedScenario] = useState<'optimistic' | 'realistic' | 'pessimistic'>('realistic');
+  const [organizationId, setOrganizationId] = useState<string | null>(null);
   const [metrics, setMetrics] = useState<FinancialMetrics | null>(null);
+  const [forecast, setForecast] = useState<ForecastResult | null>(null);
+  const [scenarios, setScenarios] = useState<GoalScenario[]>([]);
+  const [paceMetrics, setPaceMetrics] = useState<PaceMetrics | null>(null);
   const [goals, setGoals] = useState<Record<Quarter, GoalsAnalysis | null>>({
     Q1: null,
     Q2: null,
@@ -66,19 +100,42 @@ export default function FinancialGoalsClient() {
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [upcomingJobs, setUpcomingJobs] = useState<CalendarEvent[]>([]);
+  const [editingQuarter, setEditingQuarter] = useState<Quarter | null>(null);
+  const [showDateEditor, setShowDateEditor] = useState(false);
+  const [quarterDates, setQuarterDates] = useState<QuarterDates>({
+    Q1: { startDate: '2026-01-01', endDate: '2026-03-31' },
+    Q2: { startDate: '2026-04-01', endDate: '2026-06-30' },
+    Q3: { startDate: '2026-07-01', endDate: '2026-09-30' },
+    Q4: { startDate: '2026-10-01', endDate: '2026-12-31' },
+  });
 
-  useEffect(() => {
-    loadFinancialMetrics();
-    loadTasksAndEvents();
-    loadSavedReports();
-  }, []);
+  // Phase 2: Quest System with AI-powered goal progression
+  const [questLine, setQuestLine] = useState<QuestLine | null>(null);
+  const [rewardTracker, setRewardTracker] = useState<RewardTracker>(createRewardTracker());
+  const [templateGoals, setTemplateGoals] = useState<any[]>([]);
 
-  // Check license tier - Goals is Pro/Enterprise only
-  useEffect(() => {
-    if (!licenseLoading && license && license.plan !== 'pro' && license.plan !== 'enterprise') {
-      router.push('/app');
+  // DEBUG
+  console.log('FinancialGoalsClient rendering - license:', license, 'licenseLoading:', licenseLoading, 'organizationId:', organizationId);
+
+  // Get user's organization
+  const loadOrganization = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.organization_id) {
+        setOrganizationId(profile.organization_id);
+      }
+    } catch (error) {
+      console.error('Error fetching organization:', error);
     }
-  }, [license, licenseLoading]);
+  };
 
   const loadTasksAndEvents = async () => {
     try {
@@ -110,6 +167,164 @@ export default function FinancialGoalsClient() {
       console.error('Error loading tasks/events:', err);
     }
   };
+
+  // Load quarter dates from localStorage
+  const loadQuarterDates = () => {
+    try {
+      const year = new Date().getFullYear();
+      const stored = localStorage.getItem(`quarter-dates-${year}`);
+      if (stored) {
+        setQuarterDates(JSON.parse(stored));
+      }
+    } catch (err) {
+      console.error('Error loading quarter dates:', err);
+    }
+  };
+
+  // Save quarter dates to localStorage
+  const saveQuarterDates = async (quarter: Quarter, dates: { startDate: string; endDate: string }) => {
+    try {
+      const updated = {
+        ...quarterDates,
+        [quarter]: dates,
+      };
+      const year = new Date().getFullYear();
+      localStorage.setItem(`quarter-dates-${year}`, JSON.stringify(updated));
+      setQuarterDates(updated);
+    } catch (err) {
+      console.error('Error saving quarter dates:', err);
+      throw new Error('Failed to save quarter dates');
+    }
+  };
+
+  useEffect(() => {
+    loadFinancialMetrics();
+    loadTasksAndEvents();
+    loadSavedReports();
+    loadOrganization();
+    loadQuarterDates();
+  }, []);
+
+  // Hook for quarterly revenue data
+  const { 
+    currentQuarterData, 
+    previousQuartersData, 
+    yearlyData,
+    completedJobs,
+  } = useQuarterlyRevenue(organizationId || '');
+
+  // Calculate forecast and pace metrics when quarterly data changes
+  useEffect(() => {
+    try {
+      // If we have real metrics, use them to determine realistic targets
+      if (metrics && metrics.jobsIncome > 0) {
+        // Use average monthly income to set realistic quarterly target
+        const monthlyAvg = metrics.monthlyTrend.length > 0 
+          ? metrics.monthlyTrend.reduce((a, b) => a + b, 0) / metrics.monthlyTrend.length 
+          : metrics.jobsIncome / 3;
+        
+        const realisticQuarterlyTarget = monthlyAvg * 3;
+
+        // Get quarterly data
+        const forecastResult = calculateForecast(0, 0, 0, 0);
+        setForecast(forecastResult);
+
+        // Generate scenarios based on actual metrics
+        const scenariosList = generateScenarios(
+          realisticQuarterlyTarget,
+          forecastResult,
+          metrics.completedJobs > 0 ? metrics.jobsIncome / metrics.completedJobs : 0,
+          metrics.completedJobs > 0 ? metrics.jobsIncome / metrics.completedJobs : 0
+        );
+        setScenarios(scenariosList);
+
+        // Calculate pace metrics
+        const curr = quarterDates[currentQuarter];
+        const paceResult = calculatePaceMetrics(
+          realisticQuarterlyTarget,
+          currentQuarterData?.totalRevenue || 0,
+          currentQuarter,
+          new Date(),
+          new Date(curr.startDate),
+          new Date(curr.endDate)
+        );
+        setPaceMetrics(paceResult);
+      } else {
+        // Fallback to default values if no metrics yet
+        const forecastResult = calculateForecast(0, 0, 0, 0);
+        setForecast(forecastResult);
+
+        const scenariosList = generateScenarios(25000, forecastResult, 0, 0);
+        setScenarios(scenariosList);
+
+        const curr = quarterDates[currentQuarter];
+        const paceResult = calculatePaceMetrics(
+          25000,
+          0,
+          currentQuarter,
+          new Date(),
+          new Date(curr.startDate),
+          new Date(curr.endDate)
+        );
+        setPaceMetrics(paceResult);
+      }
+
+      // Now if we have quarterly history, update with more accurate forecast
+      if (yearlyData && Object.keys(yearlyData).length > 0) {
+        const year = new Date().getFullYear();
+        const yearData = yearlyData[year] || [];
+        
+        const q1Data = yearData?.find((q: any) => q.quarter === 1);
+        const q2Data = yearData?.find((q: any) => q.quarter === 2);
+        const q3Data = yearData?.find((q: any) => q.quarter === 3);
+        const q4Data = yearData?.find((q: any) => q.quarter === 4);
+
+        const q1Revenue = q1Data?.totalRevenue || 0;
+        const q2Revenue = q2Data?.totalRevenue || 0;
+        const q3Revenue = q3Data?.totalRevenue || 0;
+        const q4Revenue = q4Data?.totalRevenue || 0;
+
+        // Recalculate with real quarterly data
+        const forecastWithData = calculateForecast(q1Revenue, q2Revenue, q3Revenue, q4Revenue);
+        setForecast(forecastWithData);
+
+        // Use historical performance + current metrics for target
+        const avgHistorical = [q1Revenue, q2Revenue, q3Revenue, q4Revenue].filter(q => q > 0).length > 0
+          ? [q1Revenue, q2Revenue, q3Revenue, q4Revenue].filter(q => q > 0).reduce((a, b) => a + b, 0) / [q1Revenue, q2Revenue, q3Revenue, q4Revenue].filter(q => q > 0).length
+          : 25000;
+
+        const targetRevenue = currentQuarterData?.totalRevenue || avgHistorical || 25000;
+        
+        const scenariosWithData = generateScenarios(
+          targetRevenue,
+          forecastWithData,
+          q1Revenue,
+          q2Revenue
+        );
+        setScenarios(scenariosWithData);
+
+        const curr = quarterDates[currentQuarter];
+        const paceWithData = calculatePaceMetrics(
+          targetRevenue,
+          currentQuarterData?.totalRevenue || 0,
+          currentQuarter,
+          new Date(),
+          new Date(curr.startDate),
+          new Date(curr.endDate)
+        );
+        setPaceMetrics(paceWithData);
+      }
+    } catch (err) {
+      console.error('Error calculating forecast:', err);
+    }
+  }, [currentQuarterData, yearlyData, currentQuarter]);
+
+  // Check license tier - Goals is Pro/Enterprise only
+  useEffect(() => {
+    if (!licenseLoading && license && license.plan !== 'pro' && license.plan !== 'enterprise') {
+      router.push('/app');
+    }
+  }, [license, licenseLoading]);
 
   const addGoalTask = async (goalText: string, quarterNum: string) => {
     try {
@@ -186,6 +401,9 @@ export default function FinancialGoalsClient() {
       const profitMargin = jobsIncome > 0 ? (jobsProfit / jobsIncome) * 100 : 0;
       const costPercentage = jobsIncome > 0 ? (jobsLaborCost / jobsIncome) * 100 : 0;
 
+      //🆕 Calculate real metrics from database data
+      const realMetrics = await calculateAllRealMetrics(undefined, 90);
+
       const newMetrics: FinancialMetrics = {
         totalInventoryValue,
         jobsIncome,
@@ -197,6 +415,9 @@ export default function FinancialGoalsClient() {
         profitMargin,
         monthlyTrend,
         costPercentage,
+        equipmentUtilization: realMetrics.equipmentUtilization,
+        onTimeDeliveryRate: realMetrics.onTimeDeliveryRate,
+        jobProfitabilityRate: realMetrics.jobProfitabilityRate,
       };
 
       setMetrics(newMetrics);
@@ -219,7 +440,7 @@ export default function FinancialGoalsClient() {
         ? metrics.monthlyTrend.reduce((a, b) => a + b, 0) / metrics.monthlyTrend.length 
         : 0;
 
-      const prompt = `You are a Harvard-educated financial advisor for a professional audio equipment rental company called Bright Ops. Analyze our comprehensive financial metrics and create strategic quarterly planning for ${quarter} 2025.
+      const prompt = `You are a professional financial advisor for a professional audio equipment rental company called Bright Ops. Analyze our comprehensive financial metrics and create strategic quarterly planning for ${quarter} 2025.
 
 === AGGREGATE FINANCIAL ANALYSIS ===
 
@@ -393,38 +614,24 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
 
   const getQuarterProgress = (quarter: Quarter): number => {
     const now = new Date();
-    const quarterMonths = {
-      Q1: { start: 0, end: 2 },
-      Q2: { start: 3, end: 5 },
-      Q3: { start: 6, end: 8 },
-      Q4: { start: 9, end: 11 },
-    };
-
-    const range = quarterMonths[quarter];
-    const daysInQuarter = 92; // Approximate
-    const dayInQuarter = (now.getMonth() - range.start) * 30 + now.getDate();
-
-    return Math.min(100, Math.max(0, (dayInQuarter / daysInQuarter) * 100));
+    const dates = quarterDates[quarter];
+    
+    if (!dates) return 0;
+    
+    const startDate = new Date(dates.startDate);
+    const endDate = new Date(dates.endDate);
+    
+    if (now < startDate) return 0;
+    if (now > endDate) return 100;
+    
+    const totalMs = endDate.getTime() - startDate.getTime();
+    const elapsedMs = now.getTime() - startDate.getTime();
+    
+    return Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
   };
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f3f0' }}>
-      {/* Show loading state while license is being verified */}
-      {licenseLoading && (
-        <div style={{ 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center', 
-          height: '100vh',
-          background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)'
-        }}>
-          <div style={{ color: 'white', fontSize: '18px' }}>Loading Goals...</div>
-        </div>
-      )}
-      
-      {/* Only render content if user has Pro or Enterprise license */}
-      {!licenseLoading && (license?.plan === 'pro' || license?.plan === 'enterprise') && (
-        <>
       {/* Header */}
       <div
         style={{ backgroundColor: '#fff8f0', borderBottom: '2px solid #fcd34d' }}
@@ -445,43 +652,155 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
                 Financial Goals
               </h1>
               <p style={{ color: '#a16207' }} className="mt-2 font-medium">
-                AI-Powered Strategic Planning • Harvard-Trained Financial Analysis
+                AI-Powered Strategic Planning • Professional Financial Analysis
               </p>
               {/* Navigation Links */}
               <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem' }}>
-                <a
-                  href="/app/warehouse/financial"
+                <button
+                  onClick={() => setActiveTab('analysis')}
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: '#999999',
+                    color: activeTab === 'analysis' ? '#fbbf24' : '#999999',
                     textDecoration: 'none',
                     paddingBottom: '0.25rem',
-                    transition: 'all 0.3s ease',
+                    borderBottom: activeTab === 'analysis' ? '2px solid #fbbf24' : 'none',
+                    background: 'none',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
                     cursor: 'pointer',
+                    transition: 'all 0.3s ease',
                   }}
                   onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = '#d97706';
-                    (e.currentTarget as HTMLElement).style.borderBottom = '2px solid #d97706';
+                    if (activeTab !== 'analysis') {
+                      (e.currentTarget as HTMLElement).style.color = '#d97706';
+                    }
                   }}
                   onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = '#999999';
-                    (e.currentTarget as HTMLElement).style.borderBottom = 'none';
+                    if (activeTab !== 'analysis') {
+                      (e.currentTarget as HTMLElement).style.color = '#999999';
+                    }
                   }}
                 >
-                  Dashboard
-                </a>
-                <div
+                  Analysis
+                </button>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
                   style={{
                     fontSize: '0.875rem',
                     fontWeight: 600,
-                    color: '#fbbf24',
-                    borderBottom: '2px solid #fbbf24',
+                    color: activeTab === 'dashboard' ? '#fbbf24' : '#999999',
+                    textDecoration: 'none',
                     paddingBottom: '0.25rem',
+                    borderBottom: activeTab === 'dashboard' ? '2px solid #fbbf24' : 'none',
+                    background: 'none',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== 'dashboard') {
+                      (e.currentTarget as HTMLElement).style.color = '#d97706';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== 'dashboard') {
+                      (e.currentTarget as HTMLElement).style.color = '#999999';
+                    }
                   }}
                 >
-                  Goals
-                </div>
+                  Financial Dashboard
+                </button>
+                <button
+                  onClick={() => setActiveTab('quests')}
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: activeTab === 'quests' ? '#fbbf24' : '#999999',
+                    textDecoration: 'none',
+                    paddingBottom: '0.25rem',
+                    borderBottom: activeTab === 'quests' ? '2px solid #fbbf24' : 'none',
+                    background: 'none',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== 'quests') {
+                      (e.currentTarget as HTMLElement).style.color = '#d97706';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== 'quests') {
+                      (e.currentTarget as HTMLElement).style.color = '#999999';
+                    }
+                  }}
+                >
+                  Quests 🎮
+                </button>
+                <button
+                  onClick={() => setActiveTab('templates')}
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: activeTab === 'templates' ? '#fbbf24' : '#999999',
+                    textDecoration: 'none',
+                    paddingBottom: '0.25rem',
+                    borderBottom: activeTab === 'templates' ? '2px solid #fbbf24' : 'none',
+                    background: 'none',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== 'templates') {
+                      (e.currentTarget as HTMLElement).style.color = '#d97706';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== 'templates') {
+                      (e.currentTarget as HTMLElement).style.color = '#999999';
+                    }
+                  }}
+                >
+                  Templates
+                </button>
+                <button
+                  onClick={() => setActiveTab('benchmarks')}
+                  style={{
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    color: activeTab === 'benchmarks' ? '#fbbf24' : '#999999',
+                    textDecoration: 'none',
+                    paddingBottom: '0.25rem',
+                    borderBottom: activeTab === 'benchmarks' ? '2px solid #fbbf24' : 'none',
+                    background: 'none',
+                    borderTop: 'none',
+                    borderRight: 'none',
+                    borderLeft: 'none',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    if (activeTab !== 'benchmarks') {
+                      (e.currentTarget as HTMLElement).style.color = '#d97706';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (activeTab !== 'benchmarks') {
+                      (e.currentTarget as HTMLElement).style.color = '#999999';
+                    }
+                  }}
+                >
+                  Benchmarks
+                </button>
                 <a
                   href="/app/warehouse/financial/goals/saved"
                   style={{
@@ -526,41 +845,63 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
       )}
 
       <div className="max-w-7xl mx-auto p-6">
-        {/* Quarter Tabs with Visual Progress */}
-        <div
-          style={{ backgroundColor: 'white', borderBottom: '3px solid #fcd34d' }}
-          className="rounded-t-lg overflow-hidden mb-6"
-        >
-          <div className="flex">
-            {(['Q1', 'Q2', 'Q3', 'Q4'] as Quarter[]).map(quarter => (
-              <button
-                key={quarter}
-                onClick={() => setCurrentQuarter(quarter)}
-                className="flex-1 px-4 py-4 font-bold transition relative group"
-                style={{
-                  backgroundColor: currentQuarter === quarter ? '#fef3c7' : 'transparent',
-                  color: currentQuarter === quarter ? '#b45309' : '#78716c',
-                  borderBottom: currentQuarter === quarter ? '3px solid #fcd34d' : '0',
-                }}
-              >
-                <div className="text-lg mb-2">{quarter}</div>
-                <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                  <div
-                    style={{
-                      width: `${getQuarterProgress(quarter)}%`,
-                      backgroundColor: '#fcd34d',
-                      transition: 'width 0.3s ease',
+        {/* Analysis View */}
+        {activeTab === 'analysis' && (
+          <>
+            {/* Quarter Tabs with Visual Progress */}
+            <div
+              style={{ backgroundColor: 'white', borderBottom: '3px solid #fcd34d' }}
+              className="rounded-t-lg overflow-hidden mb-6"
+            >
+              <div className="flex">
+                {(['Q1', 'Q2', 'Q3', 'Q4'] as Quarter[]).map(quarter => (
+                  <button
+                    key={quarter}
+                    onClick={() => setCurrentQuarter(quarter)}
+                    onDoubleClick={() => {
+                      console.log('Double-clicked quarter:', quarter);
+                      setEditingQuarter(quarter);
+                      setShowDateEditor(true);
+                      console.log('State set - editingQuarter:', quarter, 'showDateEditor: true');
                     }}
-                    className="h-full"
-                  />
-                </div>
-                <div style={{ color: '#a16207' }} className="text-xs mt-1">
-                  {Math.round(getQuarterProgress(quarter))}% complete
-                </div>
-              </button>
-            ))}
-          </div>
-        </div>
+                    title="Double-click to edit dates"
+                    className="flex-1 px-4 py-4 font-bold transition relative group hover:bg-gray-50"
+                    style={{
+                      backgroundColor: currentQuarter === quarter ? '#fef3c7' : 'transparent',
+                      color: currentQuarter === quarter ? '#b45309' : '#78716c',
+                      borderBottom: currentQuarter === quarter ? '3px solid #fcd34d' : '0',
+                    }}
+                  >
+                    <div className="text-lg mb-2">{quarter}</div>
+                    <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
+                      <div
+                        suppressHydrationWarning
+                        style={{
+                          width: `${getQuarterProgress(quarter)}%`,
+                          backgroundColor: '#fcd34d',
+                          transition: 'width 0.3s ease',
+                        }}
+                        className="h-full"
+                      />
+                    </div>
+                    <div style={{ color: '#a16207' }} className="text-xs mt-1">
+                      {Math.round(getQuarterProgress(quarter))}% complete
+                    </div>
+                    <div style={{ color: '#a16207' }} className="text-xs mt-2 opacity-75">
+                      {new Date(quarterDates[quarter].startDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}{' '}
+                      -{' '}
+                      {new Date(quarterDates[quarter].endDate).toLocaleDateString('en-US', {
+                        month: 'short',
+                        day: 'numeric',
+                      })}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
 
         {/* Loading State */}
         {loading.metrics && (
@@ -576,9 +917,22 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
           </div>
         )}
 
-        {/* Main Content */}
+        {/* AI Forecast & Scenarios - Always Show */}
+        {forecast && scenarios && paceMetrics && (
+          <div className="mb-6">
+            <GoalScenarios
+              forecast={forecast}
+              scenarios={scenarios}
+              selectedScenario={selectedScenario}
+              onSelectScenario={setSelectedScenario}
+              paceMetrics={paceMetrics}
+            />
+          </div>
+        )}
+
+        {/* Main Content - Inside Analysis Tab */}
         {!loading.metrics && metrics && (
-          <div className="space-y-6">
+          <>
             {/* Generate Analysis Button or Goals Display */}
             {!currentGoal ? (
               <div
@@ -589,7 +943,7 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
                   {currentQuarter} Goals Not Yet Generated
                 </h3>
                 <p style={{ color: '#a16207' }} className="mb-6 text-base">
-                  Let our Harvard-educated financial advisor analyze your metrics and create strategic goals for this
+                  Let our professional financial advisor analyze your metrics and create strategic goals for this
                   quarter.
                 </p>
                 <button
@@ -1167,11 +1521,73 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
                 </button>
               </div>
             )}
+          </>
+        )}
+        </>
+        )}
+
+        {/* Financial Dashboard View */}
+        {activeTab === 'dashboard' && organizationId && (
+          <div style={{ backgroundColor: 'white', borderRadius: '8px', padding: '24px' }}>
+            <FinancialDashboard
+              organizationId={organizationId}
+              currentQuarterData={currentQuarterData}
+              previousQuartersData={previousQuartersData}
+              yearlyData={yearlyData}
+              completedJobs={completedJobs || []}
+            />
           </div>
         )}
+
+        {/* Quest Chain View */}
+        {activeTab === 'quests' && (
+          <QuestChain
+            questLine={questLine}
+            metrics={metrics}
+            onQuestGenerate={() => {
+              const newQuestLine = generateQuestLine(
+                'Quarterly Revenue Goal',
+                75000,
+                currentQuarter,
+                metrics
+              );
+              setQuestLine(newQuestLine);
+            }}
+          />
+        )}
+
+        {/* Goal Templates View */}
+        {activeTab === 'templates' && (
+          <GoalTemplates
+            quarter={currentQuarter}
+            onTemplateApply={(goals) => {
+              setTemplateGoals(goals);
+            }}
+          />
+        )}
+
+        {/* Industry Benchmarks View */}
+        {activeTab === 'benchmarks' && metrics && (
+          <IndustryBenchmarksComponent metrics={metrics} />
+        )}
+
+        {/* Quarter Date Editor Modal */}
+        {(() => {
+          const shouldShow = showDateEditor && editingQuarter;
+          console.log('Modal render check - showDateEditor:', showDateEditor, 'editingQuarter:', editingQuarter, 'should show:', shouldShow);
+          return shouldShow ? (
+            <QuarterDateEditor
+              quarter={editingQuarter}
+              currentDates={quarterDates[editingQuarter]}
+              onSave={(dates) => saveQuarterDates(editingQuarter, dates)}
+              onClose={() => {
+                setShowDateEditor(false);
+                setEditingQuarter(null);
+              }}
+            />
+          ) : null;
+        })()}
       </div>
-      </>
-      )}
     </div>
   );
 }

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabaseBrowser } from '@/lib/supabaseClient';
 import { FaPlus } from 'react-icons/fa';
+import { logQuestEvent } from '@/lib/utils/questEvents';
 
 type Lead = {
   id: string;
@@ -97,6 +98,31 @@ export default function PipelinePage() {
         metadata: { old_status: oldStatus, new_status: newStatus },
         created_by: user?.id,
       } as any);
+
+      // Log quest event for status change
+      await logQuestEvent('lead_status_updated', 'lead', draggedLead.id, {
+        metricValue: 1, // Count-based: one status update
+        source: 'leads',
+        metadata: {
+          old_status: oldStatus,
+          new_status: newStatus,
+        },
+        userId: user?.id,
+      });
+
+      // Special event: log lead conversion to client
+      if (newStatus === 'converted' && oldStatus !== 'converted') {
+        await logQuestEvent('lead_converted_to_client', 'lead', draggedLead.id, {
+          metricValue: 1, // Count-based: one conversion
+          source: 'leads',
+          metadata: {
+            converted_from: oldStatus,
+            lead_name: draggedLead.name,
+            lead_email: draggedLead.email,
+          },
+          userId: user?.id,
+        });
+      }
 
       // Recalculate score
       await fetch('/api/leads/score', {
