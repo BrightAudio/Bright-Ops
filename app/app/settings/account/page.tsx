@@ -80,19 +80,16 @@ export default function AccountSettingsPage() {
             console.log('No organization ID found in profile');
             setOrganizationName('Not assigned');
           }
+          
+          // Load API keys
+          setPexelsApiKey((profileData as any)?.pexels_api_key || '');
+          setStripePublishableKey((profileData as any)?.stripe_publishable_key || '');
+          setStripeSecretKey((profileData as any)?.stripe_secret_key || '');
         }
       } catch (err) {
         console.error('Error loading profile:', err);
       } finally {
         setOrganizationLoading(false);
-      }
-    }
-    loadProfile();
-        
-        // Load API keys
-        setPexelsApiKey((profileData as any)?.pexels_api_key || '');
-        setStripePublishableKey((profileData as any)?.stripe_publishable_key || '');
-        setStripeSecretKey((profileData as any)?.stripe_secret_key || '');
       }
     }
     loadProfile();
