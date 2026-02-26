@@ -20,6 +20,7 @@ import {
   FaPlayCircle,
   FaShieldAlt,
 } from 'react-icons/fa';
+import { useLicense } from '@/lib/hooks/useLicense';
 
 type MenuItem = {
   label: string;
@@ -64,10 +65,19 @@ const workSection: MenuSection = {
 
 export default function AppSidebar() {
   const pathname = usePathname() || '';
+  const { license, loading } = useLicense();
   const [workExpanded, setWorkExpanded] = useState(
     pathname.includes('/dashboard/leads') || 
     pathname.includes('/dashboard/calendar') ||
     pathname.includes('/dashboard/imported')
+  );
+
+  // Gate Leads feature to Enterprise users only
+  const isEnterpriseUser = license?.plan === 'enterprise';
+
+  // Filter Leads items - only show for Enterprise tier
+  const filteredLeadsItems = isEnterpriseUser ? workSection.items : workSection.items.filter(
+    item => !item.href.includes('/dashboard/leads')
   );
 
   return (
@@ -96,38 +106,40 @@ export default function AppSidebar() {
             );
           })}
 
-          {/* Work Section (Collapsible) */}
-          <div className="mt-2">
-            <button
-              onClick={() => setWorkExpanded(!workExpanded)}
-              className={`sidebar-item w-full ${pathname.includes('/dashboard/leads') ? 'active' : ''}`}
-            >
-              <div className="icon" aria-hidden>
-                {workSection.icon}
-              </div>
-              <span>{workSection.label}</span>
-              <div className="ml-auto">
-                {workExpanded ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
-              </div>
-            </button>
-            
-            {workExpanded && (
-              <div className="ml-4">
-                {workSection.items.map((item) => {
-                  const active = pathname === item.href;
-                  return (
-                    <Link key={item.href} href={item.href} className={`sidebar-item ${active ? 'active' : ''}`}>
-                      <div className="icon" aria-hidden>
-                        {item.icon}
-                      </div>
-                      <span>{item.label}</span>
-                      {item.badge ? <div className="ml-auto badge">{item.badge}</div> : null}
-                    </Link>
-                  );
-                })}
-              </div>
-            )}
-          </div>
+          {/* Work Section (Collapsible) - Gated to Enterprise */}
+          {isEnterpriseUser && (
+            <div className="mt-2">
+              <button
+                onClick={() => setWorkExpanded(!workExpanded)}
+                className={`sidebar-item w-full ${pathname.includes('/dashboard/leads') ? 'active' : ''}`}
+              >
+                <div className="icon" aria-hidden>
+                  {workSection.icon}
+                </div>
+                <span>{workSection.label}</span>
+                <div className="ml-auto">
+                  {workExpanded ? <FaChevronDown size={12} /> : <FaChevronRight size={12} />}
+                </div>
+              </button>
+              
+              {workExpanded && (
+                <div className="ml-4">
+                  {filteredLeadsItems.map((item) => {
+                    const active = pathname === item.href;
+                    return (
+                      <Link key={item.href} href={item.href} className={`sidebar-item ${active ? 'active' : ''}`}>
+                        <div className="icon" aria-hidden>
+                          {item.icon}
+                        </div>
+                        <span>{item.label}</span>
+                        {item.badge ? <div className="ml-auto badge">{item.badge}</div> : null}
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
         </nav>
       </div>
     </aside>

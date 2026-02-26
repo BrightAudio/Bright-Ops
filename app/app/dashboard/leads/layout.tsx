@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
+import { useLicense } from '@/lib/hooks/useLicense';
 import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser, FaDollarSign, FaComments } from 'react-icons/fa';
 
 export default function LeadsLayout({
@@ -13,6 +14,7 @@ export default function LeadsLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
+  const { license, loading: licenseLoading } = useLicense();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -20,6 +22,13 @@ export default function LeadsLayout({
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Check license tier - Leads is Enterprise only
+  useEffect(() => {
+    if (!licenseLoading && license && license.plan !== 'enterprise') {
+      router.push('/app');
+    }
+  }, [license, licenseLoading]);
 
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,7 +47,7 @@ export default function LeadsLayout({
     setLoading(false);
   }
 
-  if (loading) {
+  if (loading || licenseLoading) {
     return (
       <div style={{ 
         display: 'flex', 

@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabaseClient';
 import { supabaseBrowser } from '@/lib/supabaseClient';
 import { ArrowLeft, Zap, TrendingUp, Target, Calendar, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useLicense } from '@/lib/hooks/useLicense';
 
 type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
 
@@ -52,6 +53,7 @@ interface CalendarEvent {
 
 export default function FinancialGoalsClient() {
   const router = useRouter();
+  const { license, loading: licenseLoading } = useLicense();
   const [currentQuarter, setCurrentQuarter] = useState<Quarter>('Q1');
   const [metrics, setMetrics] = useState<FinancialMetrics | null>(null);
   const [goals, setGoals] = useState<Record<Quarter, GoalsAnalysis | null>>({
@@ -72,6 +74,13 @@ export default function FinancialGoalsClient() {
     loadTasksAndEvents();
     loadSavedReports();
   }, []);
+
+  // Check license tier - Goals is Pro/Enterprise only
+  useEffect(() => {
+    if (!licenseLoading && license && license.plan !== 'pro' && license.plan !== 'enterprise') {
+      router.push('/app');
+    }
+  }, [license, licenseLoading]);
 
   const loadTasksAndEvents = async () => {
     try {
@@ -402,6 +411,22 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f3f0' }}>
+      {/* Show loading state while license is being verified */}
+      {licenseLoading && (
+        <div style={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          height: '100vh',
+          background: 'linear-gradient(135deg, #fbbf24 0%, #d97706 100%)'
+        }}>
+          <div style={{ color: 'white', fontSize: '18px' }}>Loading Goals...</div>
+        </div>
+      )}
+      
+      {/* Only render content if user has Pro or Enterprise license */}
+      {!licenseLoading && (license?.plan === 'pro' || license?.plan === 'enterprise') && (
+        <>
       {/* Header */}
       <div
         style={{ backgroundColor: '#fff8f0', borderBottom: '2px solid #fcd34d' }}
@@ -1147,6 +1172,8 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
           </div>
         )}
       </div>
+      </>
+      )}
     </div>
   );
 }
