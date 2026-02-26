@@ -3,7 +3,7 @@
  * Centralized permission checking logic (used by both desktop IPC and web routes)
  */
 
-export type LicenseStatus = 'active' | 'warning' | 'limited' | 'restricted';
+export type LicenseStatus = 'active' | 'warning' | 'limited' | 'restricted' | 'unknown';
 export type ActionType = 'sync' | 'create_job' | 'add_inventory' | 'view_inventory' | 'export_data';
 
 export interface LicensePermissions {

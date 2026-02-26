@@ -14,7 +14,7 @@ interface UseSync {
   error: string | null;
   isSyncing: boolean;
   networkStatus: 'online' | 'offline';
-  syncNow: () => Promise<boolean>;
+  syncNow: () => Promise<void>;
   refreshStatus: () => Promise<void>;
   setAuthToken: (token: string) => Promise<void>;
 }
@@ -64,11 +64,11 @@ export function useSyncStatus(): UseSync {
   }, [getIPC]);
 
   // Perform sync
-  const syncNow = useCallback(async (): Promise<boolean> => {
+  const syncNow = useCallback(async (): Promise<void> => {
     const ipc = getIPC();
     if (!ipc) {
       setError('Not in Electron context');
-      return false;
+      return;
     }
 
     setIsSyncing(true);
@@ -79,15 +79,12 @@ export function useSyncStatus(): UseSync {
       if (result.success) {
         setStatus(result.data?.status);
         setError(null);
-        return true;
       } else {
         setError(result.error);
-        return false;
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : String(err);
       setError(errorMsg);
-      return false;
     } finally {
       setIsSyncing(false);
     }

@@ -105,15 +105,24 @@ export class OutboxSyncService {
   }
 
   /**
-   * Set the database instance (for Electron SQLite)
-   */
-  setDatabase(db: Database): void {
-    this.database = db;
-  }
-
-  /**
    * Get pending changes from outbox table
    */
+  private async getPendingChanges(): Promise<Change[]> {
+    if (!this.database) {
+      console.warn('Database not initialized');
+      return [];
+    }
+
+    try {
+      const stmt = this.database.prepare(`
+        SELECT * FROM outbox ORDER BY created_at ASC LIMIT ?
+      `);
+      return stmt.all(this.batchSize) as Change[];
+    } catch (error) {
+      console.error('Error fetching pending changes:', error);
+      return [];
+    }
+  }
 
   /**
    * Sync pending changes to Supabase
@@ -159,8 +168,8 @@ export class OutboxSyncService {
 
       // Mark successful changes as synced
       const successfulChangeIds = changes
-        .map((c) => c.id)
-        .filter((id) => !result.errors?.some((e) => e.changeId === id));
+        .map((c: Change) => c.id)
+        .filter((id: string) => !result.errors?.some((e) => e.changeId === id));
 
       await this.markAsSynced(successfulChangeIds);
 

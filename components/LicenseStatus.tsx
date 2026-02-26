@@ -8,8 +8,8 @@ import {
   Lock,
   AlertTriangle,
 } from 'lucide-react';
-import { useLicense, type LicenseStatus } from '@/lib/hooks/useLicense';
-import { getLicenseUIState, isRenewalUrgent } from '@/lib/license/permissions';
+import { useLicense } from '@/lib/hooks/useLicense';
+import { getLicenseUIState, isRenewalUrgent, type LicenseStatus } from '@/lib/license/permissions';
 
 interface LicenseStatusProps {
   compact?: boolean;
@@ -44,7 +44,7 @@ export default function LicenseStatus({
     );
   }
 
-  const status = (license.status || 'unknown') as LicenseStatus;
+  const status = license.status || 'unknown';
   const plan = license.plan || 'Unknown';
   const uiState = getLicenseUIState(status, plan);
 

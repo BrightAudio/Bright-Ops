@@ -65,7 +65,7 @@ const workSection: MenuSection = {
 
 export default function AppSidebar() {
   const pathname = usePathname() || '';
-  const { license, loading } = useLicense();
+  const { license } = useLicense();
   const [workExpanded, setWorkExpanded] = useState(
     pathname.includes('/dashboard/leads') || 
     pathname.includes('/dashboard/calendar') ||

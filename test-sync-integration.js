@@ -1,3 +1,4 @@
+// @ts-nocheck
 /**
  * Phase 2 Integration Test: Full Sync Workflow
  * Tests desktop app changes syncing to Supabase via API

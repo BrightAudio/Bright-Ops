@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useNotifications } from "@/lib/hooks/useNotifications";
 import { useLicense } from "@/lib/hooks/useLicense";
 import Link from "next/link";
@@ -62,7 +62,7 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { license, loading: licenseLoading } = useLicense();
+  const { license } = useLicense();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Start collapsed
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
@@ -298,8 +298,7 @@ export default function DashboardLayout({
     setSidebarHovered(false);
   };
 
-  const handleLeadsClick = (e: React.MouseEvent) => {
-    e.preventDefault();
+  const handleLeadsClick = () => {
     
     // Gate Leads feature to Enterprise users only
     if (license?.plan !== 'enterprise') {
@@ -340,7 +339,9 @@ export default function DashboardLayout({
           {license?.plan === 'pro' || license?.plan === 'enterprise' ? (
             <button 
               className="hidden md:block"
-              onClick={() => window.location.href = '/app/warehouse/financial/goals'}
+              onClick={() => {
+                window.location.href = '/app/warehouse/financial/goals';
+              }}
               style={{
                 fontFamily: "'Playfair Display', serif",
                 fontSize: '20px',
@@ -372,7 +373,9 @@ export default function DashboardLayout({
           {license?.plan === 'enterprise' ? (
             <button 
               className="hidden md:block"
-              onClick={handleLeadsClick}
+              onClick={() => {
+                handleLeadsClick();
+              }}
               style={{
                 fontFamily: "'Playfair Display', serif",
                 fontSize: '20px',

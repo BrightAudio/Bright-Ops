@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabaseClient';
 import { supabaseBrowser } from '@/lib/supabaseClient';
-import { ArrowLeft, Zap, TrendingUp, Target, Calendar, CheckCircle2, AlertCircle, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Zap, TrendingUp, Target, Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLicense } from '@/lib/hooks/useLicense';
 
@@ -66,8 +66,6 @@ export default function FinancialGoalsClient() {
   const [error, setError] = useState<string | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [upcomingJobs, setUpcomingJobs] = useState<CalendarEvent[]>([]);
-  const [newTaskTitle, setNewTaskTitle] = useState('');
-  const [newTaskDueDate, setNewTaskDueDate] = useState('');
 
   useEffect(() => {
     loadFinancialMetrics();

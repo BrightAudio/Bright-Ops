@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 export const runtime = 'nodejs';
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20',
+  apiVersion: '2024-06-20' as any,
 });
 
 const supabase = createClient(
@@ -34,7 +34,7 @@ async function markStripeEventProcessed(
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  const sig = headers().get('stripe-signature');
+  const sig = (await headers()).get('stripe-signature');
 
   if (!sig) {
     return NextResponse.json({ error: 'Missing stripe-signature' }, { status: 400 });
@@ -137,7 +137,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
       case 'customer.subscription.updated':
       case 'customer.subscription.created': {
-        const sub = event.data.object as Stripe.Subscription;
+        const sub = event.data.object as Stripe.Subscription & { current_period_end?: number };
         const customerId =
           typeof sub.customer === 'string' ? sub.customer : sub.customer?.id;
 
