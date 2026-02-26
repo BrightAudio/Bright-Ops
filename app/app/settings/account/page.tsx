@@ -492,7 +492,6 @@ export default function AccountSettingsPage() {
                   <span 
                     style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af', cursor: 'pointer', userSelect: 'none' }}
                     onContextMenu={handleOrganizationContextMenu}
-                    title="Ctrl+Shift+Right Click to reveal secret ID"
                   >
                     {organizationLoading ? 'Loading...' : ((profile as any)?.company_name || organizationName || 'Not assigned')}
                   </span>
