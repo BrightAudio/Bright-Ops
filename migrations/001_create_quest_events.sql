@@ -51,32 +51,14 @@ CREATE INDEX idx_quest_events_lookup ON public.quest_events(
 -- RLS: Enable row level security
 ALTER TABLE public.quest_events ENABLE ROW LEVEL SECURITY;
 
--- RLS: Users can view quest events from their organization
+-- RLS: Authenticated users can view all quest events
 CREATE POLICY quest_events_select ON public.quest_events FOR SELECT
-  USING (
-    auth.uid() IS NOT NULL 
-    OR org_id = (
-      SELECT org_id FROM public.employees 
-      WHERE user_id = auth.uid() 
-      LIMIT 1
-    )
-  );
+  USING (auth.uid() IS NOT NULL);
 
--- RLS: Users can insert quest events for their organization
+-- RLS: Authenticated users can insert quest events
 CREATE POLICY quest_events_insert ON public.quest_events FOR INSERT
-  WITH CHECK (
-    auth.uid() IS NOT NULL
-    AND (
-      org_id = (
-        SELECT org_id FROM public.employees 
-        WHERE user_id = auth.uid() 
-        LIMIT 1
-      )
-      OR org_id IS NULL
-    )
-  );
+  WITH CHECK (auth.uid() IS NOT NULL);
 
 -- Grant permissions
 GRANT SELECT ON public.quest_events TO authenticated;
 GRANT INSERT ON public.quest_events TO authenticated;
-GRANT USAGE, SELECT ON SEQUENCE public.quest_events_id_seq TO authenticated;
