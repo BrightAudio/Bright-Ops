@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { getNetworkMonitor } from '@/lib/sync/networkMonitor';
 
 export interface SyncStatus {
   pending: number;
@@ -12,6 +13,7 @@ interface UseSync {
   loading: boolean;
   error: string | null;
   isSyncing: boolean;
+  networkStatus: 'online' | 'offline';
   syncNow: () => Promise<boolean>;
   refreshStatus: () => Promise<void>;
   setAuthToken: (token: string) => Promise<void>;
@@ -26,6 +28,7 @@ export function useSyncStatus(): UseSync {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [networkStatus, setNetworkStatus] = useState<'online' | 'offline'>('online');
 
   // Check if we're in Electron
   const isElectron = typeof window !== 'undefined' && (window as any).electron?.ipcRenderer;
@@ -122,12 +125,23 @@ export function useSyncStatus(): UseSync {
 
     refreshStatus();
 
+    // Set up network monitor
+    const networkMonitor = getNetworkMonitor();
+    setNetworkStatus(networkMonitor.isOnline() ? 'online' : 'offline');
+
+    const unsubscribe = networkMonitor.subscribe((status) => {
+      setNetworkStatus(status);
+    });
+
     // Poll for status updates every 5 seconds
     const interval = setInterval(() => {
       refreshStatus();
     }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(interval);
+      unsubscribe();
+    };
   }, [isElectron, refreshStatus]);
 
   return {
@@ -135,6 +149,7 @@ export function useSyncStatus(): UseSync {
     loading,
     error,
     isSyncing,
+    networkStatus,
     syncNow,
     refreshStatus,
     setAuthToken,

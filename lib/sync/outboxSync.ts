@@ -3,6 +3,8 @@
  * Used by the Electron desktop app to sync changes when online
  */
 
+import { getNetworkMonitor, type NetworkStatus } from './networkMonitor';
+
 // Type for better-sqlite3 Database
 type Database = {
   prepare(sql: string): {
@@ -45,6 +47,8 @@ export class OutboxSyncService {
   private authToken: string;
   private apiUrl: string;
   private database: Database | undefined;
+  private networkMonitor = getNetworkMonitor();
+  private networkUnsubscribe: (() => void) | null = null;
 
   constructor(options: SyncOptions = {}) {
     this.batchSize = options.batchSize || 100;
@@ -62,28 +66,54 @@ export class OutboxSyncService {
   }
 
   /**
-   * Get pending changes from outbox table
+   * Start listening for network changes and auto-sync when back online
    */
-  async getPendingChanges(limit?: number): Promise<Change[]> {
-    if (!this.database) {
-      console.warn('Database not initialized');
-      return [];
+  startAutoSync(): void {
+    if (this.networkUnsubscribe) {
+      return; // Already listening
     }
 
-    try {
-      const query = `
-        SELECT * FROM changes_outbox
-        WHERE synced_at IS NULL
-        ORDER BY created_at ASC
-        LIMIT ?
-      `;
-      const changes = this.database.prepare(query).all(limit || this.batchSize);
-      return changes as Change[];
-    } catch (error) {
-      console.error('Error reading pending changes:', error);
-      return [];
+    this.networkUnsubscribe = this.networkMonitor.subscribe((status: NetworkStatus) => {
+      if (status === 'online') {
+        console.log('🔄 Network restored - triggering auto-sync...');
+        this.syncPending()
+          .then((result) => {
+            console.log(`✅ Auto-sync complete: ${result.synced} synced, ${result.failed} failed`);
+          })
+          .catch((error) => {
+            console.error('❌ Auto-sync failed:', error);
+          });
+      }
+    });
+  }
+
+  /**
+   * Stop auto-sync listener
+   */
+  stopAutoSync(): void {
+    if (this.networkUnsubscribe) {
+      this.networkUnsubscribe();
+      this.networkUnsubscribe = null;
     }
   }
+
+  /**
+   * Get current network status
+   */
+  getNetworkStatus(): 'online' | 'offline' {
+    return this.networkMonitor.isOnline() ? 'online' : 'offline';
+  }
+
+  /**
+   * Set the database instance (for Electron SQLite)
+   */
+  setDatabase(db: Database): void {
+    this.database = db;
+  }
+
+  /**
+   * Get pending changes from outbox table
+   */
 
   /**
    * Sync pending changes to Supabase

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { AlertCircle, CheckCircle, Loader, WifiOff } from 'lucide-react';
+import { AlertCircle, CheckCircle, Loader, WifiOff, Wifi } from 'lucide-react';
 
 export interface SyncStatus {
   pending: number;
@@ -14,6 +14,7 @@ export interface SyncStatus {
 
 interface SyncStatusIndicatorProps {
   status: SyncStatus;
+  networkStatus?: 'online' | 'offline';
   onSync?: () => Promise<void>;
   compact?: boolean;
   showDetails?: boolean;
@@ -25,6 +26,7 @@ interface SyncStatusIndicatorProps {
  */
 export default function SyncStatusIndicator({
   status,
+  networkStatus = 'online',
   onSync,
   compact = false,
   showDetails = true,
@@ -52,7 +54,11 @@ export default function SyncStatusIndicator({
   let bgColor = 'bg-green-50';
   let StatusIcon = CheckCircle;
 
-  if (status.pending > 0) {
+  if (networkStatus === 'offline') {
+    statusColor = 'text-gray-600';
+    bgColor = 'bg-gray-50';
+    StatusIcon = WifiOff;
+  } else if (status.pending > 0) {
     statusColor = 'text-amber-600';
     bgColor = 'bg-amber-50';
     StatusIcon = AlertCircle;
@@ -95,6 +101,20 @@ export default function SyncStatusIndicator({
 
             {showDetails && (
               <div className="mt-2 space-y-1 text-sm">
+                <div className="flex items-center gap-2">
+                  {networkStatus === 'online' ? (
+                    <>
+                      <Wifi className="w-4 h-4 text-green-600" />
+                      <span className="text-green-600">Online</span>
+                    </>
+                  ) : (
+                    <>
+                      <WifiOff className="w-4 h-4 text-gray-600" />
+                      <span className="text-gray-600">Offline</span>
+                    </>
+                  )}
+                </div>
+
                 {status.pending > 0 && (
                   <p>
                     <span className="font-medium">{status.pending}</span> pending changes
@@ -151,7 +171,9 @@ export default function SyncStatusIndicator({
 
       {status.pending > 0 && (
         <div className="mt-3 text-xs text-gray-600">
-          Working offline? Changes will sync automatically when you go online.
+          {networkStatus === 'offline' 
+            ? '⏳ You are offline. Changes will sync automatically when your connection is restored.'
+            : '⏳ Changes will sync automatically when you go online.'}
         </div>
       )}
     </div>

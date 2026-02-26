@@ -52,6 +52,11 @@ function getSyncService(): OutboxSyncService {
 export function registerSyncHandlers(): void {
   console.log('🔄 Registering sync IPC handlers...');
 
+  // Start auto-sync when handlers are registered
+  const syncSvc = getSyncService();
+  syncSvc.startAutoSync();
+  console.log('✅ Auto-sync enabled');
+
   /**
    * Set auth token for sync service
    */
