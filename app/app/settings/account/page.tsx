@@ -14,10 +14,12 @@ export default function AccountSettingsPage() {
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
+  const [user, setUser] = useState<any>(null);
   const [organizationId, setOrganizationId] = useState<string>('');
   const [organizationName, setOrganizationName] = useState<string>('');
   const [organizationSecretId, setOrganizationSecretId] = useState<string>('');
   const [organizationLoading, setOrganizationLoading] = useState(true);
+  const [isCreatingOrganization, setIsCreatingOrganization] = useState(false);
   
   // Training state
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -39,6 +41,7 @@ export default function AccountSettingsPage() {
         const sb = supabaseBrowser();
         const { data: { user } } = await sb.auth.getUser();
         if (user) {
+          setUser(user);
           const { data: profileData } = await sb
             .from('user_profiles')
             .select('*')
@@ -100,6 +103,68 @@ export default function AccountSettingsPage() {
     }
     loadProfile();
   }, []);
+
+  // Create organization
+  async function handleCreateOrganization() {
+    if (!user) {
+      alert('Please log in first');
+      return;
+    }
+
+    setIsCreatingOrganization(true);
+    try {
+      const sb = supabaseBrowser();
+      
+      // Create new organization with a default name
+      const orgName = profile?.full_name ? `${profile.full_name}'s Organization` : 'My Organization';
+      
+      console.log('Creating organization:', orgName);
+      const { data: org, error: orgError } = await sb
+        .from('organizations')
+        .insert({ name: orgName })
+        .select('id, secret_id, name')
+        .single();
+      
+      if (orgError) {
+        console.error('Error creating organization:', orgError);
+        alert('Failed to create organization: ' + orgError.message);
+        return;
+      }
+      
+      if (!org) {
+        alert('Failed to create organization');
+        return;
+      }
+      
+      console.log('Organization created:', org.id);
+      
+      // Update user profile with the new organization_id
+      const { error: profileError } = await sb
+        .from('user_profiles')
+        .update({ organization_id: org.id })
+        .eq('id', user.id);
+      
+      if (profileError) {
+        console.error('Error updating profile:', profileError);
+        alert('Failed to update profile: ' + profileError.message);
+        return;
+      }
+      
+      console.log('Profile updated with organization');
+      
+      // Update local state
+      setOrganizationId(org.id);
+      setOrganizationName(org.name);
+      setOrganizationSecretId(org.secret_id);
+      
+      alert('Organization created successfully!');
+    } catch (err) {
+      console.error('Error:', err);
+      alert('Something went wrong: ' + (err as any).message);
+    } finally {
+      setIsCreatingOrganization(false);
+    }
+  }
 
   // Password form state
   const [passwordForm, setPasswordForm] = useState({
@@ -434,6 +499,24 @@ export default function AccountSettingsPage() {
                       }}
                     >
                       Copy
+                    </button>
+                  )}
+                  {!organizationId && !organizationLoading && (
+                    <button
+                      onClick={handleCreateOrganization}
+                      disabled={isCreatingOrganization}
+                      style={{
+                        padding: '0.25rem 0.75rem',
+                        background: isCreatingOrganization ? '#9ca3af' : '#10b981',
+                        color: 'white',
+                        border: 'none',
+                        borderRadius: '4px',
+                        cursor: isCreatingOrganization ? 'not-allowed' : 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 600
+                      }}
+                    >
+                      {isCreatingOrganization ? 'Creating...' : 'Create Organization'}
                     </button>
                   )}
                 </div>
