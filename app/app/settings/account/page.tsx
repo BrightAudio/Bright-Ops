@@ -1,10 +1,12 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { supabase } from "@/lib/supabaseClient";
 
 export default function AccountSettingsPage() {
+  const router = useRouter();
   const [activeTab, setActiveTab] = useState<'account' | 'training'>('account');
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [isChangingPassword, setIsChangingPassword] = useState(false);
@@ -12,6 +14,8 @@ export default function AccountSettingsPage() {
   
   // Profile state
   const [profile, setProfile] = useState<any>(null);
+  const [organizationId, setOrganizationId] = useState<string>('');
+  const [organizationName, setOrganizationName] = useState<string>('');
   
   // Training state
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -38,11 +42,22 @@ export default function AccountSettingsPage() {
           .single();
         
         setProfile(profileData);
+        setOrganizationId((profileData as any)?.organization_id || '');
         setProfileForm({
           name: (profileData as any)?.full_name || '',
           companyName: (profileData as any)?.company_name || '',
           email: user.email || ''
         });
+        
+        // Load organization name if we have an org ID
+        if ((profileData as any)?.organization_id) {
+          const { data: orgData } = await supabase
+            .from('organizations')
+            .select('name')
+            .eq('id', (profileData as any).organization_id)
+            .single();
+          setOrganizationName((orgData as any)?.name || '');
+        }
         
         // Load API keys
         setPexelsApiKey((profileData as any)?.pexels_api_key || '');
@@ -301,8 +316,8 @@ export default function AccountSettingsPage() {
       {/* Header */}
       <div style={{ marginBottom: "2rem" }}>
         <div style={{ display: "flex", alignItems: "center", gap: "1rem", marginBottom: "1rem" }}>
-          <Link
-            href="/app/dashboard/leads"
+          <button
+            onClick={() => router.back()}
             style={{
               display: "flex",
               alignItems: "center",
@@ -314,13 +329,12 @@ export default function AccountSettingsPage() {
               borderRadius: "6px",
               cursor: "pointer",
               fontSize: "0.875rem",
-              fontWeight: 500,
-              textDecoration: "none"
+              fontWeight: 500
             }}
           >
             <i className="fas fa-arrow-left"></i>
             Back
-          </Link>
+          </button>
           <div>
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.5rem" }}>
               <Link 
@@ -344,46 +358,95 @@ export default function AccountSettingsPage() {
         {profile && (
           <div style={{ 
             display: 'flex', 
-            alignItems: 'center', 
+            flexDirection: 'column',
             gap: '1rem', 
-            marginTop: '1rem',
-            padding: '1rem',
-            backgroundColor: '#f9fafb',
-            border: '1px solid #e5e7eb',
-            borderRadius: '8px'
+            marginTop: '1rem'
           }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-              <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Role:</span>
-              <span style={{ 
-                fontSize: '0.875rem', 
-                fontWeight: 600,
-                color: profile.role === 'manager' ? '#059669' : '#2563eb',
-                textTransform: 'capitalize'
-              }}>
-                {profile.role === 'manager' ? '👔 Manager' : '👤 Associate'}
-              </span>
+            {/* Organization Info */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem', 
+              padding: '1rem',
+              backgroundColor: '#f0f9ff',
+              border: '1px solid #bfdbfe',
+              borderRadius: '8px'
+            }}>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
+                <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>{organizationName || 'Loading...'}</span>
+                  {organizationId && (
+                    <>
+                      <span style={{ color: '#bfdbfe' }}>•</span>
+                      <code style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>{organizationId.slice(0, 8)}...</code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(organizationId);
+                          alert('Organization ID copied to clipboard');
+                        }}
+                        style={{
+                          marginLeft: 'auto',
+                          padding: '0.25rem 0.75rem',
+                          background: '#2563eb',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '4px',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          fontWeight: 600
+                        }}
+                      >
+                        Copy ID
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
             
-            {profile.department && (
-              <>
-                <span style={{ color: '#d1d5db' }}>•</span>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Department:</span>
-                  <span style={{ 
-                    fontSize: '0.875rem', 
-                    fontWeight: 600,
-                    color: '#374151',
-                    textTransform: 'uppercase'
-                  }}>
-                    {profile.department}
-                  </span>
-                </div>
-              </>
-            )}
-            
-            <div style={{ marginLeft: 'auto' }}>
-              <button
-                onClick={async () => {
+            {/* Role & Department Display */}
+            <div style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              gap: '1rem',
+              padding: '1rem',
+              backgroundColor: '#f9fafb',
+              border: '1px solid #e5e7eb',
+              borderRadius: '8px'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Role:</span>
+                <span style={{ 
+                  fontSize: '0.875rem', 
+                  fontWeight: 600,
+                  color: profile.role === 'manager' ? '#059669' : '#2563eb',
+                  textTransform: 'capitalize'
+                }}>
+                  {profile.role === 'manager' ? '👔 Manager' : '👤 Associate'}
+                </span>
+              </div>
+              
+              {profile.department && (
+                <>
+                  <span style={{ color: '#d1d5db' }}>•</span>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                    <span style={{ fontSize: '0.875rem', color: '#6b7280' }}>Department:</span>
+                    <span style={{ 
+                      fontSize: '0.875rem', 
+                      fontWeight: 600,
+                      color: '#374151',
+                      textTransform: 'uppercase'
+                    }}>
+                      {profile.department}
+                    </span>
+                  </div>
+                </>
+              )}
+              
+              <div style={{ marginLeft: 'auto' }}>
+                <button
+                  onClick={async () => {
                   if (!profile?.id) {
                     alert('Profile not loaded. Please refresh the page.');
                     return;
@@ -429,6 +492,7 @@ export default function AccountSettingsPage() {
               >
                 Switch to {profile.role === 'manager' ? 'Associate' : 'Manager'}
               </button>
+              </div>
             </div>
           </div>
         )}
