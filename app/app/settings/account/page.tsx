@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { supabase } from "@/lib/supabaseClient";
+import { supabaseBrowser } from "@/lib/supabaseClient";
 
 export default function AccountSettingsPage() {
   const router = useRouter();
@@ -33,16 +33,18 @@ export default function AccountSettingsPage() {
   // Load user profile on mount
   useEffect(() => {
     async function loadProfile() {
-      const { data: { user } } = await supabase.auth.getUser();
+      const sb = supabaseBrowser();
+      const { data: { user } } = await sb.auth.getUser();
       if (user) {
-        const { data: profileData } = await supabase
+        const { data: profileData } = await sb
           .from('user_profiles')
           .select('*')
           .eq('id', user.id)
           .single();
         
         setProfile(profileData);
-        setOrganizationId((profileData as any)?.organization_id || '');
+        const orgId = (profileData as any)?.organization_id;
+        setOrganizationId(orgId || '');
         setProfileForm({
           name: (profileData as any)?.full_name || '',
           companyName: (profileData as any)?.company_name || '',
@@ -50,13 +52,24 @@ export default function AccountSettingsPage() {
         });
         
         // Load organization name if we have an org ID
-        if ((profileData as any)?.organization_id) {
-          const { data: orgData } = await supabase
-            .from('organizations')
-            .select('name')
-            .eq('id', (profileData as any).organization_id)
-            .single();
-          setOrganizationName((orgData as any)?.name || '');
+        if (orgId) {
+          try {
+            const { data: orgData, error } = await sb
+              .from('organizations')
+              .select('name')
+              .eq('id', orgId)
+              .single();
+            
+            if (!error && orgData) {
+              setOrganizationName((orgData as any).name);
+            } else {
+              console.error('Error loading organization:', error);
+              setOrganizationName('');
+            }
+          } catch (err) {
+            console.error('Error fetching organization:', err);
+            setOrganizationName('');
+          }
         }
         
         // Load API keys
@@ -97,7 +110,7 @@ export default function AccountSettingsPage() {
     async function loadWarehouses() {
       setLoadingWarehouses(true);
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user } } = await supabaseBrowser().auth.getUser();
         if (!user) return;
 
         // Get warehouse access
@@ -139,7 +152,7 @@ export default function AccountSettingsPage() {
   async function loadTrainingAssignments() {
     setLoadingTraining(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseBrowser().auth.getUser();
       if (!user) return;
 
       const { data, error } = await supabase
@@ -163,7 +176,7 @@ export default function AccountSettingsPage() {
 
   async function toggleTrainingComplete(assignmentId: string, moduleId: string, currentStatus: boolean) {
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseBrowser().auth.getUser();
       if (!user) return;
 
       const newStatus = !currentStatus;
@@ -211,7 +224,7 @@ export default function AccountSettingsPage() {
     setPasswordError("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseBrowser().auth.getUser();
       if (user) {
         // Update user profile
         const { error } = await supabase
@@ -257,7 +270,7 @@ export default function AccountSettingsPage() {
 
     try {
       // TODO: Implement actual password change with Supabase
-      // await supabase.auth.updateUser({
+      // await supabaseBrowser().auth.updateUser({
       //   password: passwordForm.newPassword
       // });
       
@@ -284,7 +297,7 @@ export default function AccountSettingsPage() {
     setPasswordError("");
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: { user } } = await supabaseBrowser().auth.getUser();
       if (user) {
         // Update user profile with Pexels API key
         const { error } = await supabase
@@ -1579,7 +1592,7 @@ export default function AccountSettingsPage() {
                   setPasswordError("");
 
                   try {
-                    const { data: { user } } = await supabase.auth.getUser();
+                    const { data: { user } } = await supabaseBrowser().auth.getUser();
                     if (user) {
                       const { error } = await supabase
                         .from('user_profiles')
