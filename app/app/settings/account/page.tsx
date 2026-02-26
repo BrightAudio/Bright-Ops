@@ -15,6 +15,7 @@ export default function AccountSettingsPage() {
   // Profile state
   const [profile, setProfile] = useState<any>(null);
   const [user, setUser] = useState<any>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [organizationId, setOrganizationId] = useState<string>('');
   const [organizationName, setOrganizationName] = useState<string>('');
   const [organizationSecretId, setOrganizationSecretId] = useState<string>('');
@@ -50,6 +51,11 @@ export default function AccountSettingsPage() {
           
           setProfile(profileData);
           const orgId = (profileData as any)?.organization_id;
+          const userRole = (profileData as any)?.role;
+          
+          // Check if user is admin or owner
+          setIsAdmin(userRole === 'admin' || userRole === 'owner' || userRole === 'Admin' || userRole === 'Owner');
+          
           setOrganizationId(orgId || '');
           setProfileForm({
             name: (profileData as any)?.full_name || '',
@@ -151,11 +157,12 @@ export default function AccountSettingsPage() {
       }
       
       console.log('Profile updated with organization');
-      
       // Update local state
       setOrganizationId(org.id);
       setOrganizationName(org.name);
       setOrganizationSecretId(org.secret_id);
+      // Creator is automatically admin
+      setIsAdmin(true);
       
       alert('Organization created successfully!');
     } catch (err) {
@@ -476,12 +483,12 @@ export default function AccountSettingsPage() {
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>
                     {organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}
                   </span>
-                  {organizationSecretId && (
+                  {isAdmin && organizationSecretId && (
                     <span style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace', backgroundColor: '#e0e7ff', padding: '0.25rem 0.5rem', borderRadius: '4px' }}>
                       {organizationSecretId}
                     </span>
                   )}
-                  {organizationSecretId && (
+                  {isAdmin && organizationSecretId && (
                     <button
                       onClick={() => {
                         navigator.clipboard.writeText(organizationSecretId);
