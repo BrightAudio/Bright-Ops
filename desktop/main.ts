@@ -12,6 +12,7 @@ import { runMigrations } from './db/migrations';
 import { registerInventoryHandlers } from './ipc/inventory';
 import { registerPullSheetHandlers } from './ipc/pullsheets';
 import { registerSyncHandlers } from './ipc/sync';
+import { initializeLicenseSchema, registerLicenseHandlers } from './ipc/license';
 
 let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
@@ -91,6 +92,9 @@ app.whenReady().then(async () => {
     // Run migrations
     await runMigrations();
     
+    // Initialize license schema
+    initializeLicenseSchema();
+    
     // Setup IPC handlers
     setupIPC();
     
@@ -133,6 +137,7 @@ async function setupIPC(): Promise<void> {
   registerInventoryHandlers();
   registerPullSheetHandlers();
   registerSyncHandlers();
+  registerLicenseHandlers();
 
   // Basic app handlers
   ipcMain.handle('app:isOffline', () => {
