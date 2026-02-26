@@ -210,6 +210,43 @@ export default function OrganizationSettingsPage() {
           )}
         </div>
         
+        {/* Organization ID */}
+        <div style={{ marginBottom: '1.5rem' }}>
+          <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
+            Organization ID
+          </label>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+            <p style={{
+              fontSize: '14px',
+              fontFamily: 'monospace',
+              background: '#f9fafb',
+              padding: '0.75rem 1rem',
+              borderRadius: '6px',
+              border: '1px solid #e5e7eb',
+              flex: 1
+            }}>
+              {organization.id}
+            </p>
+            <button
+              onClick={() => copyToClipboard(organization.id, 'Organization ID')}
+              style={{
+                padding: '0.5rem 1rem',
+                background: '#667eea',
+                color: 'white',
+                border: 'none',
+                borderRadius: '6px',
+                fontSize: '14px',
+                cursor: 'pointer'
+              }}
+            >
+              Copy
+            </button>
+          </div>
+          <p style={{ fontSize: '12px', color: '#6b7280', marginTop: '0.5rem' }}>
+            Unique database identifier for your organization (UUID).
+          </p>
+        </div>
+        
         {/* Business PIN */}
         <div style={{ marginBottom: '1.5rem' }}>
           <label style={{ display: 'block', fontWeight: '600', marginBottom: '0.5rem', color: '#374151' }}>
