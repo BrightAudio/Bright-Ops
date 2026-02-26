@@ -6,7 +6,7 @@
 import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
-import { OutboxSyncService } from '../../lib/sync/outboxSync';
+import OutboxSyncService from '../../lib/sync/outboxSync';
 
 export type SyncStatus = {
   pending: number;
@@ -17,19 +17,33 @@ export type SyncStatus = {
 
 // Global sync service instance
 let syncService: OutboxSyncService | null = null;
+let authToken: string | null = null;
 
 /**
  * Initialize sync service with auth token
  */
-export function initializeSyncService(authToken: string): void {
-  syncService = new OutboxSyncService({
-    authToken,
-    apiUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sync/changes`,
-  });
+export function setSyncAuthToken(token: string): void {
+  authToken = token;
+  if (syncService) {
+    syncService.setAuthToken(token);
+  }
+  console.log('✅ Sync auth token updated');
+}
 
-  const db = getDatabase();
-  syncService.setDatabase(db);
-  console.log('✅ Sync service initialized');
+/**
+ * Get or create sync service instance
+ */
+function getSyncService(): OutboxSyncService {
+  if (!syncService) {
+    syncService = new OutboxSyncService({
+      authToken: authToken || undefined,
+      apiUrl: `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/sync/changes`,
+    });
+
+    const db = getDatabase();
+    syncService.setDatabase(db);
+  }
+  return syncService;
 }
 
 /**
@@ -37,6 +51,19 @@ export function initializeSyncService(authToken: string): void {
  */
 export function registerSyncHandlers(): void {
   console.log('🔄 Registering sync IPC handlers...');
+
+  /**
+   * Set auth token for sync service
+   */
+  ipcMain.handle('sync:setAuthToken', async (_event, token: string) => {
+    try {
+      setSyncAuthToken(token);
+      return { success: true };
+    } catch (error) {
+      console.error('Error setting auth token:', error);
+      return { success: false, error: (error as any).message };
+    }
+  });
 
   /**
    * Get current sync status
@@ -114,11 +141,10 @@ export function registerSyncHandlers(): void {
    */
   ipcMain.handle('sync:syncNow', async () => {
     try {
-      if (!syncService) {
-        return {
-          success: false,
-          error: 'Sync service not initialized. Please log in first.',
-        };
+      const syncSvc = getSyncService();
+
+      if (!authToken) {
+        console.warn('⚠️ Sync attempted without auth token - will fail');
       }
 
       const db = getDatabase();
@@ -133,7 +159,7 @@ export function registerSyncHandlers(): void {
       console.log('🔄 Starting sync to Supabase...');
 
       // Perform actual sync
-      const result = await syncService.syncPending();
+      const result = await syncSvc.syncPending();
 
       console.log(
         `✅ Sync complete: ${result.synced} synced, ${result.failed} failed`

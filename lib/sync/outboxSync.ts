@@ -97,6 +97,19 @@ export class OutboxSyncService {
 
     console.log(`🔄 Syncing ${changes.length} pending changes...`);
 
+    // Check network connectivity first
+    if (!await this.isNetworkAvailable()) {
+      console.warn('⚠️ Network not available - skipping sync');
+      return {
+        synced: 0,
+        failed: changes.length,
+        errors: changes.map((c) => ({
+          changeId: c.id,
+          error: 'Network unavailable',
+        })),
+      };
+    }
+
     try {
       const response = await fetch(this.apiUrl, {
         method: 'POST',
@@ -105,6 +118,7 @@ export class OutboxSyncService {
           Authorization: `Bearer ${this.authToken}`,
         },
         body: JSON.stringify({ changes }),
+        signal: AbortSignal.timeout(30000), // 30 second timeout
       });
 
       if (!response.ok) {
@@ -133,17 +147,19 @@ export class OutboxSyncService {
         errors: result.errors || [],
       };
     } catch (error) {
-      console.error('Sync error:', error);
+      const errorMessage = error instanceof Error ? this.categorizeError(error) : String(error);
+      console.error('Sync error:', errorMessage);
+
       // Increment retry counts for all changes on network error
-      await Promise.all(
-        changes.map((c) => this.incrementRetryCount(c.id))
-      );
+      const changes = await this.getPendingChanges();
+      await Promise.all(changes.map((c) => this.incrementRetryCount(c.id)));
+
       return {
         synced: 0,
         failed: changes.length,
         errors: changes.map((c) => ({
           changeId: c.id,
-          error: error instanceof Error ? error.message : 'Unknown error',
+          error: errorMessage,
         })),
       };
     }
@@ -290,6 +306,58 @@ export class OutboxSyncService {
    */
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  /**
+   * Check if network is available
+   */
+  private async isNetworkAvailable(): Promise<boolean> {
+    // Check if we're in browser/electron
+    if (typeof window !== 'undefined') {
+      return navigator.onLine;
+    }
+
+    // In Node.js, try a simple DNS lookup
+    try {
+      const dns = await import('dns')
+        .then((m) => m.default)
+        .catch(() => null);
+
+      if (!dns) return true; // Assume online if DNS not available
+
+      return new Promise((resolve) => {
+        dns.lookup('google.com', (err: unknown) => {
+          resolve(err === null);
+        });
+      });
+    } catch {
+      return true; // Assume online on error
+    }
+  }
+
+  /**
+   * Categorize network errors
+   */
+  private categorizeError(error: Error): string {
+    const message = error.message.toLowerCase();
+
+    if (message.includes('network') || message.includes('enotfound')) {
+      return 'Network error - check your connection';
+    }
+
+    if (message.includes('timeout') || message.includes('timedout')) {
+      return 'Request timeout - server took too long';
+    }
+
+    if (message.includes('econnrefused')) {
+      return 'Connection refused - server not reachable';
+    }
+
+    if (message.includes('econnreset')) {
+      return 'Connection reset by server';
+    }
+
+    return error.message;
   }
 }
 
