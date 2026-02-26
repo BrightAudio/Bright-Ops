@@ -16,6 +16,7 @@ export default function AccountSettingsPage() {
   const [profile, setProfile] = useState<any>(null);
   const [organizationId, setOrganizationId] = useState<string>('');
   const [organizationName, setOrganizationName] = useState<string>('');
+  const [organizationSecretId, setOrganizationSecretId] = useState<string>('');
   const [organizationLoading, setOrganizationLoading] = useState(true);
   
   // Training state
@@ -59,26 +60,31 @@ export default function AccountSettingsPage() {
               console.log('Fetching organization with ID:', orgId);
               const { data: orgData, error } = await sb
                 .from('organizations')
-                .select('name')
+                .select('name, secret_id')
                 .eq('id', orgId)
                 .single();
               
               if (error) {
                 console.error('Error loading organization:', error);
                 setOrganizationName('Not found');
+                setOrganizationSecretId('');
               } else if (orgData) {
-                console.log('Organization loaded:', (orgData as any).name);
+                console.log('Organization loaded:', (orgData as any).name, 'Secret ID:', (orgData as any).secret_id);
                 setOrganizationName((orgData as any).name);
+                setOrganizationSecretId((orgData as any).secret_id || '');
               } else {
                 setOrganizationName('Not found');
+                setOrganizationSecretId('');
               }
             } catch (err) {
               console.error('Error fetching organization:', err);
               setOrganizationName('Not found');
+              setOrganizationSecretId('');
             }
           } else {
             console.log('No organization ID found in profile');
             setOrganizationName('Not assigned');
+            setOrganizationSecretId('');
           }
           
           // Load API keys
@@ -403,14 +409,14 @@ export default function AccountSettingsPage() {
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
                   <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>{organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}</span>
-                  {organizationId && (
+                  {organizationSecretId && (
                     <>
                       <span style={{ color: '#bfdbfe' }}>•</span>
-                      <code style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>{organizationId.slice(0, 8)}...</code>
+                      <code style={{ fontSize: '0.75rem', color: '#6b7280', fontFamily: 'monospace' }}>{organizationSecretId.slice(0, 8)}...</code>
                       <button
                         onClick={() => {
-                          navigator.clipboard.writeText(organizationId);
-                          alert('Organization ID copied to clipboard');
+                          navigator.clipboard.writeText(organizationSecretId);
+                          alert('Secret ID copied to clipboard');
                         }}
                         style={{
                           marginLeft: 'auto',
