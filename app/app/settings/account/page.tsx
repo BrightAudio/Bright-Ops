@@ -16,6 +16,7 @@ export default function AccountSettingsPage() {
   const [profile, setProfile] = useState<any>(null);
   const [organizationId, setOrganizationId] = useState<string>('');
   const [organizationName, setOrganizationName] = useState<string>('');
+  const [organizationLoading, setOrganizationLoading] = useState(true);
   
   // Training state
   const [assignments, setAssignments] = useState<any[]>([]);
@@ -33,44 +34,60 @@ export default function AccountSettingsPage() {
   // Load user profile on mount
   useEffect(() => {
     async function loadProfile() {
-      const sb = supabaseBrowser();
-      const { data: { user } } = await sb.auth.getUser();
-      if (user) {
-        const { data: profileData } = await sb
-          .from('user_profiles')
-          .select('*')
-          .eq('id', user.id)
-          .single();
-        
-        setProfile(profileData);
-        const orgId = (profileData as any)?.organization_id;
-        setOrganizationId(orgId || '');
-        setProfileForm({
-          name: (profileData as any)?.full_name || '',
-          companyName: (profileData as any)?.company_name || '',
-          email: user.email || ''
-        });
-        
-        // Load organization name if we have an org ID
-        if (orgId) {
-          try {
-            const { data: orgData, error } = await sb
-              .from('organizations')
-              .select('name')
-              .eq('id', orgId)
-              .single();
-            
-            if (!error && orgData) {
-              setOrganizationName((orgData as any).name);
-            } else {
-              console.error('Error loading organization:', error);
-              setOrganizationName('');
+      try {
+        const sb = supabaseBrowser();
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) {
+          const { data: profileData } = await sb
+            .from('user_profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single();
+          
+          setProfile(profileData);
+          const orgId = (profileData as any)?.organization_id;
+          setOrganizationId(orgId || '');
+          setProfileForm({
+            name: (profileData as any)?.full_name || '',
+            companyName: (profileData as any)?.company_name || '',
+            email: user.email || ''
+          });
+          
+          // Load organization name if we have an org ID
+          if (orgId) {
+            try {
+              console.log('Fetching organization with ID:', orgId);
+              const { data: orgData, error } = await sb
+                .from('organizations')
+                .select('name')
+                .eq('id', orgId)
+                .single();
+              
+              if (error) {
+                console.error('Error loading organization:', error);
+                setOrganizationName('Not found');
+              } else if (orgData) {
+                console.log('Organization loaded:', (orgData as any).name);
+                setOrganizationName((orgData as any).name);
+              } else {
+                setOrganizationName('Not found');
+              }
+            } catch (err) {
+              console.error('Error fetching organization:', err);
+              setOrganizationName('Not found');
             }
-          } catch (err) {
-            console.error('Error fetching organization:', err);
-            setOrganizationName('');
+          } else {
+            console.log('No organization ID found in profile');
+            setOrganizationName('Not assigned');
           }
         }
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      } finally {
+        setOrganizationLoading(false);
+      }
+    }
+    loadProfile();
         
         // Load API keys
         setPexelsApiKey((profileData as any)?.pexels_api_key || '');
@@ -388,7 +405,7 @@ export default function AccountSettingsPage() {
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
                 <span style={{ fontSize: '0.75rem', color: '#6b7280', textTransform: 'uppercase', fontWeight: 600 }}>Organization</span>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>{organizationName || 'Loading...'}</span>
+                  <span style={{ fontSize: '0.875rem', fontWeight: 600, color: '#1e40af' }}>{organizationLoading ? 'Loading...' : (organizationName || 'Not assigned')}</span>
                   {organizationId && (
                     <>
                       <span style={{ color: '#bfdbfe' }}>•</span>
