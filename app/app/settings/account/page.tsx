@@ -114,7 +114,7 @@ export default function AccountSettingsPage() {
         if (!user) return;
 
         // Get warehouse access
-        const { data: accessData } = await supabase
+        const { data: accessData } = await supabaseBrowser()
           .from('user_warehouse_access')
           .select('warehouse_id')
           .eq('user_id', user.id);
@@ -127,7 +127,7 @@ export default function AccountSettingsPage() {
         const warehouseIds = accessData.map((a: any) => a.warehouse_id);
 
         // Get warehouse details
-        const { data: warehousesData } = await supabase
+        const { data: warehousesData } = await supabaseBrowser()
           .from('warehouses')
           .select('id, name, address, pin')
           .in('id', warehouseIds);
