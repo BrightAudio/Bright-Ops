@@ -5,16 +5,18 @@ import {
   getActiveQuest,
   generateQuestInsight,
   updateQuestStates,
+  canAccessQuest,
 } from '@/lib/utils/questSystem';
 import { generateRewardNotification } from '@/lib/utils/questRewards';
 
 interface QuestChainProps {
   questLine: QuestLine | null;
   metrics: any;
+  organizationPlan?: 'starter' | 'pro' | 'enterprise' | null;
   onQuestGenerate: () => void;
 }
 
-export default function QuestChain({ questLine, metrics, onQuestGenerate }: QuestChainProps) {
+export default function QuestChain({ questLine, metrics, organizationPlan, onQuestGenerate }: QuestChainProps) {
   const [updatedQuests, setUpdatedQuests] = useState<QuestLine | null>(questLine);
   const [showRewardNotification, setShowRewardNotification] = useState<string | null>(null);
 
@@ -139,6 +141,10 @@ export default function QuestChain({ questLine, metrics, onQuestGenerate }: Ques
           const isActive = quest.status === 'active';
           const isCompleted = quest.status === 'completed';
           const isLocked = quest.status === 'locked';
+          
+          // Check tier-based access
+          const hasAccess = canAccessQuest(quest.requiredTier, organizationPlan || 'starter');
+          const isLockedByTier = !hasAccess;
 
           const statusColor = isCompleted ? '#16a34a' : isActive ? '#b45309' : '#d1d5db';
           const statusIcon = isCompleted ? '✅' : isActive ? '⚡' : '🔒';
@@ -151,7 +157,7 @@ export default function QuestChain({ questLine, metrics, onQuestGenerate }: Ques
                 borderRadius: '0.5rem',
                 overflow: 'hidden',
                 border: `2px solid ${statusColor}`,
-                opacity: isLocked ? 0.6 : 1,
+                opacity: (isLocked || isLockedByTier) ? 0.6 : 1,
               }}
             >
               {/* Quest Header */}
@@ -181,26 +187,43 @@ export default function QuestChain({ questLine, metrics, onQuestGenerate }: Ques
                   </p>
                 </div>
 
-                {/* Difficulty Badge */}
-                <div
-                  style={{
-                    display: 'inline-block',
-                    padding: '0.25rem 0.75rem',
-                    backgroundColor: statusColor,
-                    color: 'white',
-                    borderRadius: '0.25rem',
-                    fontSize: '0.75rem',
-                    fontWeight: '600',
-                    marginLeft: '1rem',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  {quest.difficulty}
+                {/* Difficulty & Tier Badges */}
+                <div style={{ display: 'flex', gap: '0.5rem', marginLeft: '1rem', flexDirection: 'column' }}>
+                  <div
+                    style={{
+                      display: 'inline-block',
+                      padding: '0.25rem 0.75rem',
+                      backgroundColor: statusColor,
+                      color: 'white',
+                      borderRadius: '0.25rem',
+                      fontSize: '0.75rem',
+                      fontWeight: '600',
+                      textTransform: 'uppercase',
+                    }}
+                  >
+                    {quest.difficulty}
+                  </div>
+                  {quest.requiredTier && quest.requiredTier !== 'starter' && (
+                    <div
+                      style={{
+                        display: 'inline-block',
+                        padding: '0.25rem 0.75rem',
+                        backgroundColor: isLockedByTier ? '#ef4444' : '#8b5cf6',
+                        color: 'white',
+                        borderRadius: '0.25rem',
+                        fontSize: '0.65rem',
+                        fontWeight: '600',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {quest.requiredTier} ✦
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Quest Details */}
-              {!isLocked && (
+              {!isLocked && !isLockedByTier && (
                 <div style={{ padding: '1rem', borderTop: `1px solid ${statusColor}` }}>
                   {/* Objective */}
                   <div style={{ marginBottom: '1rem' }}>
@@ -311,7 +334,7 @@ export default function QuestChain({ questLine, metrics, onQuestGenerate }: Ques
                 </div>
               )}
 
-              {isLocked && (
+              {(isLocked || isLockedByTier) && (
                 <div
                   style={{
                     padding: '1rem',
@@ -321,7 +344,15 @@ export default function QuestChain({ questLine, metrics, onQuestGenerate }: Ques
                     fontStyle: 'italic',
                   }}
                 >
-                  Complete the previous quest to unlock
+                  {isLockedByTier ? (
+                    <p>
+                      🔐 {quest.requiredTier?.toUpperCase()} Plan Required
+                      <br />
+                      <span style={{ fontSize: '0.65rem' }}>Upgrade your plan to unlock this quest</span>
+                    </p>
+                  ) : (
+                    <p>Complete the previous quest to unlock</p>
+                  )}
                 </div>
               )}
             </div>

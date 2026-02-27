@@ -113,11 +113,12 @@ export default function FinancialGoalsClient() {
   const [questLine, setQuestLine] = useState<QuestLine | null>(null);
   const [rewardTracker, setRewardTracker] = useState<RewardTracker>(createRewardTracker());
   const [templateGoals, setTemplateGoals] = useState<any[]>([]);
+  const [organizationPlan, setOrganizationPlan] = useState<'starter' | 'pro' | 'enterprise' | null>(null);
 
   // DEBUG
-  console.log('FinancialGoalsClient rendering - license:', license, 'licenseLoading:', licenseLoading, 'organizationId:', organizationId);
+  console.log('FinancialGoalsClient rendering - license:', license, 'licenseLoading:', licenseLoading, 'organizationId:', organizationId, 'organizationPlan:', organizationPlan);
 
-  // Get user's organization
+  // Get user's organization and fetch its plan
   const loadOrganization = async () => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
@@ -131,6 +132,21 @@ export default function FinancialGoalsClient() {
 
       if (profile?.organization_id) {
         setOrganizationId(profile.organization_id);
+
+        // Fetch organization plan to gate quests by tier
+        const { data: org, error } = await supabase
+          .from('organizations')
+          .select('plan')
+          .eq('id', profile.organization_id)
+          .single();
+
+        if (error) {
+          console.warn('Error fetching organization plan:', error);
+          setOrganizationPlan('starter'); // Default to starter if plan not found
+        } else if (org?.plan) {
+          setOrganizationPlan(org.plan as 'starter' | 'pro' | 'enterprise');
+          console.log('✅ Organization plan loaded:', org.plan);
+        }
       }
     } catch (error) {
       console.error('Error fetching organization:', error);
@@ -1544,6 +1560,7 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
           <QuestChain
             questLine={questLine}
             metrics={metrics}
+            organizationPlan={organizationPlan}
             onQuestGenerate={() => {
               const newQuestLine = generateQuestLine(
                 'Quarterly Revenue Goal',
