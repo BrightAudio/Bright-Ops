@@ -367,25 +367,25 @@ export default function DashboardLayout({
             {organizationPlan === 'enterprise' && (
               <>
                 <span className="text-purple-400">✨</span>
-                <span className="text-zinc-300">Enterprise</span>
+                <span className="text-white font-semibold">Enterprise</span>
               </>
             )}
             {organizationPlan === 'pro' && (
               <>
                 <span className="text-yellow-400">⭐</span>
-                <span className="text-zinc-300">Pro</span>
+                <span className="text-white font-semibold">Pro</span>
               </>
             )}
             {organizationPlan === 'starter' && (
               <>
                 <span className="text-green-400">🚀</span>
-                <span className="text-zinc-300">Starter</span>
+                <span className="text-white font-semibold">Starter</span>
               </>
             )}
             {!organizationPlan && (
               <>
                 <span className="text-zinc-500">⏳</span>
-                <span className="text-zinc-400">Loading...</span>
+                <span className="text-zinc-300">Loading...</span>
               </>
             )}
           </div>
