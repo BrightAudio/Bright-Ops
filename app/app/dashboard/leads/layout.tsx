@@ -13,7 +13,6 @@ export default function LeadsLayout({
 }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { license, loading: licenseLoading } = useLicense();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
   const [organizationPlan, setOrganizationPlan] = useState<string | null>(null);
