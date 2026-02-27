@@ -363,29 +363,29 @@ export default function DashboardLayout({
 
         <div className="right-actions">
           {/* Tier Badge - Shows organization plan */}
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-sm">
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 12px', borderRadius: '6px', backgroundColor: '#27272a', border: '1px solid #3f3f46', fontSize: '14px' }}>
             {organizationPlan === 'enterprise' && (
               <>
-                <span className="text-purple-400">✨</span>
-                <span className="text-white font-semibold">Enterprise</span>
+                <span>✨</span>
+                <span style={{ color: '#ffffff', fontWeight: 600 }}>Enterprise</span>
               </>
             )}
             {organizationPlan === 'pro' && (
               <>
-                <span className="text-yellow-400">⭐</span>
-                <span className="text-white font-semibold">Pro</span>
+                <span>⭐</span>
+                <span style={{ color: '#ffffff', fontWeight: 600 }}>Pro</span>
               </>
             )}
             {organizationPlan === 'starter' && (
               <>
-                <span className="text-green-400">🚀</span>
-                <span className="text-white font-semibold">Starter</span>
+                <span>🚀</span>
+                <span style={{ color: '#ffffff', fontWeight: 600 }}>Starter</span>
               </>
             )}
             {!organizationPlan && (
               <>
-                <span className="text-zinc-500">⏳</span>
-                <span className="text-zinc-300">Loading...</span>
+                <span>⏳</span>
+                <span style={{ color: '#a1a1aa' }}>Loading...</span>
               </>
             )}
           </div>
