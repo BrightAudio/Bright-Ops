@@ -11,12 +11,31 @@ export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Test event-logging endpoint called');
     
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseServiceRole = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+    console.log('📋 Checking config:', {
+      hasUrl: !!supabaseUrl,
+      hasServiceRole: !!supabaseServiceRole,
+    });
+
+    if (!supabaseUrl || !supabaseServiceRole) {
+      return NextResponse.json(
+        {
+          success: false,
+          event: null,
+          message: 'Missing Supabase environment variables',
+        },
+        { status: 500 }
+      );
+    }
+    
     // Use service role key for admin access
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
-      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
-      { auth: { persistSession: false } }
-    );
+    const supabase = createClient(supabaseUrl, supabaseServiceRole, {
+      auth: { persistSession: false },
+    });
+    
+    console.log('🔐 Supabase client created');
     
     // Log a test event directly
     const { data, error } = await supabase
@@ -43,6 +62,7 @@ export async function POST(request: NextRequest) {
           success: false,
           event: null,
           message: `Database error: ${error.message}`,
+          errorDetails: error,
         },
         { status: 500 }
       );
