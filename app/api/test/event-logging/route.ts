@@ -1,17 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabaseServer } from '@/lib/supabaseServer';
+import { createClient } from '@supabase/supabase-js';
 
 /**
  * POST /api/test/event-logging
  * 
  * Test endpoint to verify quest event logging is working
- * Logs a test event directly to Supabase and returns the result
+ * Uses service role for admin access (bypasses RLS)
  */
 export async function POST(request: NextRequest) {
   try {
     console.log('🔍 Test event-logging endpoint called');
     
-    const supabase = await supabaseServer();
+    // Use service role key for admin access
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL || '',
+      process.env.SUPABASE_SERVICE_ROLE_KEY || '',
+      { auth: { persistSession: false } }
+    );
     
     // Log a test event directly
     const { data, error } = await supabase
