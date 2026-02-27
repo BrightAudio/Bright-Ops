@@ -363,7 +363,7 @@ export default function DashboardLayout({
 
         <div className="right-actions">
           {/* Tier Badge - Shows organization plan */}
-          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-sm">
+          <div className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-sm">
             {organizationPlan === 'enterprise' && (
               <>
                 <span className="text-purple-400">✨</span>
@@ -380,6 +380,12 @@ export default function DashboardLayout({
               <>
                 <span className="text-green-400">🚀</span>
                 <span className="text-zinc-300">Starter</span>
+              </>
+            )}
+            {!organizationPlan && (
+              <>
+                <span className="text-zinc-500">⏳</span>
+                <span className="text-zinc-400">Loading...</span>
               </>
             )}
           </div>
