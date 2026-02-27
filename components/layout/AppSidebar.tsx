@@ -92,7 +92,9 @@ export default function AppSidebar() {
             .eq('id', profile.organization_id)
             .single();
 
-          setOrganizationPlan(org?.plan || 'starter');
+          const plan = org?.plan || 'starter';
+          console.log('📊 Organization plan loaded:', plan);
+          setOrganizationPlan(plan);
         }
       } catch (error) {
         console.error('Error fetching organization plan:', error);
@@ -106,7 +108,8 @@ export default function AppSidebar() {
   }, []);
 
   // Gate Leads feature to Enterprise users only
-  const isEnterpriseUser = organizationPlan === 'enterprise';
+  // Show Work section if: loading (optimistic) OR plan is enterprise
+  const isEnterpriseUser = loading || organizationPlan === 'enterprise';
 
   // Filter Leads items - only show for Enterprise tier
   const filteredLeadsItems = isEnterpriseUser ? workSection.items : workSection.items.filter(
