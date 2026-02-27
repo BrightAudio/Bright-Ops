@@ -41,7 +41,7 @@ function getSyncService(): OutboxSyncService {
     });
 
     const db = getDatabase();
-    syncService.setDatabase(db);
+    syncService.setDatabase(db as any);
   }
   return syncService;
 }

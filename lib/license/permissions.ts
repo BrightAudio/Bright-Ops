@@ -128,6 +128,13 @@ export function getLicenseUIState(status: LicenseStatus, plan: string): LicenseU
         label: 'Account Restricted',
         description: 'Renew subscription to restore full access',
       };
+    default:
+      return {
+        icon: 'lock',
+        color: 'red',
+        label: 'Unknown Status',
+        description: 'Please contact support',
+      };
   }
 }
 

@@ -35,45 +35,28 @@ export async function POST(req: NextRequest) {
     }
 
     // Check if license exists
-    const { data: license, error: licenseError } = await supabase
-      .from('licenses')
-      .select('id')
-      .eq('organization_id', org.id)
+    const { data: existingOrg, error: checkError } = await supabase
+      .from('organizations')
+      .select('id, plan')
+      .eq('id', org.id)
       .single();
 
-    if (!license) {
-      // Create license if it doesn't exist
-      const { error: createError } = await supabase
-        .from('licenses')
-        .insert({
-          organization_id: org.id,
-          stripe_customer_id: `temp_${org.id}`,
-          plan: plan,
-          status: 'active'
-        });
-
-      if (createError) {
-        return NextResponse.json(
-          { error: 'Failed to create license: ' + createError.message },
-          { status: 500 }
-        );
-      }
-
-      return NextResponse.json({
-        success: true,
-        message: `License created with plan: ${plan}`
-      });
+    if (checkError) {
+      return NextResponse.json(
+        { error: 'Failed to fetch organization: ' + checkError.message },
+        { status: 500 }
+      );
     }
 
-    // Update existing license
+    // Update organization plan
     const { error: updateError } = await supabase
-      .from('licenses')
-      .update({ plan: plan })
-      .eq('organization_id', org.id);
+      .from('organizations')
+      .update({ plan })
+      .eq('id', org.id);
 
     if (updateError) {
       return NextResponse.json(
-        { error: 'Failed to update license: ' + updateError.message },
+        { error: 'Failed to update plan: ' + updateError.message },
         { status: 500 }
       );
     }

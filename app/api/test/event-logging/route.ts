@@ -1,58 +1,60 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { logQuestEvent } from '@/lib/utils/questEvents';
+import { supabaseServer } from '@/lib/supabaseServer';
 
 /**
  * POST /api/test/event-logging
  * 
  * Test endpoint to verify quest event logging is working
- * Logs a test event and returns the result
- * 
- * Response:
- * {
- *   success: boolean,
- *   event: QuestEvent | null,
- *   message: string
- * }
+ * Logs a test event directly to Supabase and returns the result
  */
 export async function POST(request: NextRequest) {
   try {
-    // Log a test event
-    const event = await logQuestEvent(
-      'lead_reachout_sent',
-      'lead',
-      'test-lead-001',
-      {
-        metricValue: 1,
+    console.log('🔍 Test event-logging endpoint called');
+    
+    const supabase = await supabaseServer();
+    
+    // Log a test event directly
+    const { data, error } = await supabase
+      .from('quest_events')
+      .insert({
+        event_type: 'lead_reachout_sent',
+        entity_type: 'lead',
+        entity_id: 'test-lead-001',
+        metric_value: 1,
         source: 'system',
         metadata: {
           test: true,
           timestamp: new Date().toISOString(),
           message: 'This is a test event from event-logging API',
         },
-      }
-    );
+      })
+      .select()
+      .single();
 
-    if (!event) {
+    if (error) {
+      console.error('❌ Event logging error:', error);
       return NextResponse.json(
         {
           success: false,
           event: null,
-          message: 'Failed to log event - database error',
+          message: `Database error: ${error.message}`,
         },
         { status: 500 }
       );
     }
 
+    console.log('✅ Test event logged successfully:', data);
+    
     return NextResponse.json(
       {
         success: true,
-        event,
+        event: data,
         message: 'Test event logged successfully',
       },
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error in test event-logging:', error);
+    console.error('❌ Error in test event-logging:', error);
     return NextResponse.json(
       {
         success: false,
