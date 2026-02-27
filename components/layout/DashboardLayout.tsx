@@ -2,13 +2,11 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { useNotifications } from "@/lib/hooks/useNotifications";
-import { useLicense } from "@/lib/hooks/useLicense";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { logoutAction } from "@/app/actions/auth";
 import { supabase } from "@/lib/supabaseClient";
 import { useLocation } from "@/lib/contexts/LocationContext";
-import LeadsPasswordPrompt from "@/components/LeadsPasswordPrompt";
 
 interface NavItem {
   href: string;
@@ -62,14 +60,13 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const { license } = useLicense();
   const [sidebarCollapsed, setSidebarCollapsed] = useState(true); // Start collapsed
   const [sidebarHovered, setSidebarHovered] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false); // Mobile menu state
   const [profileOpen, setProfileOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [showLeadsPassword, setShowLeadsPassword] = useState(false);
+  const [organizationPlan, setOrganizationPlan] = useState<string | null>(null);
   const [expandedMenus, setExpandedMenus] = useState<Record<string, boolean>>({
     '/app/dashboard/leads': pathname?.includes('/dashboard/leads') || false
   });
@@ -147,6 +144,42 @@ export default function DashboardLayout({
     }
     
     fetchUserProfile();
+    return () => { mounted = false; };
+  }, []);
+
+  // Fetch organization plan for tier-based features
+  useEffect(() => {
+    let mounted = true;
+
+    async function fetchOrgPlan() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user || !mounted) return;
+
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.organization_id && mounted) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('plan')
+            .eq('id', profile.organization_id)
+            .single();
+
+          const plan = org?.plan || 'starter';
+          console.log('📊 Organization plan loaded:', plan);
+          setOrganizationPlan(plan);
+        }
+      } catch (error) {
+        console.error('Error fetching organization plan:', error);
+        setOrganizationPlan('starter');
+      }
+    }
+
+    fetchOrgPlan();
     return () => { mounted = false; };
   }, []);
 
@@ -299,20 +332,14 @@ export default function DashboardLayout({
   };
 
   const handleLeadsClick = () => {
-    
     // Gate Leads feature to Enterprise users only
-    if (license?.plan !== 'enterprise') {
+    if (organizationPlan !== 'enterprise') {
       alert('Leads is only available for Enterprise plan members. Please upgrade to access this feature.');
       return;
     }
     
-    // Check if user already has access in this session
-    const hasAccess = sessionStorage.getItem('leadsAccess');
-    if (hasAccess === 'granted') {
-      window.location.href = '/app/dashboard/leads';
-    } else {
-      setShowLeadsPassword(true);
-    }
+    // Enterprise users have direct access
+    window.location.href = '/app/dashboard/leads';
   };
 
   // Sidebar is expanded if manually toggled open OR if being hovered
@@ -336,7 +363,7 @@ export default function DashboardLayout({
 
         <div className="right-actions">
           {/* Goals Portal Link - Hidden on mobile, only for Pro/Enterprise */}
-          {license?.plan === 'pro' || license?.plan === 'enterprise' ? (
+          {organizationPlan === 'pro' || organizationPlan === 'enterprise' ? (
             <button 
               className="hidden md:block"
               onClick={() => {
@@ -370,7 +397,7 @@ export default function DashboardLayout({
           ) : null}
 
           {/* Leads Portal Link - Hidden on mobile, only for Enterprise */}
-          {license?.plan === 'enterprise' ? (
+          {organizationPlan === 'enterprise' ? (
             <button 
               className="hidden md:block"
               onClick={() => {
@@ -402,6 +429,28 @@ export default function DashboardLayout({
               LEADS
             </button>
           ) : null}
+
+          {/* Tier Badge - Shows organization plan */}
+          <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-md bg-zinc-800 border border-zinc-700 text-sm">
+            {organizationPlan === 'enterprise' && (
+              <>
+                <span className="text-purple-400">✨</span>
+                <span className="text-zinc-300">Enterprise</span>
+              </>
+            )}
+            {organizationPlan === 'pro' && (
+              <>
+                <span className="text-yellow-400">⭐</span>
+                <span className="text-zinc-300">Pro</span>
+              </>
+            )}
+            {organizationPlan === 'starter' && (
+              <>
+                <span className="text-green-400">🚀</span>
+                <span className="text-zinc-300">Starter</span>
+              </>
+            )}
+          </div>
 
           {/* Location Indicator - Hidden on mobile */}
           <Link 
@@ -985,10 +1034,6 @@ export default function DashboardLayout({
         <section className="dashboard-content">{children}</section>
       </div>
 
-      {/* Leads Password Prompt */}
-      {showLeadsPassword && (
-        <LeadsPasswordPrompt onClose={() => setShowLeadsPassword(false)} />
-      )}
     </div>
   );
 }

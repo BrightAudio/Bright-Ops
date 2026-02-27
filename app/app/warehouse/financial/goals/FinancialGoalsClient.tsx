@@ -197,6 +197,32 @@ export default function FinancialGoalsClient() {
     }
   };
 
+  // Load quests from database
+  const loadQuests = async () => {
+    if (!organizationId) return;
+    try {
+      const { data: quests } = await supabase
+        .from('quests')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('quarter', currentQuarter)
+        .eq('status', 'active')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      
+      if (quests && quests.length > 0) {
+        const quest = quests[0];
+        console.log('✅ Loaded existing quest:', quest.title);
+        // Metadata is already stored as JSONB in Supabase
+        if (quest.metadata) {
+          setQuestLine(JSON.parse(JSON.stringify(quest.metadata)) as QuestLine);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading quests:', error);
+    }
+  };
+
   // Save quarter dates to localStorage
   const saveQuarterDates = async (quarter: Quarter, dates: { startDate: string; endDate: string }) => {
     try {
@@ -220,6 +246,13 @@ export default function FinancialGoalsClient() {
     loadOrganization();
     loadQuarterDates();
   }, []);
+
+  // Load quests when organizationId or currentQuarter changes
+  useEffect(() => {
+    if (organizationId) {
+      loadQuests();
+    }
+  }, [organizationId, currentQuarter]);
 
   // Hook for quarterly revenue data
   const { 
@@ -1561,14 +1594,68 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
             questLine={questLine}
             metrics={metrics}
             organizationPlan={organizationPlan}
-            onQuestGenerate={() => {
+            onQuestGenerate={async () => {
               const newQuestLine = generateQuestLine(
                 'Quarterly Revenue Goal',
                 75000,
                 currentQuarter,
                 metrics
               );
-              setQuestLine(newQuestLine);
+              
+              // Save to database
+              if (organizationId) {
+                try {
+                  // Validate inputs
+                  if (!currentQuarter || !newQuestLine.targetGoal) {
+                    console.error('❌ Missing required quest fields');
+                    alert('Cannot create quest: missing required fields.');
+                    return;
+                  }
+
+                  console.log('💾 Saving quest to database:', {
+                    organization_id: organizationId,
+                    title: newQuestLine.targetGoal,
+                    quarter: currentQuarter,
+                    target_amount: newQuestLine.targetRevenue,
+                  });
+
+                  const { data, error } = await supabase
+                    .from('quests')
+                    .insert([
+                      {
+                        organization_id: organizationId,
+                        title: newQuestLine.targetGoal,
+                        quarter: currentQuarter,
+                        target_amount: newQuestLine.targetRevenue || 75000,
+                        current_progress: 0,
+                        status: 'active',
+                        quest_type: 'quarterly_revenue',
+                        metadata: JSON.parse(JSON.stringify(newQuestLine)) as any,
+                      }
+                    ])
+                    .select();
+                  
+                  if (error) {
+                    console.error('❌ Error saving quest - Details:', {
+                      message: error.message,
+                      code: error.code,
+                      details: error.details,
+                      hint: error.hint,
+                    });
+                    alert(`Failed to save quest: ${error.message || 'Unknown error'}. \n\nMake sure the quests table migration has been deployed to Supabase.`);
+                    return;
+                  }
+                  
+                  console.log('✅ Quest saved to database:', data);
+                  setQuestLine(newQuestLine);
+                } catch (error) {
+                  console.error('❌ Exception saving quest:', error);
+                  alert(`Failed to save quest: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                }
+              } else {
+                console.warn('⚠️ No organizationId available, saving quest to state only');
+                setQuestLine(newQuestLine);
+              }
             }}
           />
         )}
