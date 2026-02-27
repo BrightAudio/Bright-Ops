@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   FaBoxes,
   FaClipboardList,
@@ -20,7 +20,7 @@ import {
   FaPlayCircle,
   FaShieldAlt,
 } from 'react-icons/fa';
-import { useLicense } from '@/lib/hooks/useLicense';
+import { supabase } from '@/lib/supabaseClient';
 
 type MenuItem = {
   label: string;
@@ -65,20 +65,67 @@ const workSection: MenuSection = {
 
 export default function AppSidebar() {
   const pathname = usePathname() || '';
-  const { license } = useLicense();
   const [workExpanded, setWorkExpanded] = useState(
     pathname.includes('/dashboard/leads') || 
     pathname.includes('/dashboard/calendar') ||
     pathname.includes('/dashboard/imported')
   );
+  const [organizationPlan, setOrganizationPlan] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function fetchOrganizationPlan() {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: profile } = await supabase
+          .from('user_profiles')
+          .select('organization_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.organization_id) {
+          const { data: org } = await supabase
+            .from('organizations')
+            .select('plan')
+            .eq('id', profile.organization_id)
+            .single();
+
+          setOrganizationPlan(org?.plan || 'starter');
+        }
+      } catch (error) {
+        console.error('Error fetching organization plan:', error);
+        setOrganizationPlan('starter');
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    fetchOrganizationPlan();
+  }, []);
 
   // Gate Leads feature to Enterprise users only
-  const isEnterpriseUser = license?.plan === 'enterprise';
+  const isEnterpriseUser = organizationPlan === 'enterprise';
 
   // Filter Leads items - only show for Enterprise tier
   const filteredLeadsItems = isEnterpriseUser ? workSection.items : workSection.items.filter(
     item => !item.href.includes('/dashboard/leads')
   );
+
+  // Get tier badge color and label
+  const getTierBadge = () => {
+    switch (organizationPlan) {
+      case 'enterprise':
+        return { label: '✨ Enterprise', color: '#b45309', bg: 'rgba(180, 83, 9, 0.1)' };
+      case 'pro':
+        return { label: '⭐ Pro', color: '#7c3aed', bg: 'rgba(124, 58, 237, 0.1)' };
+      default:
+        return { label: '🚀 Starter', color: '#3b82f6', bg: 'rgba(59, 130, 246, 0.1)' };
+    }
+  };
+
+  const tierBadge = getTierBadge();
 
   return (
     <aside className="app-sidebar">
@@ -87,7 +134,18 @@ export default function AppSidebar() {
           <div style={{ width:36, height:36 }} className="rounded-md bg-[var(--primary-blue-500)] flex items-center justify-center text-white font-bold">BA</div>
           <div>
             <div className="text-sm font-semibold">Bright Audio</div>
-            <div className="text-xs text-[var(--muted)]">Home Base</div>
+            <div style={{ 
+              fontSize: '10px',
+              padding: '2px 6px',
+              borderRadius: '4px',
+              color: tierBadge.color,
+              backgroundColor: tierBadge.bg,
+              fontWeight: '600',
+              marginTop: '2px',
+              display: 'inline-block'
+            }}>
+              {tierBadge.label}
+            </div>
           </div>
         </div>
 
