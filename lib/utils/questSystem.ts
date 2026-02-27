@@ -24,6 +24,8 @@ export interface QuestStep {
   progress: number; // 0-100
   prerequisiteQuestId?: string;
   actionItems: string[];
+  requiredTier?: 'starter' | 'pro' | 'enterprise'; // Tier requirement for quest
+  isLeadBased?: boolean; // Flag if this quest uses lead events (enterprise only)
 }
 
 export interface QuestLine {
@@ -45,6 +47,33 @@ export interface QuestReward {
   description: string;
   icon: string;
   earnedAt?: Date;
+}
+
+/**
+ * Check if a license plan qualifies for a quest's tier requirement
+ */
+export function canAccessQuest(
+  questTier: 'starter' | 'pro' | 'enterprise' | undefined,
+  userPlan: 'starter' | 'pro' | 'enterprise' | string | null | undefined
+): boolean {
+  if (!questTier) return true; // No requirement = everyone can access
+  if (!userPlan) return false; // No user plan = cannot access
+
+  const tierRanking = { starter: 1, pro: 2, enterprise: 3 };
+  const userRanking = tierRanking[userPlan as keyof typeof tierRanking] || 0;
+  const questRanking = tierRanking[questTier];
+
+  return userRanking >= questRanking;
+}
+
+/**
+ * Check if a quest uses lead-based events (which require enterprise)
+ */
+export function isLeadBasedQuest(metricType: string, title: string): boolean {
+  return (
+    metricType === 'jobs' && 
+    (title.includes('Base') || title.includes('Client') || title.includes('Lead'))
+  );
 }
 
 /**
@@ -84,6 +113,8 @@ export function generateQuestLine(
     },
     status: 'active',
     progress: 0,
+    requiredTier: 'enterprise',
+    isLeadBased: true,
     actionItems: [
       'Reach out to 10 potential clients',
       'Schedule discovery calls',
