@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabaseClient';
-import { useLicense } from '@/lib/hooks/useLicense';
 import { FaChartLine, FaEnvelope, FaCog, FaSignOutAlt, FaUser, FaDollarSign, FaComments } from 'react-icons/fa';
 
 export default function LeadsLayout({
@@ -17,18 +16,51 @@ export default function LeadsLayout({
   const { license, loading: licenseLoading } = useLicense();
   const [user, setUser] = useState<any>(null);
   const [profile, setProfile] = useState<any>(null);
+  const [organizationPlan, setOrganizationPlan] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     checkAuth();
   }, []);
 
-  // Check license tier - Leads is Enterprise only
+  // Check organization tier - Leads is Enterprise only
   useEffect(() => {
-    if (!licenseLoading && license && license.plan !== 'enterprise') {
+    if (!loading && user) {
+      checkOrganizationPlan();
+    }
+  }, [user, loading]);
+
+  async function checkOrganizationPlan() {
+    try {
+      const { data: profile } = await supabase
+        .from('user_profiles')
+        .select('organization_id')
+        .eq('id', user.id)
+        .single();
+
+      if (profile?.organization_id) {
+        const { data: org } = await supabase
+          .from('organizations')
+          .select('plan')
+          .eq('id', profile.organization_id)
+          .single();
+
+        const plan = org?.plan || 'starter';
+        setOrganizationPlan(plan);
+
+        // Redirect if not enterprise
+        if (plan !== 'enterprise') {
+          console.log(`❌ Leads requires enterprise tier. Current plan: ${plan}`);
+          router.push('/app');
+        } else {
+          console.log('✅ Enterprise plan confirmed. Leads access granted.');
+        }
+      }
+    } catch (error) {
+      console.error('Error checking organization plan:', error);
       router.push('/app');
     }
-  }, [license, licenseLoading]);
+  }
 
   async function checkAuth() {
     const { data: { session } } = await supabase.auth.getSession();
@@ -47,7 +79,7 @@ export default function LeadsLayout({
     setLoading(false);
   }
 
-  if (loading || licenseLoading) {
+  if (loading) {
     return (
       <div style={{ 
         display: 'flex', 
