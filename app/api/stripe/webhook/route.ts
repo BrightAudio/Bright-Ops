@@ -31,7 +31,7 @@ function initializeClients() {
 }
 
 async function markStripeEventProcessed(
-  supabase: ReturnType<typeof createClient>,
+  supabase: any,
   eventId: string,
   type: string,
   payload: unknown,

@@ -97,17 +97,18 @@ export async function verifyLeadsAccessAndReserveTokens(params: {
   // ════════════════════════════════════════════════════════════
   // GATE 4: Audit log (for rate limiting + traceability)
   // ════════════════════════════════════════════════════════════
-  await supabaseAdmin
-    .from('lead_activities')
-    .insert({
-      user_id: params.userId,
-      activity_type: 'api_call',
-      endpoint: params.endpoint,
-      tokens_used: params.tokensNeeded
-    })
-    .catch((err) => {
-      console.error('Failed to log lead activity:', err);
-    });
+  try {
+    await supabaseAdmin
+      .from('lead_activities')
+      .insert({
+        user_id: params.userId,
+        activity_type: 'api_call',
+        endpoint: params.endpoint,
+        tokens_used: params.tokensNeeded
+      });
+  } catch (err) {
+    console.error('Failed to log lead activity:', err);
+  }
 
   return { allowed: true, tokensRemaining: Number(newBalance) };
 }
