@@ -111,7 +111,7 @@ function MetricCard({
     <div
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className={`rounded-lg p-6 border-l-4 transition-all duration-300 cursor-pointer transform hover:scale-105 hover:shadow-lg ${
+      className={`rounded-lg p-6 border-l-4 transition-all duration-300 cursor-pointer hover:shadow-lg ${
         color === 'blue'
           ? 'bg-white border-blue-500 hover:bg-blue-50'
           : color === 'green'
@@ -138,7 +138,7 @@ function MetricCard({
             </div>
           )}
         </div>
-        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-transform duration-300 ${isHovered ? 'scale-110 rotate-12' : ''} ${color === 'blue' ? 'bg-blue-100 text-blue-500' : color === 'green' ? 'bg-green-100 text-green-500' : color === 'purple' ? 'bg-purple-100 text-purple-500' : 'bg-orange-100 text-orange-500'}`}>
+        <div className={`w-12 h-12 rounded-full flex items-center justify-center transition-opacity duration-300 ${color === 'blue' ? 'bg-blue-100 text-blue-500' : color === 'green' ? 'bg-green-100 text-green-500' : color === 'purple' ? 'bg-purple-100 text-purple-500' : 'bg-orange-100 text-orange-500'}`}>
           {Icon}
         </div>
       </div>
