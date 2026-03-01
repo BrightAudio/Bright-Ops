@@ -119,6 +119,12 @@ export default function FinancialGoalsClient() {
   const [templateGoals, setTemplateGoals] = useState<any[]>([]);
   const [organizationPlan, setOrganizationPlan] = useState<'starter' | 'pro' | 'enterprise' | null>(null);
   const [currentUser, setCurrentUser] = useState<{id: string; email?: string; name?: string} | null>(null);
+  
+  // Goal setting state
+  const [suggestedQuarterlyGoal, setSuggestedQuarterlyGoal] = useState<number>(25000);
+  const [customQuarterlyGoal, setCustomQuarterlyGoal] = useState<number | null>(null);
+  const [showGoalModal, setShowGoalModal] = useState(false);
+  const [goalInputValue, setGoalInputValue] = useState<string>('');
 
   // DEBUG
   console.log('FinancialGoalsClient rendering - license:', license, 'licenseLoading:', licenseLoading, 'organizationId:', organizationId, 'organizationPlan:', organizationPlan);
@@ -396,7 +402,17 @@ export default function FinancialGoalsClient() {
           ? metrics.monthlyTrend.reduce((a, b) => a + b, 0) / metrics.monthlyTrend.length 
           : metrics.jobsIncome / 3;
         
-        const realisticQuarterlyTarget = monthlyAvg * 3;
+        const suggested = monthlyAvg * 3;
+        setSuggestedQuarterlyGoal(suggested);
+        
+        // Load custom goal from session if set, otherwise use suggested
+        const saved = sessionStorage.getItem(`quarterlyGoal-${organizationId}`);
+        if (saved) {
+          setCustomQuarterlyGoal(Number(saved));
+        }
+
+        // Use custom goal if set, otherwise use suggested
+        const targetToUse = customQuarterlyGoal || suggested;
 
         // Get quarterly data
         const forecastResult = calculateForecast(0, 0, 0, 0);
@@ -404,7 +420,7 @@ export default function FinancialGoalsClient() {
 
         // Generate scenarios based on actual metrics
         const scenariosList = generateScenarios(
-          realisticQuarterlyTarget,
+          targetToUse,
           forecastResult,
           metrics.completedJobs > 0 ? metrics.jobsIncome / metrics.completedJobs : 0,
           metrics.completedJobs > 0 ? metrics.jobsIncome / metrics.completedJobs : 0
@@ -414,7 +430,7 @@ export default function FinancialGoalsClient() {
         // Calculate pace metrics
         const curr = quarterDates[currentQuarter];
         const paceResult = calculatePaceMetrics(
-          realisticQuarterlyTarget,
+          targetToUse,
           currentQuarterData?.totalRevenue || 0,
           currentQuarter,
           new Date(),
@@ -424,15 +440,18 @@ export default function FinancialGoalsClient() {
         setPaceMetrics(paceResult);
       } else {
         // Fallback to default values if no metrics yet
+        const saved = sessionStorage.getItem(`quarterlyGoal-${organizationId}`);
+        const targetToUse = saved ? Number(saved) : suggestedQuarterlyGoal;
+        
         const forecastResult = calculateForecast(0, 0, 0, 0);
         setForecast(forecastResult);
 
-        const scenariosList = generateScenarios(25000, forecastResult, 0, 0);
+        const scenariosList = generateScenarios(targetToUse, forecastResult, 0, 0);
         setScenarios(scenariosList);
 
         const curr = quarterDates[currentQuarter];
         const paceResult = calculatePaceMetrics(
-          25000,
+          targetToUse,
           0,
           currentQuarter,
           new Date(),
@@ -803,6 +822,29 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
     return Math.max(0, Math.min(100, (elapsedMs / totalMs) * 100));
   };
 
+  // Handle goal setting
+  const handleSaveGoal = () => {
+    const goal = goalInputValue ? Number(goalInputValue) : suggestedQuarterlyGoal;
+    if (goal > 0) {
+      setCustomQuarterlyGoal(goal);
+      sessionStorage.setItem(`quarterlyGoal-${organizationId}`, goal.toString());
+      setShowGoalModal(false);
+      setGoalInputValue('');
+      
+      // Trigger recalculation
+      setNotification({
+        id: `goal-set-${Date.now()}`,
+        type: 'success',
+        title: '✅ Quarterly Goal Set',
+        message: `Goal set to $${goal.toLocaleString('en-US', { maximumFractionDigits: 0 })}`,
+        duration: 3000,
+        icon: '🎯',
+      });
+    }
+  };
+
+  const activeGoal = customQuarterlyGoal || suggestedQuarterlyGoal;
+
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f3f0' }}>
       {/* Quest Notification */}
@@ -833,37 +875,38 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
               <p style={{ color: '#a16207' }} className="mt-2 font-medium">
                 AI-Powered Strategic Planning • Professional Financial Analysis
               </p>
-              {/* Navigation Links */}
-              <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem' }}>
-                <button
-                  onClick={() => setActiveTab('analysis')}
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color: activeTab === 'analysis' ? '#fbbf24' : '#999999',
-                    textDecoration: 'none',
-                    paddingBottom: '0.25rem',
-                    borderBottom: activeTab === 'analysis' ? '2px solid #fbbf24' : 'none',
-                    background: 'none',
-                    borderTop: 'none',
-                    borderRight: 'none',
-                    borderLeft: 'none',
-                    cursor: 'pointer',
-                    transition: 'all 0.3s ease',
-                  }}
-                  onMouseEnter={(e) => {
-                    if (activeTab !== 'analysis') {
-                      (e.currentTarget as HTMLElement).style.color = '#d97706';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (activeTab !== 'analysis') {
-                      (e.currentTarget as HTMLElement).style.color = '#999999';
-                    }
-                  }}
-                >
-                  Analysis
-                </button>
+              {/* Navigation Links with Set Goal Button */}
+              <div style={{ marginTop: '1rem', display: 'flex', gap: '2rem', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '2rem' }}>
+                  <button
+                    onClick={() => setActiveTab('analysis')}
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color: activeTab === 'analysis' ? '#fbbf24' : '#999999',
+                      textDecoration: 'none',
+                      paddingBottom: '0.25rem',
+                      borderBottom: activeTab === 'analysis' ? '2px solid #fbbf24' : 'none',
+                      background: 'none',
+                      borderTop: 'none',
+                      borderRight: 'none',
+                      borderLeft: 'none',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      if (activeTab !== 'analysis') {
+                        (e.currentTarget as HTMLElement).style.color = '#d97706';
+                      }
+                    }}
+                    onMouseLeave={(e) => {
+                      if (activeTab !== 'analysis') {
+                        (e.currentTarget as HTMLElement).style.color = '#999999';
+                      }
+                    }}
+                  >
+                    Analysis
+                  </button>
                 <button
                   onClick={() => setActiveTab('dashboard')}
                   style={{
@@ -1002,11 +1045,34 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
                 >
                   Saved Reports
                 </a>
+                </div>
               </div>
             </div>
-            <div className="text-right">
+            <div className="text-right" style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '1rem' }}>
+              <button 
+                onClick={() => setShowGoalModal(true)}
+                style={{
+                  padding: '0.5rem 1rem',
+                  backgroundColor: '#fbbf24',
+                  color: '#78350f',
+                  border: 'none',
+                  borderRadius: '0.5rem',
+                  fontSize: '0.875rem',
+                  fontWeight: 600,
+                  cursor: 'pointer',
+                  transition: 'all 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#f59e0b';
+                }}
+                onMouseLeave={(e) => {
+                  (e.currentTarget as HTMLElement).style.backgroundColor = '#fbbf24';
+                }}
+              >
+                📊 Set Goal
+              </button>
               <div style={{ fontSize: '2.5rem' }}>💎</div>
-              <div style={{ color: '#b45309' }} className="text-sm font-semibold mt-1">
+              <div style={{ color: '#b45309' }} className="text-sm font-semibold">
                 Strategic Planning
               </div>
             </div>
@@ -1965,6 +2031,124 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
             />
           ) : null;
         })()}
+
+        {/* Goal Setting Modal */}
+        {showGoalModal && (
+          <div style={{
+            position: 'fixed',
+            inset: 0,
+            backgroundColor: 'rgba(0, 0, 0, 0.5)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 50,
+          }}>
+            <div style={{
+              backgroundColor: 'white',
+              borderRadius: '0.5rem',
+              padding: '2rem',
+              maxWidth: '28rem',
+              boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)',
+            }}>
+              <h2 style={{ fontSize: '1.5rem', fontWeight: 'bold', marginBottom: '1rem', color: '#78350f' }}>
+                Set Quarterly Goal
+              </h2>
+              
+              {/* Suggested Amount Display */}
+              <div style={{
+                marginBottom: '1.5rem',
+                padding: '1rem',
+                backgroundColor: '#dbeafe',
+                borderRadius: '0.375rem',
+                border: '1px solid #93c5fd',
+              }}>
+                <p style={{ fontSize: '0.875rem', color: '#475569' }}>
+                  Suggested Goal (based on history)
+                </p>
+                <p style={{ fontSize: '1.875rem', fontWeight: 'bold', color: '#1e40af', marginTop: '0.25rem' }}>
+                  ${suggestedQuarterlyGoal.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                </p>
+              </div>
+              
+              {/* Manual Input */}
+              <div style={{ marginBottom: '1.5rem' }}>
+                <label style={{ display: 'block', fontSize: '0.875rem', fontWeight: 500, marginBottom: '0.5rem', color: '#1f2937' }}>
+                  Or enter custom goal:
+                </label>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <span style={{ color: '#6b7280', fontSize: '1.125rem' }}>$</span>
+                  <input 
+                    type="number" 
+                    value={goalInputValue} 
+                    onChange={(e) => setGoalInputValue(e.target.value)}
+                    placeholder={`${suggestedQuarterlyGoal.toLocaleString('en-US', { maximumFractionDigits: 0 })}`}
+                    style={{
+                      flex: 1,
+                      padding: '0.5rem 0.75rem',
+                      border: '1px solid #d1d5db',
+                      borderRadius: '0.375rem',
+                      fontSize: '1rem',
+                      fontFamily: 'inherit',
+                    }}
+                  />
+                </div>
+              </div>
+              
+              {/* Action Buttons */}
+              <div style={{ display: 'flex', gap: '0.75rem' }}>
+                <button 
+                  onClick={() => { 
+                    setGoalInputValue(''); 
+                    setShowGoalModal(false); 
+                  }}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem 1rem',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '0.375rem',
+                    backgroundColor: 'white',
+                    color: '#374151',
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '#f9fafb';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = 'white';
+                  }}
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleSaveGoal}
+                  style={{
+                    flex: 1,
+                    padding: '0.5rem 1rem',
+                    backgroundColor: '#3b82f6',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '0.375rem',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    transition: 'all 0.2s ease',
+                  }}
+                  onMouseEnter={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '#2563eb';
+                  }}
+                  onMouseLeave={(e) => {
+                    (e.currentTarget as HTMLElement).style.backgroundColor = '#3b82f6';
+                  }}
+                >
+                  💾 Save Goal
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
