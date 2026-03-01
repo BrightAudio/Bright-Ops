@@ -5,17 +5,33 @@ import { createClient } from '@supabase/supabase-js';
 
 export const runtime = 'nodejs';
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2024-06-20' as any,
-});
+// Initialize clients lazily in the request handler to avoid build-time env var requirements
+function initializeClients() {
+  if (!process.env.STRIPE_SECRET_KEY) {
+    throw new Error('Missing STRIPE_SECRET_KEY environment variable');
+  }
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL) {
+    throw new Error('Missing NEXT_PUBLIC_SUPABASE_URL environment variable');
+  }
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) {
+    throw new Error('Missing SUPABASE_SERVICE_ROLE_KEY environment variable');
+  }
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+  const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+    apiVersion: '2024-06-20' as any,
+  });
+
+  const supabase = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL,
+    process.env.SUPABASE_SERVICE_ROLE_KEY,
+    { auth: { persistSession: false } }
+  );
+
+  return { stripe, supabase };
+}
 
 async function markStripeEventProcessed(
+  supabase: ReturnType<typeof createClient>,
   eventId: string,
   type: string,
   payload: unknown,
@@ -34,6 +50,15 @@ async function markStripeEventProcessed(
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  try {
+    var { stripe, supabase } = initializeClients();
+  } catch (error) {
+    console.error('❌ Failed to initialize Stripe/Supabase clients:', error);
+    return NextResponse.json(
+      { error: 'Webhook handler misconfigured' },
+      { status: 500 }
+    );
+  }
   const sig = (await headers()).get('stripe-signature');
 
   if (!sig) {
@@ -188,11 +213,11 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         break;
     }
 
-    await markStripeEventProcessed(event.id, event.type, event);
+    await markStripeEventProcessed(supabase, event.id, event.type, event);
     return NextResponse.json({ received: true });
   } catch (e: unknown) {
     const error = e as Error;
-    await markStripeEventProcessed(event.id, event.type, event, error?.message ?? 'unknown');
+    await markStripeEventProcessed(supabase, event.id, event.type, event, error?.message ?? 'unknown');
     return NextResponse.json({ error: 'Webhook handler failed' }, { status: 500 });
   }
 }

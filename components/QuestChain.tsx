@@ -14,11 +14,18 @@ interface QuestChainProps {
   metrics: any;
   organizationPlan?: 'starter' | 'pro' | 'enterprise' | null;
   onQuestGenerate: () => void;
+  onQuestComplete?: (questId: string, reward: any) => void;
+  onClaimReward?: (questId: string, reward: any) => void;
+  onRegenerateQuest?: () => void;
+  completedQuests?: any[];
 }
 
-export default function QuestChain({ questLine, metrics, organizationPlan, onQuestGenerate }: QuestChainProps) {
+export default function QuestChain({ questLine, metrics, organizationPlan, onQuestGenerate, onQuestComplete, onClaimReward, onRegenerateQuest, completedQuests = [] }: QuestChainProps) {
   const [updatedQuests, setUpdatedQuests] = useState<QuestLine | null>(questLine);
   const [showRewardNotification, setShowRewardNotification] = useState<string | null>(null);
+  
+  // Get the active quest
+  const activeQuest = updatedQuests ? getActiveQuest(updatedQuests) : null;
 
   useEffect(() => {
     if (questLine && metrics) {
@@ -75,8 +82,6 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
     );
   }
 
-  const activeQuest = getActiveQuest(updatedQuests);
-
   return (
     <div style={{ padding: '1.5rem', backgroundColor: '#f9fafb', borderRadius: '0.75rem' }}>
       {/* Reward Notification */}
@@ -99,9 +104,54 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
 
       {/* Header */}
       <div style={{ marginBottom: '1.5rem' }}>
-        <h3 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1f2937', margin: '0 0 0.5rem 0' }}>
-          🎮 Quest Line: {updatedQuests.targetGoal}
-        </h3>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem', flexWrap: 'wrap', gap: '0.5rem' }}>
+          <h3 style={{ fontSize: '1.5rem', fontWeight: '700', color: '#1f2937', margin: 0 }}>
+            🎮 Quest Line: {updatedQuests.targetGoal}
+          </h3>
+          <div style={{ display: 'flex', gap: '0.5rem' }}>
+            <button
+              onClick={() => {
+                if (questLine && metrics) {
+                  const updated = updateQuestStates(questLine, metrics);
+                  updated.then((result) => setUpdatedQuests(result));
+                }
+              }}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#f59e0b',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#d97706')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#f59e0b')}
+            >
+              🔄 Refresh Progress
+            </button>
+            <button
+              onClick={onRegenerateQuest}
+              style={{
+                padding: '0.5rem 1rem',
+                backgroundColor: '#8b5cf6',
+                color: 'white',
+                border: 'none',
+                borderRadius: '0.375rem',
+                cursor: 'pointer',
+                fontSize: '0.875rem',
+                fontWeight: '600',
+                transition: 'background-color 0.2s',
+              }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#7c3aed')}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#8b5cf6')}
+            >
+              ♻️ Regenerate Quest
+            </button>
+          </div>
+        </div>
         <p style={{ color: '#6b7280', fontSize: '0.875rem', margin: 0 }}>
           Target: ${updatedQuests.targetRevenue.toLocaleString()} • Quarter: {updatedQuests.quarter}
         </p>
@@ -133,6 +183,27 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
             }}
           />
         </div>
+
+        {/* Progress Context */}
+        {activeQuest && (
+          <div
+            style={{
+              marginTop: '1rem',
+              padding: '0.75rem 1rem',
+              backgroundColor: '#fef3c7',
+              borderRadius: '0.375rem',
+              fontSize: '0.875rem',
+              color: '#78350f',
+            }}
+          >
+            <p style={{ margin: 0, fontWeight: '600', marginBottom: '0.25rem' }}>
+              📊 Current Focus: {activeQuest.title}
+            </p>
+            <p style={{ margin: 0, fontSize: '0.8125rem' }}>
+              Progress: {activeQuest.progress}% • Target: {activeQuest.metricTarget.toLocaleString()} {activeQuest.metricType}
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Quest Steps */}
@@ -317,6 +388,7 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
                       padding: '0.75rem',
                       backgroundColor: '#f9fafb',
                       borderRadius: '0.25rem',
+                      marginBottom: '0.75rem',
                     }}
                   >
                     <p style={{ fontSize: '0.75rem', color: '#6b7280', margin: 0, flex: 1 }}>
@@ -331,6 +403,31 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
                       </div>
                     )}
                   </div>
+
+                  {/* Action Buttons */}
+                  {isCompleted && (
+                    <div style={{ display: 'flex', gap: '0.75rem' }}>
+                      <button
+                        onClick={() => onClaimReward?.(quest.id, quest.reward)}
+                        style={{
+                          flex: 1,
+                          padding: '0.5rem 1rem',
+                          backgroundColor: '#16a34a',
+                          color: 'white',
+                          border: 'none',
+                          borderRadius: '0.375rem',
+                          cursor: 'pointer',
+                          fontWeight: '600',
+                          fontSize: '0.875rem',
+                          transition: 'background-color 0.2s',
+                        }}
+                        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#15803d')}
+                        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#16a34a')}
+                      >
+                        🏆 Claim Reward
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -379,6 +476,74 @@ export default function QuestChain({ questLine, metrics, organizationPlan, onQue
           <p style={{ fontSize: '0.875rem', color: '#92400e', margin: '0.5rem 0 0 0' }}>
             You've achieved your goal of ${updatedQuests.targetRevenue.toLocaleString()} for {updatedQuests.quarter}
           </p>
+        </div>
+      )}
+
+      {/* Completed Quests Section */}
+      {completedQuests && completedQuests.length > 0 && (
+        <div style={{ marginTop: '2.5rem', paddingTop: '1.5rem', borderTop: '2px solid #e5e7eb' }}>
+          <h4 style={{ fontSize: '1.25rem', fontWeight: '700', color: '#1f2937', margin: '0 0 1.5rem 0' }}>
+            ✅ Completed Quests ({completedQuests.length})
+          </h4>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+            {completedQuests.map((quest) => (
+              <div
+                key={quest.id}
+                style={{
+                  backgroundColor: '#dcfce7',
+                  border: '2px solid #86efac',
+                  borderRadius: '0.5rem',
+                  padding: '1rem',
+                }}
+              >
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start' }}>
+                  <div style={{ flex: 1 }}>
+                    <p style={{ fontSize: '1rem', fontWeight: '700', color: '#166534', margin: '0 0 0.25rem 0' }}>
+                      ✅ {quest.title}
+                    </p>
+                    <p style={{ fontSize: '0.875rem', color: '#165e3a', margin: '0 0 0.5rem 0' }}>
+                      Quarter: {quest.quarter} • Target: ${quest.target_amount?.toLocaleString() || 'N/A'}
+                    </p>
+                    {quest.completed_by && (
+                      <p style={{ fontSize: '0.75rem', color: '#15803d', margin: '0 0 0.25rem 0' }}>
+                        ✊ Team Effort
+                      </p>
+                    )}
+                    {quest.contributors && (
+                      <div style={{ position: 'relative', display: 'inline-block', width: '100%' }}>
+                        <p 
+                          style={{ fontSize: '0.75rem', color: '#15803d', margin: 0, cursor: 'help' }}
+                          title={(() => {
+                            try {
+                              const contributors = JSON.parse(quest.contributors);
+                              return 'Team: ' + contributors.map((c: any) => c.name || c.email).join(', ');
+                            } catch {
+                              return 'Team members contributed';
+                            }
+                          })()}
+                        >
+                          👥 {JSON.parse(quest.contributors).length} team member{JSON.parse(quest.contributors).length > 1 ? 's' : ''} contributed: {(() => {
+                            try {
+                              const contributors = JSON.parse(quest.contributors);
+                              return contributors.map((c: any) => c.name || c.email).join(', ');
+                            } catch {
+                              return 'View quest details';
+                            }
+                          })()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                  <div style={{ textAlign: 'right', marginLeft: '1rem' }}>
+                    <div style={{ fontSize: '2rem' }}>🏆</div>
+                    <p style={{ fontSize: '0.75rem', color: '#15803d', fontWeight: '600', margin: 0 }}>
+                      {new Date(quest.completed_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

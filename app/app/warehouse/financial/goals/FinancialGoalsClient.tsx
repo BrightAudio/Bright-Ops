@@ -13,6 +13,7 @@ import QuarterDateEditor from '@/components/QuarterDateEditor';
 import QuestChain from '@/components/QuestChain';
 import GoalTemplates from '@/components/GoalTemplates';
 import IndustryBenchmarksComponent from '@/components/IndustryBenchmarks';
+import QuestNotification, { ToastNotification } from '@/components/QuestNotification';
 import {
   calculateForecast,
   generateScenarios,
@@ -22,7 +23,7 @@ import {
   PaceMetrics,
 } from '@/lib/utils/goalForecasting';
 import { generateQuestLine, QuestLine } from '@/lib/utils/questSystem';
-import { createRewardTracker, RewardTracker } from '@/lib/utils/questRewards';
+import { createRewardTracker, RewardTracker, awardAchievement, generateRewardNotification } from '@/lib/utils/questRewards';
 import { calculateAllRealMetrics } from '@/lib/utils/calculateRealMetrics';
 
 type Quarter = 'Q1' | 'Q2' | 'Q3' | 'Q4';
@@ -98,6 +99,7 @@ export default function FinancialGoalsClient() {
   });
   const [loading, setLoading] = useState<LoadingState>({ metrics: true, analysis: false });
   const [error, setError] = useState<string | null>(null);
+  const [notification, setNotification] = useState<ToastNotification | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [upcomingJobs, setUpcomingJobs] = useState<CalendarEvent[]>([]);
   const [editingQuarter, setEditingQuarter] = useState<Quarter | null>(null);
@@ -111,9 +113,12 @@ export default function FinancialGoalsClient() {
 
   // Phase 2: Quest System with AI-powered goal progression
   const [questLine, setQuestLine] = useState<QuestLine | null>(null);
+  const [questId, setQuestId] = useState<string | null>(null); // Track DB quest ID
+  const [completedQuests, setCompletedQuests] = useState<any[]>([]);
   const [rewardTracker, setRewardTracker] = useState<RewardTracker>(createRewardTracker());
   const [templateGoals, setTemplateGoals] = useState<any[]>([]);
   const [organizationPlan, setOrganizationPlan] = useState<'starter' | 'pro' | 'enterprise' | null>(null);
+  const [currentUser, setCurrentUser] = useState<{id: string; email?: string; name?: string} | null>(null);
 
   // DEBUG
   console.log('FinancialGoalsClient rendering - license:', license, 'licenseLoading:', licenseLoading, 'organizationId:', organizationId, 'organizationPlan:', organizationPlan);
@@ -124,11 +129,25 @@ export default function FinancialGoalsClient() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Store current user
       const { data: profile } = await supabase
         .from('user_profiles')
-        .select('organization_id')
+        .select('organization_id, full_name')
         .eq('id', user.id)
         .single();
+
+      if (profile) {
+        setCurrentUser({
+          id: user.id,
+          email: user.email,
+          name: profile.full_name && profile.full_name.trim() ? profile.full_name : (user.email?.split('@')[0] || 'User')
+        });
+        console.log('✅ Current user loaded:', {
+          id: user.id,
+          email: user.email,
+          fullName: profile.full_name,
+        });
+      }
 
       if (profile?.organization_id) {
         setOrganizationId(profile.organization_id);
@@ -201,7 +220,8 @@ export default function FinancialGoalsClient() {
   const loadQuests = async () => {
     if (!organizationId) return;
     try {
-      const { data: quests } = await supabase
+      // Load active quests
+      const { data: quests, error } = await supabase
         .from('quests')
         .select('*')
         .eq('organization_id', organizationId)
@@ -210,13 +230,38 @@ export default function FinancialGoalsClient() {
         .order('created_at', { ascending: false })
         .limit(1);
       
+      if (error) {
+        console.warn('⚠️ Error querying quests table:', error.message);
+        // Table might not exist yet, that's ok
+        return;
+      }
+      
       if (quests && quests.length > 0) {
         const quest = quests[0];
-        console.log('✅ Loaded existing quest:', quest.title);
-        // Metadata is already stored as JSONB in Supabase
+        console.log('✅ Loaded existing quest:', quest.title, 'Progress:', quest.current_progress);
+        // Metadata is already stored as JSONB in Supabase - no need to parse
         if (quest.metadata) {
-          setQuestLine(JSON.parse(JSON.stringify(quest.metadata)) as QuestLine);
+          setQuestLine(quest.metadata as unknown as QuestLine);
+          setQuestId(quest.id);
         }
+      } else {
+        console.log('📭 No active quests for', currentQuarter);
+        setQuestLine(null);
+        setQuestId(null);
+      }
+
+      // Load completed quests for this quarter
+      const { data: completed, error: completedError } = await supabase
+        .from('quests')
+        .select('*')
+        .eq('organization_id', organizationId)
+        .eq('quarter', currentQuarter)
+        .in('status', ['completed', 'archived'])
+        .order('completed_at', { ascending: false });
+
+      if (!completedError && completed) {
+        setCompletedQuests(completed);
+        console.log('✅ Loaded', completed.length, 'completed quests');
       }
     } catch (error) {
       console.error('Error loading quests:', error);
@@ -236,6 +281,85 @@ export default function FinancialGoalsClient() {
     } catch (err) {
       console.error('Error saving quarter dates:', err);
       throw new Error('Failed to save quarter dates');
+    }
+  };
+
+  // Regenerate quest - marks old as archived and creates new one
+  const regenerateQuest = async () => {
+    if (!questId || !organizationId || !questLine) return;
+
+    console.log('♻️ Regenerating quest by:', currentUser?.name);
+
+    try {
+      // Archive old quest
+      const { error: archiveError } = await supabase
+        .from('quests')
+        .update({ status: 'archived' })
+        .eq('id', questId);
+
+      if (archiveError) {
+        console.error('Error archiving old quest:', archiveError);
+        return;
+      }
+
+      // Generate new quest line
+      const newQuestLine = generateQuestLine(
+        'Quarterly Revenue Goal',
+        75000,
+        currentQuarter,
+        metrics
+      );
+
+      // Save new quest to database with reference to parent
+      const { data, error } = await supabase
+        .from('quests')
+        .insert([
+          {
+            organization_id: organizationId,
+            title: newQuestLine.targetGoal,
+            quarter: currentQuarter,
+            target_amount: newQuestLine.targetRevenue || 75000,
+            current_progress: 0,
+            status: 'active',
+            quest_type: 'quarterly_revenue',
+            metadata: JSON.parse(JSON.stringify(newQuestLine)) as any,
+            parent_quest_id: questId, // Link to parent
+            contributors: JSON.stringify([
+              {
+                user_id: currentUser?.id,
+                email: currentUser?.email,
+                name: currentUser?.name,
+                action: 'regenerated',
+                timestamp: new Date().toISOString(),
+              },
+            ]),
+          },
+        ])
+        .select();
+
+      if (error) {
+        console.error('Error saving new quest:', error);
+        alert(`Failed to regenerate quest: ${error.message}`);
+        return;
+      }
+
+      console.log('✅ Quest regenerated:', data);
+      setQuestLine(newQuestLine);
+      setQuestId(data[0]?.id);
+
+      // Show notification
+      setNotification({
+        id: `regenerate-${Date.now()}`,
+        type: 'info',
+        title: '♻️ Quest Regenerated',
+        message: 'New quest generated, old quest archived',
+        duration: 4000,
+        icon: '🎮',
+      });
+
+      setTimeout(() => loadQuests(), 500);
+    } catch (error) {
+      console.error('Error regenerating quest:', error);
     }
   };
 
@@ -681,6 +805,12 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
 
   return (
     <div style={{ minHeight: '100vh', backgroundColor: '#f5f3f0' }}>
+      {/* Quest Notification */}
+      <QuestNotification 
+        notification={notification}
+        onDismiss={() => setNotification(null)}
+      />
+      
       {/* Header */}
       <div
         style={{ backgroundColor: '#fff8f0', borderBottom: '2px solid #fcd34d' }}
@@ -1594,7 +1724,50 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
             questLine={questLine}
             metrics={metrics}
             organizationPlan={organizationPlan}
+            completedQuests={completedQuests}
             onQuestGenerate={async () => {
+              // Import all safety layers
+              const { executeWithTokenRefund } = await import('@/lib/utils/tokenTransaction');
+              const { runAbuseCheckBattery } = await import('@/lib/utils/tokenAbusePrevention');
+              const { validateAIOperationAllowed } = await import('@/lib/utils/licenseSynergy');
+              const { hasEnoughTokens } = await import('@/lib/utils/aiTokens');
+              
+              // Layer 0: Validate org and user exist
+              if (!organizationId || !currentUser?.id) {
+                alert('❌ Organization or user not found');
+                return;
+              }
+              
+              // Layer 1: Plan gate
+              if (organizationPlan === 'starter') {
+                alert('🚫 AI goals are not available on the Starter plan. Upgrade to Pro or Enterprise to unlock AI-powered goal generation.');
+                return;
+              }
+              
+              // Layer 2: License check (payment failure, expiration, etc.)
+              const licenseCheck = await validateAIOperationAllowed(organizationId, 'generate_goal');
+              if (!licenseCheck.allowed) {
+                alert(`⚠️ ${licenseCheck.reason}`);
+                if (licenseCheck.shouldRefundTokens) {
+                  console.log('🔄 Tokens will be refunded due to license status change');
+                }
+                return;
+              }
+              
+              // Layer 3: Token availability
+              const hasTokens = await hasEnoughTokens(organizationId, 'generate_goal');
+              if (!hasTokens) {
+                alert('💰 You are out of AI tokens for goal generation. Upgrade your plan or buy additional credits at /account/buy-credits');
+                return;
+              }
+              
+              // Layer 4: Abuse prevention (rate limits, frequency, etc.)
+              const abuseCheck = await runAbuseCheckBattery(currentUser.id, organizationId, 3); // 3 = TOKEN_COSTS['generate_goal']
+              if (!abuseCheck.allowed) {
+                alert(`⚠️ ${abuseCheck.reason}`);
+                return;
+              }
+
               const newQuestLine = generateQuestLine(
                 'Quarterly Revenue Goal',
                 75000,
@@ -1602,61 +1775,162 @@ Be data-driven and specific. Use the aggregate metrics to justify your targets.`
                 metrics
               );
               
-              // Save to database
+              // Set up atomic transaction with auto-refund
               if (organizationId) {
                 try {
-                  // Validate inputs
-                  if (!currentQuarter || !newQuestLine.targetGoal) {
-                    console.error('❌ Missing required quest fields');
-                    alert('Cannot create quest: missing required fields.');
-                    return;
-                  }
+                  // Use atomic transaction wrapper - handles token safety
+                  const { result: questData, tokenResult } = await executeWithTokenRefund(
+                    {
+                      organizationId,
+                      userId: currentUser.id,
+                      featureUsed: 'generate_goal',
+                      tokensRequested: 3,
+                    },
+                    async () => {
+                      // This runs BEFORE token deduction
+                      // If this throws or times out, NO tokens are deducted
+                      
+                      if (!currentQuarter || !newQuestLine.targetGoal) {
+                        throw new Error('Missing required quest fields');
+                      }
 
-                  console.log('💾 Saving quest to database:', {
-                    organization_id: organizationId,
-                    title: newQuestLine.targetGoal,
-                    quarter: currentQuarter,
-                    target_amount: newQuestLine.targetRevenue,
-                  });
-
-                  const { data, error } = await supabase
-                    .from('quests')
-                    .insert([
-                      {
+                      console.log('💾 Saving quest to database:', {
                         organization_id: organizationId,
                         title: newQuestLine.targetGoal,
                         quarter: currentQuarter,
-                        target_amount: newQuestLine.targetRevenue || 75000,
-                        current_progress: 0,
-                        status: 'active',
-                        quest_type: 'quarterly_revenue',
-                        metadata: JSON.parse(JSON.stringify(newQuestLine)) as any,
+                        target_amount: newQuestLine.targetRevenue,
+                      });
+
+                      const { data, error } = await supabase
+                        .from('quests')
+                        .insert([
+                          {
+                            organization_id: organizationId,
+                            title: newQuestLine.targetGoal,
+                            quarter: currentQuarter,
+                            target_amount: newQuestLine.targetRevenue || 75000,
+                            current_progress: 0,
+                            status: 'active',
+                            quest_type: 'quarterly_revenue',
+                            metadata: JSON.parse(JSON.stringify(newQuestLine)) as any,
+                          }
+                        ])
+                        .select();
+                      
+                      if (error) {
+                        throw new Error(`Failed to save: ${error.message}`);
                       }
-                    ])
-                    .select();
+                      
+                      return data;
+                    },
+                    30000 // 30 second timeout
+                  );
                   
-                  if (error) {
-                    console.error('❌ Error saving quest - Details:', {
-                      message: error.message,
-                      code: error.code,
-                      details: error.details,
-                      hint: error.hint,
-                    });
-                    alert(`Failed to save quest: ${error.message || 'Unknown error'}. \n\nMake sure the quests table migration has been deployed to Supabase.`);
+                  if (!tokenResult.success) {
+                    console.error('❌ Transaction failed:', tokenResult.message);
+                    alert(`Quest creation failed: ${tokenResult.message}`);
                     return;
                   }
                   
-                  console.log('✅ Quest saved to database:', data);
+                  console.log('✅ Quest saved and tokens deducted:', questData);
                   setQuestLine(newQuestLine);
+                  
+                  // Show success notification with remaining balance
+                  setNotification({
+                    id: `quest-created-${Date.now()}`,
+                    type: 'success',
+                    title: '🎮 New Quest Generated!',
+                    message: `${newQuestLine.targetGoal} for ${currentQuarter}. ${tokenResult.remainingBalance} tokens remaining.`,
+                    duration: 5000,
+                    icon: '⚡',
+                  });
+                  
+                  // Reload from database to ensure sync
+                  setTimeout(() => loadQuests(), 500);
                 } catch (error) {
-                  console.error('❌ Exception saving quest:', error);
-                  alert(`Failed to save quest: ${error instanceof Error ? error.message : 'Unknown error'}`);
+                  console.error('❌ Exception in quest generation:', error);
+                  alert(`Failed to create quest: ${error instanceof Error ? error.message : 'Unknown error'}`);
                 }
               } else {
-                console.warn('⚠️ No organizationId available, saving quest to state only');
-                setQuestLine(newQuestLine);
+                console.warn('⚠️ No organizationId available');
+                alert('Unable to save quest - organization not found');
               }
             }}
+            onClaimReward={async (questIdParam: string, reward: any) => {
+              console.log('🏆 Claiming reward:', reward.name, 'for quest:', questIdParam);
+              console.log('📝 Claiming user:', {
+                id: currentUser?.id,
+                name: currentUser?.name,
+                email: currentUser?.email,
+              });
+              
+              // Award achievement and update tracker
+              const { achievement, tracker: updatedTracker } = awardAchievement(
+                questIdParam,
+                reward.name,
+                rewardTracker
+              );
+              setRewardTracker(updatedTracker);
+              localStorage.setItem('rewardTracker', JSON.stringify(updatedTracker));
+              
+              // Show notification
+              const rewardMessage = generateRewardNotification('Quest Completed!', reward.name, rewardTracker.currentStreak);
+              setNotification({
+                id: `reward-${questIdParam}-${Date.now()}`,
+                type: 'success',
+                title: '🏆 Quest Complete!',
+                message: `${currentUser?.name} earned ${reward.icon} ${reward.name}`,
+                duration: 6000,
+                icon: '🎉',
+              });
+              
+              // Update quest status in database with completed_by user
+              if (organizationId && currentUser) {
+                try {
+                  // Get current contributors
+                  const{ data: questData } = await (supabase as any)
+                    .from('quests')
+                    .select('*')
+                    .eq('id', questIdParam)
+                    .single();
+
+                  const contributors = questData?.contributors ? JSON.parse(String(questData.contributors)) : [];
+                  
+                  // Add current user if not already there
+                  const userExists = contributors.some((c: any) => c.user_id === currentUser.id);
+                  if (!userExists) {
+                    contributors.push({
+                      user_id: currentUser.id,
+                      email: currentUser.email,
+                      name: currentUser.name,
+                      action: 'completed',
+                      timestamp: new Date().toISOString(),
+                    });
+                  }
+
+                  const { error } = await (supabase as any)
+                    .from('quests')
+                    .update({ 
+                      status: 'completed',
+                      completed_at: new Date().toISOString(),
+                      completed_by: currentUser.id,
+                      contributors: JSON.stringify(contributors),
+                    })
+                    .eq('id', questIdParam);
+                  
+                  if (error) {
+                    console.error('❌ Error updating quest status:', error);
+                  } else {
+                    console.log('✅ Quest marked completed by', currentUser.name);
+                    // Reload quests to show in completed section
+                    setTimeout(() => loadQuests(), 500);
+                  }
+                } catch (error) {
+                  console.error('Error updating quest:', error);
+                }
+              }
+            }}
+            onRegenerateQuest={regenerateQuest}
           />
         )}
 

@@ -13,8 +13,13 @@ CREATE TABLE IF NOT EXISTS public.quests (
   created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   updated_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
   completed_at TIMESTAMP WITH TIME ZONE,
+  completed_by UUID, -- User who completed the quest
+  contributors JSONB, -- Array of {user_id, email, name, contributed_at} for team tracking
+  parent_quest_id UUID, -- For tracking regenerated quests
   
-  CONSTRAINT fk_organization_id FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE
+  CONSTRAINT fk_organization_id FOREIGN KEY (organization_id) REFERENCES public.organizations(id) ON DELETE CASCADE,
+  CONSTRAINT fk_completed_by FOREIGN KEY (completed_by) REFERENCES auth.users(id) ON DELETE SET NULL,
+  CONSTRAINT fk_parent_quest FOREIGN KEY (parent_quest_id) REFERENCES public.quests(id) ON DELETE SET NULL
 );
 
 -- Index for faster queries
@@ -75,5 +80,8 @@ CREATE POLICY "Allow organization members to delete quests"
     )
   );
 
-COMMENT ON TABLE public.quests IS 'Stores persistent quest data for organizations';
+COMMENT ON TABLE public.quests IS 'Stores persistent quest data for organizations with multi-user collaboration tracking';
 COMMENT ON COLUMN public.quests.metadata IS 'JSONB field storing quest steps, rewards, and other dynamic data';
+COMMENT ON COLUMN public.quests.completed_by IS 'User ID who marked the quest as completed';
+COMMENT ON COLUMN public.quests.contributors IS 'JSONB array tracking all team members who contributed to quest progress';
+COMMENT ON COLUMN public.quests.parent_quest_id IS 'References original quest when regenerated, allows viewing quest history';
