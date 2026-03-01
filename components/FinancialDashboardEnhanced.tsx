@@ -270,31 +270,33 @@ export function FinancialDashboardEnhanced({
       {/* Charts Section */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue & Profit Trend */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 overflow-hidden">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Revenue & Profit Trend</h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <ComposedChart data={trendData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                  boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
-                }}
-                formatter={(value) => formatCurrency(value as number)}
-              />
-              <Legend />
-              <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
-              <Bar dataKey="profit" fill="#10b981" opacity={0.6} />
-            </ComposedChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={300} minWidth={300}>
+              <ComposedChart data={trendData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)',
+                  }}
+                  formatter={(value) => formatCurrency(value as number)}
+                />
+                <Legend />
+                <Line type="monotone" dataKey="revenue" stroke="#3b82f6" strokeWidth={2} dot={{ fill: '#3b82f6', r: 4 }} activeDot={{ r: 6 }} />
+                <Bar dataKey="profit" fill="#10b981" opacity={0.6} />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
         </div>
 
         {/* Quarterly Comparison */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 overflow-hidden">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xl font-bold text-gray-900">Quarterly Breakdown</h2>
             <select
@@ -309,24 +311,26 @@ export function FinancialDashboardEnhanced({
               ))}
             </select>
           </div>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart data={chartData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" />
-              <YAxis />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                }}
-                formatter={(value) => formatCurrency(value as number)}
-              />
-              <Legend />
-              <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
-              <Bar dataKey="profit" fill="#10b981" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={300} minWidth={300}>
+              <BarChart data={chartData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" />
+                <YAxis />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => formatCurrency(value as number)}
+                />
+                <Legend />
+                <Bar dataKey="revenue" fill="#3b82f6" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="profit" fill="#10b981" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
@@ -369,24 +373,26 @@ export function FinancialDashboardEnhanced({
         </div>
 
         {/* Profit Margin Trend */}
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white rounded-lg shadow p-6 overflow-hidden">
           <h2 className="text-xl font-bold text-gray-900 mb-4">Profit Margin by Quarter</h2>
-          <ResponsiveContainer width="100%" height={250}>
-            <BarChart data={profitMarginData}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-              <XAxis dataKey="name" />
-              <YAxis label={{ value: 'Margin %', angle: -90, position: 'insideLeft' }} />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: '#fff',
-                  border: '1px solid #e5e7eb',
-                  borderRadius: '8px',
-                }}
-                formatter={(value) => `${value}%`}
-              />
-              <Bar dataKey="margin" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
+          <div className="w-full overflow-x-auto">
+            <ResponsiveContainer width="100%" height={250} minWidth={300}>
+              <BarChart data={profitMarginData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                <XAxis dataKey="name" />
+                <YAxis label={{ value: 'Margin %', angle: -90, position: 'insideLeft' }} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: '#fff',
+                    border: '1px solid #e5e7eb',
+                    borderRadius: '8px',
+                  }}
+                  formatter={(value) => `${value}%`}
+                />
+                <Bar dataKey="margin" fill="#8b5cf6" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
         </div>
       </div>
 
