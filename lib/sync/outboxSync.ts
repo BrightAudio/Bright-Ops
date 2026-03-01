@@ -352,7 +352,7 @@ export class OutboxSyncService {
    */
   private async isNetworkAvailable(): Promise<boolean> {
     // Check if we're in browser/electron
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       return navigator.onLine;
     }
 

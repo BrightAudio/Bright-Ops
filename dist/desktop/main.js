@@ -17,6 +17,7 @@ const migrations_1 = require("./db/migrations");
 const inventory_1 = require("./ipc/inventory");
 const pullsheets_1 = require("./ipc/pullsheets");
 const sync_1 = require("./ipc/sync");
+const license_1 = require("./ipc/license");
 let mainWindow = null;
 exports.mainWindow = mainWindow;
 let localServerPort = 3000;
@@ -90,6 +91,8 @@ electron_1.app.whenReady().then(async () => {
         await (0, sqlite_1.initializeDatabase)();
         // Run migrations
         await (0, migrations_1.runMigrations)();
+        // Initialize license schema
+        (0, license_1.initializeLicenseSchema)();
         // Setup IPC handlers
         setupIPC();
         // Create window
@@ -126,6 +129,7 @@ async function setupIPC() {
     (0, inventory_1.registerInventoryHandlers)();
     (0, pullsheets_1.registerPullSheetHandlers)();
     (0, sync_1.registerSyncHandlers)();
+    (0, license_1.registerLicenseHandlers)();
     // Basic app handlers
     electron_1.ipcMain.handle('app:isOffline', () => {
         // Main process is always "online" - check actual network later if needed
@@ -136,6 +140,15 @@ async function setupIPC() {
     });
     electron_1.ipcMain.handle('app:quit', () => {
         electron_1.app.quit();
+    });
+    /**
+     * Navigate to sync widget page
+     */
+    electron_1.ipcMain.handle('app:openSyncWidget', () => {
+        if (mainWindow) {
+            mainWindow.webContents.send('navigate', '/desktop-sync');
+        }
+        return { success: true };
     });
     console.log('✅ IPC handlers registered');
 }

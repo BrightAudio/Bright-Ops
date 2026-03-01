@@ -70,7 +70,7 @@ export class NetworkMonitor {
    * Get current network status
    */
   getStatus(): NetworkStatus {
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
       return navigator.onLine ? 'online' : 'offline';
     }
     return 'online';
@@ -98,7 +98,7 @@ export class NetworkMonitor {
 
     this.checkInterval = setInterval(() => {
       const wasOnline = this.status === 'online';
-      const isNowOnline = navigator.onLine;
+      const isNowOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
 
       if (wasOnline !== isNowOnline) {
         this.setStatus(isNowOnline ? 'online' : 'offline');

@@ -212,7 +212,16 @@ export function registerLicenseHandlers(): void {
           throw new Error(`License verify failed: ${response.statusText}`);
         }
 
-        const verifyResponse = await response.json();
+        const verifyResponse = await response.json() as {
+          license_id: string;
+          plan: string;
+          status: string;
+          grace_period: { expires_at: string | null };
+          features: Record<string, boolean>;
+          sync_enabled: boolean;
+          can_create_jobs: boolean;
+          can_add_inventory: boolean;
+        };
 
         // Cache the successful verification
         updateLicenseCache(verifyResponse);
