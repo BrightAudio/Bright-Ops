@@ -22,13 +22,14 @@ export class NetworkMonitor {
    * Setup browser online/offline listeners
    */
   private setupListeners(): void {
-    if (typeof window === 'undefined') return;
+    // Only setup in browser environment
+    if (typeof globalThis !== 'undefined' && (globalThis as any).window !== undefined) {
+      (globalThis as any).window.addEventListener('online', () => this.setStatus('online'));
+      (globalThis as any).window.addEventListener('offline', () => this.setStatus('offline'));
 
-    window.addEventListener('online', () => this.setStatus('online'));
-    window.addEventListener('offline', () => this.setStatus('offline'));
-
-    // Initial status
-    this.setStatus(navigator.onLine ? 'online' : 'offline');
+      // Initial status
+      this.setStatus((globalThis as any).navigator?.onLine ? 'online' : 'offline');
+    }
   }
 
   /**
@@ -70,8 +71,8 @@ export class NetworkMonitor {
    * Get current network status
    */
   getStatus(): NetworkStatus {
-    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-      return navigator.onLine ? 'online' : 'offline';
+    if (typeof globalThis !== 'undefined' && (globalThis as any).navigator !== undefined) {
+      return (globalThis as any).navigator.onLine ? 'online' : 'offline';
     }
     return 'online';
   }
@@ -98,7 +99,7 @@ export class NetworkMonitor {
 
     this.checkInterval = setInterval(() => {
       const wasOnline = this.status === 'online';
-      const isNowOnline = typeof navigator !== 'undefined' ? navigator.onLine : true;
+      const isNowOnline = (globalThis as any).navigator?.onLine ?? true;
 
       if (wasOnline !== isNowOnline) {
         this.setStatus(isNowOnline ? 'online' : 'offline');

@@ -352,8 +352,8 @@ export class OutboxSyncService {
    */
   private async isNetworkAvailable(): Promise<boolean> {
     // Check if we're in browser/electron
-    if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
-      return navigator.onLine;
+    if (typeof globalThis !== 'undefined' && (globalThis as any).navigator !== undefined) {
+      return (globalThis as any).navigator.onLine;
     }
 
     // In Node.js, try a simple DNS lookup

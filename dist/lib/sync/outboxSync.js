@@ -315,7 +315,7 @@ class OutboxSyncService {
      */
     async isNetworkAvailable() {
         // Check if we're in browser/electron
-        if (typeof window !== 'undefined') {
+        if (typeof window !== 'undefined' && typeof navigator !== 'undefined') {
             return navigator.onLine;
         }
         // In Node.js, try a simple DNS lookup
