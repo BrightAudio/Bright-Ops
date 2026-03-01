@@ -6,7 +6,7 @@ import { supabaseBrowser } from '@/lib/supabaseClient';
 import { ArrowLeft, Zap, TrendingUp, Target, Calendar, CheckCircle2, BarChart3 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useLicense } from '@/lib/hooks/useLicense';
-import { FinancialDashboard } from '@/components/FinancialDashboard';
+import { FinancialDashboardEnhanced as FinancialDashboard } from '@/components/FinancialDashboardEnhanced';
 import { useQuarterlyRevenue } from '@/lib/hooks/useQuarterlyRevenue';
 import GoalScenarios from '@/components/GoalScenarios';
 import QuarterDateEditor from '@/components/QuarterDateEditor';
