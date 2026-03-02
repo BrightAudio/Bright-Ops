@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
+import { assertNotUpdateBlocked } from '../gates';
 
 /**
  * Type definition for inventory items (matches database schema)
@@ -160,6 +161,8 @@ export function registerInventoryHandlers(): void {
    */
   ipcMain.handle('inventory:create', async (_event, item: Omit<InventoryItem, 'id'>) => {
     try {
+      assertNotUpdateBlocked('create_inventory');
+      
       const db = getDatabase();
       const id = uuidv4();
       const now = new Date().toISOString();
@@ -252,6 +255,8 @@ export function registerInventoryHandlers(): void {
    */
   ipcMain.handle('inventory:checkoutItem', async (_event, id: string, qty: number) => {
     try {
+      assertNotUpdateBlocked('checkout_inventory');
+      
       const db = getDatabase();
       const item = db
         .prepare('SELECT * FROM inventory_items WHERE id = ?')

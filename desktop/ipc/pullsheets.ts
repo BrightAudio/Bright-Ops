@@ -6,6 +6,7 @@
 import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
+import { assertNotUpdateBlocked } from '../gates';
 
 export type PullSheet = {
   id: string;
@@ -128,6 +129,8 @@ export function registerPullSheetHandlers(): void {
    */
   ipcMain.handle('pullsheets:update', async (_event, id: string, changes: Partial<PullSheet>) => {
     try {
+      assertNotUpdateBlocked('update_pullsheet');
+      
       const db = getDatabase();
 
       const oldSheet = db

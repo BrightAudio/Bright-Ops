@@ -7,6 +7,7 @@ import { ipcMain } from 'electron';
 import { getDatabase } from '../db/sqlite';
 import { v4 as uuidv4 } from 'uuid';
 import OutboxSyncService from '../../lib/sync/outboxSync';
+import { assertNotUpdateBlocked } from '../gates';
 
 export type SyncStatus = {
   pending: number;
@@ -146,6 +147,8 @@ export function registerSyncHandlers(): void {
    */
   ipcMain.handle('sync:syncNow', async () => {
     try {
+      assertNotUpdateBlocked('sync');
+      
       const syncSvc = getSyncService();
 
       if (!authToken) {
