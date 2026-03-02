@@ -101,7 +101,7 @@
       "certificateFile": null,
       "sign": null,
       "signingHashAlgorithms": [],
-      "signAndEditExecutables": false
+      "signAndEditExecutable": false
     },
     "nsis": {
       "oneClick": false,
