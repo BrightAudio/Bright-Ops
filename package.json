@@ -97,7 +97,8 @@
       "target": [
         "portable",
         "nsis"
-      ]
+      ],
+      "certificateFile": null
     },
     "nsis": {
       "oneClick": false,
