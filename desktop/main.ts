@@ -100,7 +100,7 @@ app.whenReady().then(async () => {
 
     // Initialize license gate (load from cache or default to active)
     // TODO: Load from SQLite license_state table when available
-    setLicenseGate({ status: 'active', plan: 'starter' });
+    setLicenseGate({ status: "active", plan: "starter" });
 
     // Initialize auto-update and version enforcement
     await initAutoUpdateAndVersionEnforcement({
