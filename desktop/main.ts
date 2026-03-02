@@ -15,6 +15,7 @@ import { registerSyncHandlers } from './ipc/sync';
 import { initializeLicenseSchema, registerLicenseHandlers } from './ipc/license';
 import { initAutoUpdateAndVersionEnforcement } from './updater';
 import { setUpdateGate, getUpdateGate } from './gates';
+import { setLicenseGate, getLicenseGate, getPolicySnapshot } from './policy';
 
 let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
@@ -97,6 +98,10 @@ app.whenReady().then(async () => {
     // Initialize license schema
     initializeLicenseSchema();
 
+    // Initialize license gate (load from cache or default to active)
+    // TODO: Load from SQLite license_state table when available
+    setLicenseGate({ status: 'active', plan: 'starter' });
+
     // Initialize auto-update and version enforcement
     await initAutoUpdateAndVersionEnforcement({
       onUpdateGateChanged: (gate) => {
@@ -160,6 +165,14 @@ async function setupIPC(): Promise<void> {
 
   ipcMain.handle('app:getUpdateGate', () => {
     return getUpdateGate();
+  });
+
+  ipcMain.handle('app:getLicenseGate', () => {
+    return getLicenseGate();
+  });
+
+  ipcMain.handle('app:getPolicySnapshot', () => {
+    return getPolicySnapshot();
   });
 
   ipcMain.handle('app:quit', () => {
