@@ -6,6 +6,9 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   
+  // SWC optimizations (Next.js 15 default compiler)
+  swcMinify: true,
+  
   // Performance optimizations
   compiler: {
     removeConsole: !isDev ? {
@@ -26,6 +29,17 @@ const nextConfig = {
   experimental: {
     optimizeCss: true,
     optimizePackageImports: ['react-icons', '@supabase/supabase-js', 'lucide-react'],
+    turbo: {
+      loaders: {
+        '.svg': ['@svgr/webpack'],
+      },
+      rules: {
+        '*.svg': {
+          loaders: ['@svgr/webpack'],
+          as: '*.js',
+        },
+      },
+    },
   },
 
   // Turbopack configuration (replaces deprecated experimental.turbo)
