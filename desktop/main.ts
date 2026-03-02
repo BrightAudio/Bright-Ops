@@ -13,6 +13,7 @@ import { registerInventoryHandlers } from './ipc/inventory';
 import { registerPullSheetHandlers } from './ipc/pullsheets';
 import { registerSyncHandlers } from './ipc/sync';
 import { initializeLicenseSchema, registerLicenseHandlers } from './ipc/license';
+import { initAutoUpdateAndVersionEnforcement } from './updater';
 
 let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
@@ -94,9 +95,17 @@ app.whenReady().then(async () => {
     
     // Initialize license schema
     initializeLicenseSchema();
+
+    // Initialize auto-update and version enforcement
+    const updateGate = await initAutoUpdateAndVersionEnforcement({
+      onUpdateGateChanged: (gate) => {
+        console.log('🔐 Update gate changed:', gate);
+        // You can store this in a global or pass to renderer via IPC if needed
+      },
+    });
     
     // Setup IPC handlers
-    setupIPC();
+    setupIPC(updateGate);
     
     // Create window
     await createWindow();
@@ -130,7 +139,7 @@ app.on('quit', () => {
  * IPC Handlers Setup
  * Import and register all IPC modules
  */
-async function setupIPC(): Promise<void> {
+async function setupIPC(updateGate?: any): Promise<void> {
   console.log('🔌 Setting up IPC handlers...');
 
   // Register module handlers
@@ -147,6 +156,10 @@ async function setupIPC(): Promise<void> {
 
   ipcMain.handle('app:getVersion', () => {
     return app.getVersion();
+  });
+
+  ipcMain.handle('app:getUpdateGate', () => {
+    return updateGate || { updateRequired: false };
   });
 
   ipcMain.handle('app:quit', () => {
