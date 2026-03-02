@@ -4,7 +4,7 @@
   "private": true,
   "main": "dist/desktop/main.js",
   "scripts": {
-    "dev": "NEXT_TELEMETRY_DISABLED=1 next dev -p 3000",
+    "dev": "next dev -p 3000",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
