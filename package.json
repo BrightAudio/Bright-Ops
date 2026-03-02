@@ -102,10 +102,6 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    },
-    "nodeVersion": null,
-    "electronBuilder": {
-      "nodeVersion": null
     }
   }
 }
