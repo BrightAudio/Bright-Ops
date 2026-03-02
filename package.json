@@ -98,7 +98,10 @@
         "portable",
         "nsis"
       ],
-      "certificateFile": null
+      "certificateFile": null,
+      "sign": null,
+      "signingHashAlgorithms": [],
+      "signAndEditExecutables": false
     },
     "nsis": {
       "oneClick": false,
