@@ -14,6 +14,7 @@
     "electron:compile": "tsc --project tsconfig.electron.json",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:compile && npm run electron\"",
     "electron:build": "NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run obfuscate && electron-builder --publish never",
+    "electron:publish": "NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run obfuscate && electron-builder --publish always",
     "obfuscate": "node scripts/obfuscate.js"
   },
   "dependencies": {
