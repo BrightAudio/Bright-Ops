@@ -102,6 +102,8 @@
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true
-    }
+    },
+    "buildDependenciesFromSource": false,
+    "nodeVersion": "20.11.0"
   }
 }
