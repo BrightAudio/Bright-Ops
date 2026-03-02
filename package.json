@@ -83,8 +83,8 @@
   },
   "homepage": "./",
   "build": {
-    "appId": "com.brightaudio.app",
-    "productName": "Bright Audio",
+    "appId": "com.brightops.app",
+    "productName": "Bright Ops",
     "files": [
       "dist/**/*",
       "out/**/*",
