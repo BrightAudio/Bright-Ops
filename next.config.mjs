@@ -47,12 +47,6 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
   
-  // Security: Prevent source maps in production
-  env: {
-    // Ensure this is never true in production builds
-    NODE_ENV: process.env.NODE_ENV || 'production',
-  },
-  
   // Compression
   compress: true,
   
