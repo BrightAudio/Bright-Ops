@@ -22,8 +22,18 @@ export type Action =
   | 'inventory.create'
   | 'jobs.create'
   | 'ai.use'
+  | 'ai.speaker_designer'       // Pro+
+  | 'ai.lead_discovery'         // Enterprise
+  | 'ai.email_generation'       // Enterprise
   | 'leads.use'
+  | 'leads.campaign_tracking'   // Enterprise
   | 'goals.use'
+  | 'crew.advanced_scheduling'  // Pro+
+  | 'analytics.advanced'        // Pro+
+  | 'analytics.quarterly_ytd'   // Pro+
+  | 'warehouse.multi'           // Pro+
+  | 'warehouse.unlimited'       // Enterprise
+  | 'api.access'                // Enterprise
   | 'ops.checkout'
   | 'ops.return'
   | 'pullsheets.update'
@@ -132,30 +142,55 @@ export function canPerform(action: Action): PermissionResult {
 
   // 🔒 Plan gating: feature access by subscription level
   if (license.plan === 'starter') {
-    // Starter has no AI/leads/goals
-    if (action === 'ai.use' || action === 'leads.use' || action === 'goals.use') {
+    // Starter has no advanced features
+    const starterBlocked = [
+      'ai.use',
+      'ai.speaker_designer',
+      'ai.lead_discovery',
+      'ai.email_generation',
+      'leads.use',
+      'leads.campaign_tracking',
+      'goals.use',
+      'crew.advanced_scheduling',
+      'analytics.advanced',
+      'analytics.quarterly_ytd',
+      'warehouse.multi',
+      'warehouse.unlimited',
+      'api.access',
+    ];
+
+    if (starterBlocked.includes(action)) {
       return {
         allowed: false,
         code: 'PLAN_REQUIRED',
-        message: 'Upgrade to Pro/Enterprise for AI, Leads, and Goals features.',
-        details: license,
+        message: `This feature requires Pro or Enterprise plan.`,
+        details: { requiredPlan: 'pro', currentPlan: 'starter', action },
       };
     }
   }
 
   if (license.plan === 'pro') {
-    // Pro has no Leads (Enterprise-only)
-    if (action === 'leads.use') {
+    // Pro does not have Enterprise-only features
+    const proBlocked = [
+      'ai.lead_discovery',
+      'ai.email_generation',
+      'leads.campaign_tracking',
+      'warehouse.unlimited',
+      'api.access',
+    ];
+
+    if (proBlocked.includes(action)) {
       return {
         allowed: false,
         code: 'PLAN_REQUIRED',
-        message: 'Leads is Enterprise-only. Upgrade to unlock.',
-        details: license,
+        message: `This feature is Enterprise-only. Upgrade to unlock.`,
+        details: { requiredPlan: 'enterprise', currentPlan: 'pro', action },
       };
     }
   }
 
-  // ✅ Default: allowed
+  // Enterprise has all features ✅
+
   return { allowed: true };
 }
 

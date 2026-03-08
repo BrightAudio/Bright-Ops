@@ -19,6 +19,67 @@ import { setLicenseGate, getLicenseGate, getPolicySnapshot } from './policy';
 
 let mainWindow: BrowserWindow | null = null;
 let localServerPort = 3000;
+const PRODUCTION_URL = 'https://bright-ops.vercel.app';
+
+/**
+ * Start embedded Next.js server for production
+ */
+async function startEmbeddedServer(): Promise<number> {
+  return new Promise((resolve, reject) => {
+    const nextDir = path.join(__dirname, '..', '.next');
+    const publicDir = path.join(__dirname, '..', 'public');
+    
+    const server = http.createServer((req, res) => {
+      // Simple static file server for production
+      const filePath = path.join(publicDir, req.url === '/' ? 'index.html' : req.url);
+      
+      try {
+        const fs = require('fs');
+        if (fs.existsSync(filePath)) {
+          const content = fs.readFileSync(filePath);
+          res.writeHead(200, { 'Content-Type': getMimeType(filePath) });
+          res.end(content);
+        } else {
+          // For Next.js pages, serve index fallback
+          const indexPath = path.join(publicDir, 'index.html');
+          if (fs.existsSync(indexPath)) {
+            const content = fs.readFileSync(indexPath);
+            res.writeHead(200, { 'Content-Type': 'text/html' });
+            res.end(content);
+          } else {
+            res.writeHead(404);
+            res.end('Not found');
+          }
+        }
+      } catch (error) {
+        res.writeHead(500);
+        res.end('Server error');
+      }
+    });
+
+    const port = 3000;
+    server.listen(port, 'localhost', () => {
+      console.log(`Embedded server listening on port ${port}`);
+      resolve(port);
+    });
+
+    server.on('error', reject);
+  });
+}
+
+function getMimeType(filePath: string): string {
+  const ext = path.extname(filePath).toLowerCase();
+  const types: Record<string, string> = {
+    '.html': 'text/html',
+    '.css': 'text/css',
+    '.js': 'application/javascript',
+    '.json': 'application/json',
+    '.png': 'image/png',
+    '.jpg': 'image/jpeg',
+    '.svg': 'image/svg+xml',
+  };
+  return types[ext] || 'application/octet-stream';
+}
 
 /**
  * Wait for server to be ready before loading URL
@@ -48,34 +109,48 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error('Failed to connect to dev server');
 }
 
-/**
- * Create the browser window
- */
 async function createWindow(): Promise<void> {
+  const iconPath = path.join(__dirname, '..', 'public', 'bright-ops-logo.svg');
+  
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 1000,
     minHeight: 600,
+    icon: iconPath,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
     },
+    show: false, // Don't show until ready
   });
 
   // Load app
   if (isDev) {
-    // Development: load from localhost (server should already be running)
+    // Development: load from localhost
     const url = `http://localhost:${localServerPort}`;
-    console.log(`🔗 Loading: ${url}`);
-    mainWindow.loadURL(url);
-    mainWindow.webContents.openDevTools();
+    console.log(`🔗 Loading dev: ${url}`);
+    try {
+      await waitForServer(url);
+      mainWindow.loadURL(url);
+      mainWindow.webContents.openDevTools();
+    } catch (error) {
+      console.error('Dev server error:', error);
+      mainWindow.loadURL('data:text/html,<h1>Error: Dev server not running. Start with: npm run electron:dev</h1>');
+    }
   } else {
-    // Production: load from file
-    mainWindow.loadFile(path.join(__dirname, '../out/index.html'));
+    // Production: load from Vercel
+    console.log(`🌐 Loading production: ${PRODUCTION_URL}`);
+    mainWindow.loadURL(PRODUCTION_URL);
   }
+
+  // Maximize window on startup and show
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.maximize();
+    mainWindow?.show();
+  });
 
   mainWindow.on('closed', () => {
     mainWindow = null;

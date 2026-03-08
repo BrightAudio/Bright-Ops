@@ -176,13 +176,24 @@ export default function InvoicesPage() {
                       </td>
                       <td className="px-4 py-3">
                         {invoice.job_id && (
-                          <Link
-                            href={`/app/jobs/${invoice.job_id}/estimate`}
-                            className="text-blue-400 hover:text-blue-300 text-sm"
-                          >
-                            <i className="fas fa-eye mr-1"></i>
-                            View
-                          </Link>
+                          <div className="flex gap-2">
+                            <Link
+                              href={`/app/jobs/${invoice.job_id}/estimate`}
+                              className="text-blue-400 hover:text-blue-300 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-blue-500/10 transition-colors"
+                              title="View and edit invoice details, labour costs, and equipment"
+                            >
+                              <i className="fas fa-edit"></i>
+                              Edit
+                            </Link>
+                            <Link
+                              href={`/app/jobs/${invoice.job_id}`}
+                              className="text-zinc-400 hover:text-zinc-300 text-sm flex items-center gap-1 px-2 py-1 rounded hover:bg-zinc-700/50 transition-colors"
+                              title="View job details"
+                            >
+                              <i className="fas fa-eye"></i>
+                              Job
+                            </Link>
+                          </div>
                         )}
                       </td>
                     </tr>

@@ -122,10 +122,16 @@ export default function PullSheetsClient({
     setSubmitting(true);
     setCreateError(null);
     try {
+      const jobName = selectedJob
+        ? (selectedJob.code && selectedJob.title 
+          ? `${selectedJob.code} - ${selectedJob.title}`
+          : selectedJob.code ?? selectedJob.title ?? "Job")
+        : null;
+      
       const name =
         form.name.trim() ||
-        (selectedJob
-          ? `${selectedJob.code ?? selectedJob.title ?? "Job"} Pull Sheet`
+        (jobName
+          ? `${jobName} Pull Sheet`
           : "Untitled Pull Sheet");
       
       // Get warehouse_id from job or current location

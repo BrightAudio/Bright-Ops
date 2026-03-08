@@ -4,6 +4,7 @@
  */
 
 import { ipcMain } from 'electron';
+import { v4 as uuidv4 } from 'uuid';
 import { getDatabase } from '../db/sqlite';
 
 export interface CachedLicenseState {
@@ -17,6 +18,9 @@ export interface CachedLicenseState {
   cached_sync_enabled: 0 | 1;
   cached_can_create_jobs: 0 | 1;
   cached_can_add_inventory: 0 | 1;
+  device_id: string;
+  device_bound_at: string;
+  cache_expires_at: string | null;
 }
 
 /**
@@ -38,17 +42,23 @@ export function initializeLicenseSchema(): void {
         cached_features text,
         cached_sync_enabled integer default 0,
         cached_can_create_jobs integer default 0,
-        cached_can_add_inventory integer default 0
+        cached_can_add_inventory integer default 0,
+        device_id text unique not null,
+        device_bound_at text not null,
+        cache_expires_at text
       )
     `).run();
 
-    // Ensure singleton row
+    // Ensure singleton row with generated device_id
+    const deviceId = uuidv4();
+    const now = new Date().toISOString();
     db.prepare(`
       insert or ignore into license_state (
         id, status, cached_features, cached_sync_enabled, 
-        cached_can_create_jobs, cached_can_add_inventory
-      ) values (1, 'unknown', '{}', 0, 0, 0)
-    `).run();
+        cached_can_create_jobs, cached_can_add_inventory,
+        device_id, device_bound_at
+      ) values (1, 'unknown', '{}', 0, 0, 0, ?, ?)
+    `).run(deviceId, now);
 
     console.log('✅ License state table initialized');
   } catch (error) {
@@ -78,9 +88,13 @@ export function getCachedLicenseState(): CachedLicenseState {
       cached_sync_enabled: row.cached_sync_enabled ?? 0,
       cached_can_create_jobs: row.cached_can_create_jobs ?? 0,
       cached_can_add_inventory: row.cached_can_add_inventory ?? 0,
+      device_id: row.device_id ?? uuidv4(),
+      device_bound_at: row.device_bound_at ?? new Date().toISOString(),
+      cache_expires_at: row.cache_expires_at ?? null,
     };
   } catch (error) {
     console.error('Error reading license state:', error);
+    const deviceId = uuidv4();
     return {
       license_id: null,
       plan: null,
@@ -92,6 +106,9 @@ export function getCachedLicenseState(): CachedLicenseState {
       cached_sync_enabled: 0,
       cached_can_create_jobs: 0,
       cached_can_add_inventory: 0,
+      device_id: deviceId,
+      device_bound_at: new Date().toISOString(),
+      cache_expires_at: null,
     };
   }
 }
@@ -126,6 +143,9 @@ function updateLicenseCache(verifyResponse: {
       nextVerifyAt = new Date(now.getTime() + 30 * 60 * 1000); // 30m
     }
 
+    // 7-day offline grace: cache expires 7 days from now if offline
+    const cacheExpiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
     db.prepare(`
       update license_state set
         license_id = ?,
@@ -137,7 +157,8 @@ function updateLicenseCache(verifyResponse: {
         cached_features = ?,
         cached_sync_enabled = ?,
         cached_can_create_jobs = ?,
-        cached_can_add_inventory = ?
+        cached_can_add_inventory = ?,
+        cache_expires_at = ?
       where id = 1
     `).run(
       verifyResponse.license_id,
@@ -149,7 +170,8 @@ function updateLicenseCache(verifyResponse: {
       JSON.stringify(verifyResponse.features),
       verifyResponse.sync_enabled ? 1 : 0,
       verifyResponse.can_create_jobs ? 1 : 0,
-      verifyResponse.can_add_inventory ? 1 : 0
+      verifyResponse.can_add_inventory ? 1 : 0,
+      cacheExpiresAt.toISOString()
     );
 
     console.log(`✅ License cached: ${verifyResponse.plan} - ${verifyResponse.status}`);
@@ -190,25 +212,41 @@ export function registerLicenseHandlers(): void {
         appVersion,
       }: {
         userId: string;
-        deviceId: string;
+        deviceId?: string;
         deviceName?: string;
         appVersion: string;
       }
     ) => {
       try {
+        const state = getCachedLicenseState();
+        const verifyDeviceId = deviceId || state.device_id;
+
         const apiUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
         const response = await fetch(`${apiUrl}/api/license/verify`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             userId,
-            deviceId,
+            deviceId: verifyDeviceId,
             deviceName,
             appVersion,
           }),
         });
 
         if (!response.ok) {
+          // If offline, check if cache is still valid (7-day offline grace)
+          if (response.status === 0 || response.status >= 500) {
+            if (state.cache_expires_at && new Date(state.cache_expires_at) > new Date()) {
+              console.log('📡 Offline - using cached license state');
+              return { success: true, data: state, offline: true };
+            } else {
+              return {
+                success: false,
+                error: 'License cache expired - device offline for more than 7 days',
+                offline: true,
+              };
+            }
+          }
           throw new Error(`License verify failed: ${response.statusText}`);
         }
 
@@ -226,12 +264,25 @@ export function registerLicenseHandlers(): void {
         // Cache the successful verification
         updateLicenseCache(verifyResponse);
 
-        return { success: true, data: verifyResponse };
+        return { success: true, data: { ...state, ...verifyResponse }, offline: false };
       } catch (error) {
         console.error('License verification error:', error);
+
+        // On error, check if we can use cached state (offline grace)
+        const state = getCachedLicenseState();
+        if (
+          state.cache_expires_at &&
+          new Date(state.cache_expires_at) > new Date() &&
+          state.status !== 'unknown'
+        ) {
+          console.log('📡 Offline - using cached license state');
+          return { success: true, data: state, offline: true };
+        }
+
         return {
           success: false,
           error: (error as any).message ?? 'License verification failed',
+          offline: true,
         };
       }
     }

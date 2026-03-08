@@ -225,26 +225,36 @@ export default function JobDetailPage() {
   }
 
   async function handleSaveJob() {
-    if (!job) return;
+    if (!job || !editForm.code.trim()) {
+      alert('Job code is required');
+      return;
+    }
     setSavingJob(true);
     try {
-      const { error } = await supabase
+      console.log('[handleSaveJob] Updating job:', job.id, editForm);
+      
+      const { error: updateError } = await supabase
         .from('jobs')
         .update({
-          title: editForm.title || null,
-          code: editForm.code || job.code,
+          title: editForm.title.trim() || null,
+          code: editForm.code.trim(),
           status: editForm.status,
           start_at: editForm.start_at || null,
           end_at: editForm.end_at || null,
-          venue: editForm.venue || null,
-          notes: editForm.notes || null
+          venue: editForm.venue.trim() || null,
+          notes: editForm.notes.trim() || null
         })
         .eq('id', job.id);
 
-      if (error) throw error;
+      if (updateError) {
+        console.error('[handleSaveJob] Update error:', updateError);
+        throw updateError;
+      }
 
-      // Reload job
-      const { data } = await supabase
+      console.log('[handleSaveJob] Update successful, reloading job');
+
+      // Reload job from database
+      const { data, error: fetchError } = await supabase
         .from('jobs')
         .select(`
           *,
@@ -257,13 +267,32 @@ export default function JobDetailPage() {
         .eq('id', job.id)
         .single();
 
-      if (data) {
-        setJob(data as any);
+      if (fetchError) {
+        console.error('[handleSaveJob] Fetch error:', fetchError);
+        throw fetchError;
       }
+
+      if (data) {
+        console.log('[handleSaveJob] Job reloaded successfully:', data);
+        setJob(data as any);
+        // Update edit form with fresh data
+        setEditForm({
+          title: data.title || '',
+          code: data.code || '',
+          status: data.status || 'draft',
+          start_at: data.start_at ? data.start_at.slice(0, 16) : '',
+          end_at: data.end_at ? data.end_at.slice(0, 16) : '',
+          venue: data.venue || '',
+          notes: data.notes || ''
+        });
+      }
+      
+      // Close modal after successful update
       setShowEditJobModal(false);
+      alert('Job updated successfully!');
     } catch (err) {
-      console.error('Error saving job:', err);
-      alert('Failed to save job');
+      console.error('[handleSaveJob] Error saving job:', err);
+      alert(`Failed to save job: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setSavingJob(false);
     }

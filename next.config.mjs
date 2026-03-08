@@ -1,14 +1,18 @@
 // next.config.mjs
 /** @type {import('next').NextConfig} */
+const isDev = process.env.NODE_ENV === 'development';
+
 const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   
   // Performance optimizations
   compiler: {
-    removeConsole: process.env.NODE_ENV === 'production' ? {
+    removeConsole: !isDev ? {
       exclude: ['error', 'warn']
     } : false,
+    emotion: false,
+    styledComponents: false,
   },
   
   // Image optimization
@@ -43,17 +47,40 @@ const nextConfig = {
   productionBrowserSourceMaps: false,
   poweredByHeader: false,
   
+  // Security: Prevent source maps in production
+  env: {
+    // Ensure this is never true in production builds
+    NODE_ENV: process.env.NODE_ENV || 'production',
+  },
+  
   // Compression
   compress: true,
   
   // Webpack optimizations to fix large string serialization warning
   webpack: (config, { dev, isServer }) => {
-    // Disable webpack cache in dev to avoid slow serialization issues
-    if (dev && config.cache) {
+    // DEV MODE: Aggressive optimizations for faster compilation
+    if (dev) {
+      // Disable cache serialization that causes slowdown
       config.cache = false;
+      
+      // Reduce parallelism on Windows to avoid overhead
+      if (process.platform === 'win32') {
+        config.parallelism = 4;
+      }
+      
+      // Skip expensive loaders in development
+      config.module.rules = config.module.rules.map(rule => {
+        if (rule.test?.toString().includes('svg')) {
+          return {
+            ...rule,
+            type: 'asset/resource',
+          };
+        }
+        return rule;
+      });
     }
     
-    // Optimize cache for better performance in production
+    // PROD: Optimize cache for better performance
     if (!dev && config.cache && !isServer) {
       config.cache.compression = 'gzip';
     }

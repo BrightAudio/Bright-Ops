@@ -1,0 +1,19 @@
+<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background circle -->
+  <circle cx="128" cy="128" r="125" fill="#0A0E27"/>
+  
+  <!-- Outer ring -->
+  <circle cx="128" cy="128" r="115" stroke="#137CFB" strokeWidth="3" fill="none"/>
+  
+  <!-- Audio waveform arc -->
+  <path d="M 80 128 Q 110 90 128 80 Q 146 90 176 128" stroke="#137CFB" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+  
+  <!-- Center dot -->
+  <circle cx="128" cy="128" r="8" fill="#137CFB"/>
+  
+  <!-- Lower waveform -->
+  <path d="M 85 145 Q 115 165 128 175 Q 141 165 171 145" stroke="#137CFB" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
+  
+  <!-- Text label -->
+  <text x="128" y="215" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#137CFB" text-anchor="middle" letter-spacing="2">BRIGHT OPS</text>
+</svg>

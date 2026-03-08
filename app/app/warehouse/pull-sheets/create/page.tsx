@@ -342,6 +342,19 @@ export default function CreatePullSheetPage() {
         .single();
       
       if (sheetError) throw sheetError;
+
+      // Update associated job status to 'active' if a job was selected
+      if (jobId) {
+        const { error: jobUpdateError } = await supabase
+          .from('jobs')
+          .update({ status: 'active' })
+          .eq('id', jobId);
+        
+        if (jobUpdateError) {
+          console.error('Error updating job status:', jobUpdateError);
+          // Continue anyway - the pull sheet was created successfully
+        }
+      }
       
       // Add items to pull sheet
       const itemsToInsert = selectedItems.map((item, index) => ({

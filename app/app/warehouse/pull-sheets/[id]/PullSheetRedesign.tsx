@@ -1477,38 +1477,46 @@ export default function PullSheetRedesign({
 
       {/* Scan Prompts Configuration Modal */}
       {showScanPromptsConfig && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
-          <div className="bg-zinc-800 border border-zinc-700 rounded-lg p-6 w-full max-w-md shadow-xl">
-            <h2 className="text-xl font-semibold text-white mb-4">Scan Prompt Settings</h2>
+        <div className="fixed inset-0 bg-black/90 flex items-center justify-center z-50 p-4">
+          <div className="bg-zinc-900 border-2 border-zinc-700 rounded-lg p-6 w-full max-w-md shadow-2xl">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-xl font-semibold text-white">Scan Prompt Settings</h2>
+              <button
+                onClick={() => setShowScanPromptsConfig(false)}
+                className="text-zinc-400 hover:text-white transition-colors"
+              >
+                <i className="fas fa-times text-lg"></i>
+              </button>
+            </div>
             
             <div className="space-y-4">
               {/* Success Message */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Success Message</label>
+                <label className="block text-sm text-zinc-300 mb-2 font-medium">Success Message</label>
                 <input
                   type="text"
                   value={scanPrompts.successMessage}
                   onChange={(e) => setScanPrompts(prev => ({ ...prev, successMessage: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-amber-500"
                   placeholder="Scan successful"
                 />
               </div>
 
               {/* Error Message */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">Error Message</label>
+                <label className="block text-sm text-zinc-300 mb-2 font-medium">Error/Failure Message</label>
                 <input
                   type="text"
                   value={scanPrompts.errorMessage}
                   onChange={(e) => setScanPrompts(prev => ({ ...prev, errorMessage: e.target.value }))}
-                  className="w-full px-3 py-2 bg-zinc-900 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-zinc-500"
+                  className="w-full px-3 py-2 bg-zinc-800 border border-zinc-700 rounded text-white text-sm focus:outline-none focus:border-amber-500"
                   placeholder="Nope, try again"
                 />
               </div>
 
               {/* Volume */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">
+                <label className="block text-sm text-zinc-300 mb-2 font-medium">
                   Volume: {Math.round(scanPrompts.volume * 100)}%
                 </label>
                 <input
@@ -1524,7 +1532,7 @@ export default function PullSheetRedesign({
 
               {/* Rate/Speed */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">
+                <label className="block text-sm text-zinc-300 mb-2 font-medium">
                   Speed: {scanPrompts.rate.toFixed(1)}x
                 </label>
                 <input
@@ -1540,7 +1548,7 @@ export default function PullSheetRedesign({
 
               {/* Pitch */}
               <div>
-                <label className="block text-sm text-zinc-400 mb-1">
+                <label className="block text-sm text-zinc-300 mb-2 font-medium">
                   Pitch: {scanPrompts.pitch.toFixed(1)}x
                 </label>
                 <input
@@ -1555,55 +1563,89 @@ export default function PullSheetRedesign({
               </div>
 
               {/* Enable Toggles */}
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm text-zinc-400">
+              <div className="flex items-center gap-4 bg-zinc-800 rounded p-3">
+                <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={scanPrompts.enableSuccess}
                     onChange={(e) => setScanPrompts(prev => ({ ...prev, enableSuccess: e.target.checked }))}
-                    className="w-4 h-4"
+                    className="w-4 h-4 cursor-pointer"
                   />
-                  Enable success sounds
+                  <span>Enable success sounds</span>
                 </label>
-                <label className="flex items-center gap-2 text-sm text-zinc-400">
+                <label className="flex items-center gap-2 text-sm text-zinc-300 cursor-pointer">
                   <input
                     type="checkbox"
                     checked={scanPrompts.enableError}
                     onChange={(e) => setScanPrompts(prev => ({ ...prev, enableError: e.target.checked }))}
-                    className="w-4 h-4"
+                    className="w-4 h-4 cursor-pointer"
                   />
-                  Enable error sounds
+                  <span>Enable error sounds</span>
                 </label>
               </div>
 
-              {/* Preview Button */}
-              <button
-                onClick={() => {
-                  if (soundTheme === 'voice') {
-                    try {
-                      const utterance = new SpeechSynthesisUtterance(scanPrompts.successMessage);
-                      const voices = speechSynthesis.getVoices();
-                      const femaleVoice = voices.find(voice => 
-                        voice.name.toLowerCase().includes('female') || 
-                        voice.name.toLowerCase().includes('woman') ||
-                        voice.name.toLowerCase().includes('samantha') ||
-                        voice.name.toLowerCase().includes('victoria') ||
-                        voice.name.toLowerCase().includes('zira')
-                      );
-                      if (femaleVoice) utterance.voice = femaleVoice;
-                      utterance.rate = scanPrompts.rate;
-                      utterance.pitch = scanPrompts.pitch;
-                      utterance.volume = scanPrompts.volume;
-                      speechSynthesis.speak(utterance);
-                    } catch (e) {
-                      console.error('Voice synthesis failed:', e);
+              {/* Test Buttons */}
+              <div className="space-y-2 border-t border-zinc-700 pt-4">
+                <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">Test Sound Effects:</p>
+                
+                <button
+                  onClick={() => {
+                    if (soundTheme === 'voice') {
+                      try {
+                        const utterance = new SpeechSynthesisUtterance(scanPrompts.successMessage);
+                        const voices = speechSynthesis.getVoices();
+                        const femaleVoice = voices.find(voice => 
+                          voice.name.toLowerCase().includes('female') || 
+                          voice.name.toLowerCase().includes('woman') ||
+                          voice.name.toLowerCase().includes('samantha') ||
+                          voice.name.toLowerCase().includes('victoria') ||
+                          voice.name.toLowerCase().includes('zira')
+                        );
+                        if (femaleVoice) utterance.voice = femaleVoice;
+                        utterance.rate = scanPrompts.rate;
+                        utterance.pitch = scanPrompts.pitch;
+                        utterance.volume = scanPrompts.volume;
+                        speechSynthesis.speak(utterance);
+                      } catch (e) {
+                        console.error('Voice synthesis failed:', e);
+                      }
                     }
-                  }
-                }}
-                className="w-full px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
-              >
-                Test Success Sound
-              </button>
+                  }}
+                  className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-check-circle"></i>
+                  Test Success Sound
+                </button>
+
+                <button
+                  onClick={() => {
+                    if (soundTheme === 'voice') {
+                      try {
+                        const utterance = new SpeechSynthesisUtterance(scanPrompts.errorMessage);
+                        const voices = speechSynthesis.getVoices();
+                        const femaleVoice = voices.find(voice => 
+                          voice.name.toLowerCase().includes('female') || 
+                          voice.name.toLowerCase().includes('woman') ||
+                          voice.name.toLowerCase().includes('samantha') ||
+                          voice.name.toLowerCase().includes('victoria') ||
+                          voice.name.toLowerCase().includes('zira')
+                        );
+                        if (femaleVoice) utterance.voice = femaleVoice;
+                        utterance.rate = scanPrompts.rate;
+                        utterance.pitch = scanPrompts.pitch;
+                        utterance.volume = scanPrompts.volume;
+                        speechSynthesis.speak(utterance);
+                      } catch (e) {
+                        console.error('Voice synthesis failed:', e);
+                      }
+                    }
+                  }}
+                  className="w-full px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded text-sm font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <i className="fas fa-times-circle"></i>
+                  Test Failure Sound
+                </button>
+              </div>
             </div>
 
             {/* Action Buttons */}
@@ -1613,15 +1655,15 @@ export default function PullSheetRedesign({
                   localStorage.setItem('scanPromptSettings', JSON.stringify(scanPrompts));
                   setShowScanPromptsConfig(false);
                 }}
-                className="flex-1 px-4 py-2 bg-blue-600 text-white rounded text-sm hover:bg-blue-500"
+                className="flex-1 px-4 py-2 bg-amber-500 hover:bg-amber-600 text-black rounded text-sm font-semibold transition-colors"
               >
-                Save
+                <i className="fas fa-save mr-2"></i>Save Settings
               </button>
               <button
                 onClick={() => setShowScanPromptsConfig(false)}
-                className="flex-1 px-4 py-2 bg-zinc-700 text-white rounded text-sm hover:bg-zinc-600"
+                className="flex-1 px-4 py-2 bg-zinc-700 hover:bg-zinc-600 text-white rounded text-sm font-medium transition-colors"
               >
-                Cancel
+                <i className="fas fa-times mr-2"></i>Cancel
               </button>
             </div>
           </div>

@@ -124,7 +124,8 @@ export async function POST(request: NextRequest) {
         cost_estimate_amount: total_price,
         total_amortization: totalAmortization,
         created_by: user.id,
-        warehouse_id: warehouse_id // Associate job with warehouse
+        warehouse_id: warehouse_id, // Associate job with warehouse
+        status: 'draft' // New jobs start in draft status
       })
       .select()
       .single();
@@ -216,6 +217,7 @@ export async function GET() {
         event_start_date,
         cost_estimate_amount,
         total_amortization,
+        status,
         created_at
       `)
       .order('created_at', { ascending: false });
