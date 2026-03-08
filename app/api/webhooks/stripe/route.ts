@@ -4,17 +4,36 @@ import Stripe from 'stripe';
 
 export const runtime = 'nodejs';
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!,
-  { auth: { persistSession: false } }
-);
+// Lazy initialize Stripe to avoid build-time errors when API keys are not available
+let stripeClient: Stripe | null = null;
+let supabaseClient: any = null;
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY!, {
-  apiVersion: '2023-10-16' as any,
-});
+function getStripe(): Stripe {
+  if (!stripeClient) {
+    const apiKey = process.env.STRIPE_SECRET_KEY;
+    if (!apiKey) {
+      throw new Error('STRIPE_SECRET_KEY is not set');
+    }
+    stripeClient = new Stripe(apiKey, {
+      apiVersion: '2023-10-16' as any,
+    });
+  }
+  return stripeClient;
+}
 
-const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET!;
+function getSupabase() {
+  if (!supabaseClient) {
+    const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+    if (!url || !key) {
+      throw new Error('Supabase credentials are not set');
+    }
+    supabaseClient = createClient(url, key, {
+      auth: { persistSession: false }
+    });
+  }
+  return supabaseClient;
+}
 
 /**
  * Stripe Webhook Handler
@@ -24,6 +43,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
     const body = await req.text();
     const signature = req.headers.get('stripe-signature');
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
 
     if (!signature || !webhookSecret) {
       return NextResponse.json(
@@ -34,6 +54,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // Verify webhook signature
     let event: Stripe.Event;
+    const stripe = getStripe();
     try {
       event = stripe.webhooks.constructEvent(body, signature, webhookSecret);
     } catch (error) {
@@ -91,7 +112,7 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent): Promise
 
   try {
     // Find organization by Stripe customer ID
-    const { data: org, error: orgErr } = await supabase
+    const { data: org, error: orgErr } = await getSupabase()
       .from('organizations')
       .select('id')
       .eq('stripe_customer_id', customerId)
@@ -104,7 +125,7 @@ async function handlePaymentFailed(paymentIntent: Stripe.PaymentIntent): Promise
 
     // Update license to mark delinquent
     const now = new Date().toISOString();
-    const { error: licErr } = await supabase
+    const { error: licErr } = await getSupabase()
       .from('licenses')
       .update({
         delinquent_since: now,
@@ -150,7 +171,7 @@ async function handleChargeFailed(charge: Stripe.Charge): Promise<void> {
 async function handleInvoicePaymentFailed(customerId: string): Promise<void> {
   try {
     // Find organization by Stripe customer ID
-    const { data: org, error: orgErr } = await supabase
+    const { data: org, error: orgErr } = await getSupabase()
       .from('organizations')
       .select('id')
       .eq('stripe_customer_id', customerId)
@@ -163,7 +184,7 @@ async function handleInvoicePaymentFailed(customerId: string): Promise<void> {
 
     // Update license to mark delinquent
     const now = new Date().toISOString();
-    const { error: licErr } = await supabase
+    const { error: licErr } = await getSupabase()
       .from('licenses')
       .update({
         delinquent_since: now,
@@ -196,7 +217,7 @@ async function sendDelinquentNotification(
 ): Promise<void> {
   try {
     // Get organization details
-    const { data: org } = await supabase
+    const { data: org } = await getSupabase()
       .from('organizations')
       .select('id, name, created_by')
       .eq('id', orgId)
@@ -205,7 +226,7 @@ async function sendDelinquentNotification(
     if (!org) return;
 
     // Get user email
-    const { data: user } = await supabase
+    const { data: user } = await getSupabase()
       .from('user_profiles')
       .select('email')
       .eq('id', org.created_by)
