@@ -109,6 +109,7 @@
       "buildResources": "public"
     },
     "win": {
+      "icon": "public/bright-ops-logo.svg",
       "target": [
         "portable",
         "nsis"
