@@ -112,9 +112,9 @@
     "win": {
       "icon": "public/bright-ops-logo.svg",
       "target": [
-        "portable",
         "nsis"
       ],
+      "icon": "public/icon.png",
       "certificateFile": null,
       "sign": null,
       "signingHashAlgorithms": [],
