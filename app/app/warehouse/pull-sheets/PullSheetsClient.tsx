@@ -355,33 +355,14 @@ export default function PullSheetsClient({
                 <tr key={sheet.id} className="border-t border-gray-300 hover:bg-amber-50 transition-colors">
                   <td className="px-6 py-4 font-semibold text-gray-900">
                     <div>{sheet.code}</div>
-                    <div className="text-xs text-gray-600 mt-1">
-                      {canCreate ? (
-                        <select
-                          className="w-full rounded border border-gray-300 bg-white px-2 py-1 text-gray-900 text-xs focus:border-amber-400 focus:outline-none disabled:opacity-50"
-                          value={sheet.job_id ?? ""}
-                          disabled={isEditing}
-                          onChange={(e) => updatePullSheetField(sheet.id, "job_id", e.target.value || null)}
-                        >
-                          <option value="">No linked job</option>
-                          {jobs.map((job) => (
-                            <option key={job.id} value={job.id}>
-                              {job.code && job.title ? `${job.code} · ${job.title}` : job.code ?? job.title ?? "Unnamed Job"}
-                            </option>
-                          ))}
-                        </select>
-                      ) : (
-                        <span className="text-gray-700">{jobLabel(sheet.jobs)}</span>
-                      )}
-                    </div>
-                    {sheet.jobs?.title && (
-                      <div className="text-xs font-normal text-gray-500 mt-0.5">{sheet.jobs.title}</div>
-                    )}
                   </td>
                   <td className="px-6 py-4 text-gray-900 font-medium">
                     <Link href={`/app/warehouse/pull-sheets/${sheet.id}`} className="hover:text-amber-600 hover:underline">
                       {sheet.name}
                     </Link>
+                    {sheet.jobs?.title && (
+                      <div className="text-xs font-normal text-gray-500 mt-0.5">Job: {sheet.jobs.code} · {sheet.jobs.title}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4">
                     {canCreate ? (
