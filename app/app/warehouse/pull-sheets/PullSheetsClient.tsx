@@ -366,7 +366,7 @@ export default function PullSheetsClient({
                           <option value="">No linked job</option>
                           {jobs.map((job) => (
                             <option key={job.id} value={job.id}>
-                              {job.code ?? job.title ?? "Unnamed Job"}
+                              {job.code && job.title ? `${job.code} · ${job.title}` : job.code ?? job.title ?? "Unnamed Job"}
                             </option>
                           ))}
                         </select>
@@ -374,6 +374,9 @@ export default function PullSheetsClient({
                         <span className="text-gray-700">{jobLabel(sheet.jobs)}</span>
                       )}
                     </div>
+                    {sheet.jobs?.title && (
+                      <div className="text-xs font-normal text-gray-500 mt-0.5">{sheet.jobs.title}</div>
+                    )}
                   </td>
                   <td className="px-6 py-4 text-gray-900 font-medium">
                     <Link href={`/app/warehouse/pull-sheets/${sheet.id}`} className="hover:text-amber-600 hover:underline">
@@ -490,7 +493,7 @@ export default function PullSheetsClient({
                   <option value="">No linked job</option>
                   {jobs.map((job) => (
                     <option key={job.id} value={job.id}>
-                      {job.code ?? job.title ?? "Unnamed Job"}
+                      {job.code && job.title ? `${job.code} · ${job.title}` : job.code ?? job.title ?? "Unnamed Job"}
                     </option>
                   ))}
                 </select>

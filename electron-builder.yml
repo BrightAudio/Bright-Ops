@@ -1,0 +1,32 @@
+appId: com.brightops.app
+productName: Bright Ops
+asar: true
+files:
+  - dist/desktop/**/*
+  - dist/lib/**/*
+  - public/**/*
+extraResources:
+  - from: dist/.next/standalone
+    to: standalone
+    filter:
+      - "**/*"
+directories:
+  buildResources: public
+win:
+  target:
+    - nsis
+  icon: public/icon.ico
+  certificateFile: null
+  sign: null
+  signingHashAlgorithms: []
+  signAndEditExecutable: false
+  publisherName: "Bright Media"
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+publish:
+  - provider: github
+    owner: BrightMedia
+    repo: Bright-Ops
+    releaseType: release
+copyright: "Copyright © 2026 Bright Media"

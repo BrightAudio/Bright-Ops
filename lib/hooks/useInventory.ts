@@ -50,24 +50,20 @@ export async function scanIn(
   if (item) {
     ok = true;
     result = "success";
-    const itemAny = item as any;
     itemRow = item as InventoryItem;
-    const supabaseAny = supabase as any;
-    await supabaseAny
+    await supabase
       .from("inventory_items")
       .update({
-        qty_in_warehouse: (itemAny.qty_in_warehouse ?? 0) + 1,
-      })
-      .eq("id", itemAny.id);
+        qty_in_warehouse: ((item as any).qty_in_warehouse ?? 0) + 1,
+      } as any)
+      .eq("id", (item as any).id);
   }
-  const event = {
+  await supabase.from("scan_events" as any).insert([{
     barcode,
     result,
     job_id: opts?.jobId ?? null,
     created_at: new Date().toISOString(),
-  };
-  const supabaseAny2 = supabase as any;
-  await supabaseAny2.from("scan_events").insert([event]);
+  }]);
   return { ok, item: itemRow };
 }
 
@@ -110,55 +106,55 @@ export function useInventory(query?: { search?: string }) {
         return;
       }
       
-      // Fetch job information for items not in warehouse
-      const itemsWithJobs: InventoryItemWithJob[] = await Promise.all(
-        (rows ?? []).map(async (item: any) => {
-          // If item is in warehouse, no need to fetch job
-          if ((item.qty_in_warehouse ?? 0) > 0) {
-            return { ...item, currentJob: null };
-          }
-          
-          // Find active pull sheet items for this inventory item
-          const { data: pullSheetItems } = await supabase
-            .from("pull_sheet_items")
-            .select(`
-              pull_sheet_id,
-              pull_sheets!inner(
+      // Batch-fetch job info for items not in warehouse (single query instead of N+1)
+      const outItems = (rows ?? []).filter((item: any) => (item.qty_in_warehouse ?? 0) <= 0);
+      const outItemIds = outItems.map((item: any) => item.id);
+      
+      let jobLookup: Record<string, { id: string; name: string; pull_sheet_id: string; scheduled_out_at: string | null }> = {};
+      
+      if (outItemIds.length > 0) {
+        const { data: pullSheetItems } = await supabase
+          .from("pull_sheet_items")
+          .select(`
+            inventory_item_id,
+            pull_sheet_id,
+            pull_sheets!inner(
+              id,
+              name,
+              status,
+              job_id,
+              scheduled_out_at,
+              jobs!inner(
                 id,
-                name,
-                status,
-                job_id,
-                scheduled_out_at,
-                jobs!inner(
-                  id,
-                  name
-                )
+                name
               )
-            `)
-            .eq("inventory_item_id", item.id)
-            .in("pull_sheets.status", ["draft", "finalized", "out"]);
-          
-          if (pullSheetItems && pullSheetItems.length > 0) {
-            // Get the first active pull sheet (most recent)
-            const pullSheet = (pullSheetItems[0] as any).pull_sheets;
+            )
+          `)
+          .in("inventory_item_id", outItemIds)
+          .in("pull_sheets.status", ["draft", "finalized", "out"]);
+        
+        if (pullSheetItems) {
+          for (const psi of pullSheetItems) {
+            const itemId = (psi as any).inventory_item_id;
+            if (jobLookup[itemId]) continue; // keep first match
+            const pullSheet = (psi as any).pull_sheets;
             const job = pullSheet?.jobs;
-            
             if (job) {
-              return {
-                ...item,
-                currentJob: {
-                  id: job.id,
-                  name: job.name,
-                  pull_sheet_id: pullSheet.id,
-                  scheduled_out_at: pullSheet.scheduled_out_at,
-                },
+              jobLookup[itemId] = {
+                id: job.id,
+                name: job.name,
+                pull_sheet_id: pullSheet.id,
+                scheduled_out_at: pullSheet.scheduled_out_at,
               };
             }
           }
-          
-          return { ...item, currentJob: null };
-        })
-      );
+        }
+      }
+      
+      const itemsWithJobs: InventoryItemWithJob[] = (rows ?? []).map((item: any) => ({
+        ...item,
+        currentJob: jobLookup[item.id] ?? null,
+      }));
       
       if (!active) return;
       setData(itemsWithJobs);

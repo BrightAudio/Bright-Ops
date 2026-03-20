@@ -149,11 +149,12 @@ export async function POST(request: NextRequest) {
 
     let query = supabase
       .from('inventory_items')
-      .select('id, name, barcode, category, subcategory, quantity_on_hand, unit_value, location, maintenance_status, warehouse_id')
+      .select('id, name, barcode, category, subcategory, quantity_on_hand, unit_value, location, maintenance_status')
       .eq('barcode', barcode);
 
     if (warehouse_id) {
-      query = query.eq('warehouse_id', warehouse_id);
+      // Filter by location field since inventory_items has no warehouse_id column
+      query = query.eq('location', warehouse_id);
     }
 
     const { data, error } = await query.maybeSingle();

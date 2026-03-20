@@ -198,10 +198,13 @@ export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
       
       // Only update if there are changes
       if (Object.keys(jobUpdates).length > 0) {
-        await (supabase as any)
+        const { error: jobError } = await (supabase as any)
           .from("jobs")
           .update(jobUpdates)
           .eq("id", pullSheet.job_id);
+        if (jobError) {
+          console.warn("Failed to sync job with pull sheet update:", jobError.message);
+        }
       }
     }
   }
@@ -210,6 +213,13 @@ export async function updatePullSheet(id: string, updates: PullSheetUpdate) {
 }
 
 export async function deletePullSheet(id: string) {
+  // Delete child items first to avoid orphaned records
+  const { error: itemsError } = await supabase
+    .from("pull_sheet_items")
+    .delete()
+    .eq("pull_sheet_id", id);
+  if (itemsError) throw new Error("Failed to delete pull sheet items: " + itemsError.message);
+
   const { error } = await supabase.from("pull_sheets").delete().eq("id", id);
   if (error) throw new Error(error.message);
 }
@@ -248,7 +258,7 @@ export async function reorderPullSheetItems(
   pullSheetId: string,
   orderedIds: string[]
 ) {
-  await Promise.all(
+  const results = await Promise.all(
     orderedIds.map((id, index) =>
       (supabase as any)
         .from("pull_sheet_items")
@@ -256,4 +266,8 @@ export async function reorderPullSheetItems(
         .eq("id", id)
     )
   );
+  const failed = results.find((r: any) => r.error);
+  if (failed?.error) {
+    throw new Error("Failed to reorder items: " + failed.error.message);
+  }
 }

@@ -1,0 +1,13 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bright Ops orange outlined isometric cube icon -->
+  <!-- Outer hexagon outline -->
+  <polygon points="128,20 224,76 224,180 128,236 32,180 32,76" 
+    fill="none" stroke="#F07A1A" stroke-width="14" stroke-linejoin="round"/>
+  <!-- Inner lines forming the 3D cube -->
+  <!-- Top-center to bottom-center -->
+  <line x1="128" y1="20" x2="128" y2="128" stroke="#F07A1A" stroke-width="14" stroke-linecap="round"/>
+  <!-- Center to bottom-left -->
+  <line x1="128" y1="128" x2="32" y2="180" stroke="#F07A1A" stroke-width="14" stroke-linecap="round"/>
+  <!-- Center to bottom-right -->
+  <line x1="128" y1="128" x2="224" y2="180" stroke="#F07A1A" stroke-width="14" stroke-linecap="round"/>
+</svg>

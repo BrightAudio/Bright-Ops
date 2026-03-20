@@ -1,19 +1,16 @@
-<svg width="256" height="256" viewBox="0 0 256 256" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <!-- Background circle -->
-  <circle cx="128" cy="128" r="125" fill="#0A0E27"/>
-  
-  <!-- Outer ring -->
-  <circle cx="128" cy="128" r="115" stroke="#137CFB" strokeWidth="3" fill="none"/>
-  
-  <!-- Audio waveform arc -->
-  <path d="M 80 128 Q 110 90 128 80 Q 146 90 176 128" stroke="#137CFB" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-  
-  <!-- Center dot -->
-  <circle cx="128" cy="128" r="8" fill="#137CFB"/>
-  
-  <!-- Lower waveform -->
-  <path d="M 85 145 Q 115 165 128 175 Q 141 165 171 145" stroke="#137CFB" strokeWidth="3" fill="none" strokeLinecap="round" strokeLinejoin="round"/>
-  
-  <!-- Text label -->
-  <text x="128" y="215" font-family="Arial, sans-serif" font-size="24" font-weight="bold" fill="#137CFB" text-anchor="middle" letter-spacing="2">BRIGHT OPS</text>
+<svg viewBox="0 0 400 120" xmlns="http://www.w3.org/2000/svg">
+  <!-- Bright Ops logo: orange outlined cube + text -->
+  <g transform="translate(10,5)">
+    <!-- Outer hexagon outline -->
+    <polygon points="55,5 100,31 100,82 55,108 10,82 10,31" 
+      fill="none" stroke="#F07A1A" stroke-width="6" stroke-linejoin="round"/>
+    <!-- Inner cube lines -->
+    <line x1="55" y1="5" x2="55" y2="56" stroke="#F07A1A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="55" y1="56" x2="10" y2="82" stroke="#F07A1A" stroke-width="6" stroke-linecap="round"/>
+    <line x1="55" y1="56" x2="100" y2="82" stroke="#F07A1A" stroke-width="6" stroke-linecap="round"/>
+  </g>
+  <!-- Text -->
+  <text x="135" y="74" font-family="'Inter', 'Segoe UI', Arial, sans-serif" font-size="48" font-weight="600" fill="#333333">
+    Bright Ops
+  </text>
 </svg>

@@ -175,7 +175,7 @@ export async function finalizePrepSheetByJob(jobId: string) {
       .insert([{
         name: pullName,
         job_id: jobId,
-        status: 'active',  // Set to active so scanning works immediately
+        status: 'picking',  // Set to picking so scanning works immediately
         scheduled_out_at: (jobData as any)?.start_at ?? null,
         expected_return_at: (jobData as any)?.end_at ?? null,
         notes: (jobData as any)?.notes ?? null,

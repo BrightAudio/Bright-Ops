@@ -6,6 +6,9 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: true },
   
+  // Build for standalone app (Electron, offline use)
+  output: 'standalone',
+  
   // Performance optimizations
   compiler: {
     removeConsole: !isDev ? {

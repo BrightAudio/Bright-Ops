@@ -1,7 +1,9 @@
 {
-  "name": "bright-audio-app",
+  "name": "bright-ops",
   "version": "1.5.2",
   "private": true,
+  "description": "Bright Ops - Warehouse & Event Management",
+  "author": "Bright Media",
   "main": "dist/desktop/main.js",
   "scripts": {
     "dev": "next dev -p 3000",
@@ -10,11 +12,13 @@
     "lint": "eslint",
     "import:inventory": "tsx scripts/import-inventory.ts",
     "copy:sql": "node -e \"require('fs').mkdirSync('dist/desktop/db', {recursive: true}); require('fs').copyFileSync('desktop/db/schema.sql', 'dist/desktop/db/schema.sql');\"",
+    "copy:standalone": "node -e \"const fs = require('fs'); const path = require('path'); const src = '.next/standalone'; const dst = 'dist/.next/standalone'; if(fs.existsSync(src)) { fs.cpSync(src, dst, {recursive: true}); console.log('Copied .next/standalone to dist'); } const staticSrc = '.next/static'; const staticDst = 'dist/.next/standalone/.next/static'; if(fs.existsSync(staticSrc)) { fs.cpSync(staticSrc, staticDst, {recursive: true}); console.log('Copied .next/static to standalone'); } const pubSrc = 'public'; const pubDst = 'dist/.next/standalone/public'; if(fs.existsSync(pubSrc)) { fs.cpSync(pubSrc, pubDst, {recursive: true}); console.log('Copied public to standalone'); }\"",
     "electron": "electron .",
     "electron:compile": "tsc --project tsconfig.electron.json",
     "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:3000 && npm run electron:compile && npm run electron\"",
-    "electron:build": "NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run obfuscate && electron-builder --publish never",
-    "electron:publish": "NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run obfuscate && electron-builder --publish always",
+    "electron:build": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run copy:standalone && npm run obfuscate && electron-builder --publish never --config electron-builder.yml",
+    "electron:publish": "cross-env NODE_OPTIONS=--max-old-space-size=4096 next build && npm run electron:compile && npm run copy:sql && npm run copy:standalone && npm run obfuscate && electron-builder --publish always --config electron-builder.yml",
+    "electron:package": "npm run electron:compile && npm run copy:sql && electron-builder --publish never --config electron-builder.yml",
     "obfuscate": "node scripts/obfuscate.js"
   },
   "dependencies": {
@@ -70,13 +74,15 @@
     "@types/supertest": "^6.0.3",
     "@types/uuid": "^9.0.7",
     "concurrently": "^8.2.2",
+    "cross-env": "^10.1.0",
     "cross-fetch": "^4.1.0",
     "dotenv": "^17.2.3",
     "electron": "^30.5.1",
     "electron-builder": "^25.1.1",
-    "electron-rebuild": "^3.2.9",
     "eslint": "^9",
     "eslint-config-next": "15.5.6",
+    "png-to-ico": "^3.0.1",
+    "rcedit": "^4.0.1",
     "supabase": "^2.58.5",
     "supertest": "^7.1.4",
     "tailwindcss": "^4",
@@ -98,6 +104,7 @@
       "node_modules/sqlite3/**/*",
       "node_modules/better-sqlite3/**/*"
     ],
+    "nodeGypRebuild": false,
     "files": [
       "dist/**/*",
       "out/**/*",

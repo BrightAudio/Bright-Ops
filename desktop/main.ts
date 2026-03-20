@@ -3,8 +3,9 @@
  * Handles window creation, IPC, and desktop lifecycle
  */
 
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, Menu } from 'electron';
 import path from 'path';
+import fs from 'fs';
 import isDev from 'electron-is-dev';
 import http from 'http';
 import { initializeDatabase, closeDatabase } from './db/sqlite';
@@ -109,29 +110,131 @@ async function waitForServer(url: string): Promise<void> {
   throw new Error('Failed to connect to dev server');
 }
 
-async function createWindow(): Promise<void> {
-  const iconPath = path.join(__dirname, '..', 'public', 'bright-ops-logo.svg');
+/**
+ * Start standalone Next.js server from bundled build
+ */
+async function startStandaloneServer(): Promise<void> {
+  // In development: standalone is at dist/.next/standalone (relative to project root)
+  // In packaged app: it's an extraResource at process.resourcesPath/standalone
+  let standaloneDir: string;
   
+  if (isDev) {
+    standaloneDir = path.join(__dirname, '../.next/standalone');
+  } else {
+    // extraResources copies to: <app>/resources/standalone/
+    standaloneDir = path.join(process.resourcesPath, 'standalone');
+  }
+  
+  const serverJs = path.join(standaloneDir, 'server.js');
+  
+  if (!fs.existsSync(standaloneDir)) {
+    console.error('❌ Standalone build not found at:', standaloneDir);
+    throw new Error(`Standalone build directory not found: ${standaloneDir}`);
+  }
+
+  if (!fs.existsSync(serverJs)) {
+    console.error('❌ server.js not found at:', serverJs);
+    throw new Error(`server.js not found: ${serverJs}`);
+  }
+
+  console.log('🚀 Starting standalone Next.js server from:', standaloneDir);
+  console.log('   - server.js:', serverJs);
+  
+  try {
+    // Change to standalone directory so relative paths work
+    const originalCwd = process.cwd();
+    console.log('   - Original CWD:', originalCwd);
+    process.chdir(standaloneDir);
+    console.log('   - New CWD:', process.cwd());
+    
+    // Set environment for standalone server
+    process.env.NODE_ENV = 'production';
+    process.env.PORT = localServerPort.toString();
+    
+    console.log('   - Setting NODE_ENV=production');
+    console.log(`   - Setting PORT=${localServerPort}`);
+    
+    // Load the standalone server module which auto-starts via require()
+    // The server.js file calls startServer() which starts listening
+    console.log('   - Loading server.js...');
+    require(serverJs);
+    
+    // Change back to original directory
+    process.chdir(originalCwd);
+    
+    console.log('✅ Standalone server module loaded');
+    
+    // Increased wait time for server to fully start
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        console.log(`✅ Standalone server startup complete (http://localhost:${localServerPort})`);
+        resolve(undefined);
+      }, 3000);
+    });
+  } catch (error) {
+    console.error('❌ Error starting standalone server:', error);
+    throw error;
+  }
+}
+
+/**
+ * Create the browser window
+ */
+async function createWindow(): Promise<void> {
+  // Resolve icon path (works in dev and packaged)
+  const iconPath = isDev
+    ? path.join(__dirname, '../public/icon.png')
+    : path.join(process.resourcesPath, 'app.asar', 'public', 'icon.png');
+
   mainWindow = new BrowserWindow({
     width: 1400,
     height: 900,
     minWidth: 1000,
     minHeight: 600,
+    title: 'Bright Ops',
     icon: iconPath,
+    show: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: true,
     },
-    show: false, // Don't show until ready
+  });
+
+  // Remove the default Electron menu bar
+  Menu.setApplicationMenu(null);
+
+  // Launch maximized and show once ready
+  mainWindow.maximize();
+  mainWindow.once('ready-to-show', () => {
+    mainWindow?.show();
+  });
+
+  // Add error logging
+  mainWindow.webContents.on('render-process-gone', (event) => {
+    console.error('❌ Renderer process crashed!', event);
+  });
+
+  mainWindow.webContents.on('unresponsive', () => {
+    console.warn('⚠️  Window unresponsive');
+  });
+
+  mainWindow.webContents.on('responsive', () => {
+    console.log('✅ Window responsive again');
+  });
+
+  // Log console messages from renderer
+  mainWindow.webContents.on('console-message', (level, message, line, sourceId) => {
+    console.log(`[RENDERER] ${message}`);
   });
 
   // Load app
   if (isDev) {
-    // Development: load from localhost
+    // Development: load from localhost dev server
     const url = `http://localhost:${localServerPort}`;
-    console.log(`🔗 Loading dev: ${url}`);
+    console.log(`🔗 Dev mode - Loading: ${url}`);
     try {
       await waitForServer(url);
       mainWindow.loadURL(url);
@@ -141,9 +244,19 @@ async function createWindow(): Promise<void> {
       mainWindow.loadURL('data:text/html,<h1>Error: Dev server not running. Start with: npm run electron:dev</h1>');
     }
   } else {
-    // Production: load from Vercel
-    console.log(`🌐 Loading production: ${PRODUCTION_URL}`);
-    mainWindow.loadURL(PRODUCTION_URL);
+    // Production: load from localhost standalone server
+    const url = `http://localhost:${localServerPort}`;
+    console.log(`🔗 Offline mode - Loading from standalone server: ${url}`);
+    
+    // Verify preload exists
+    const preloadPath = path.join(__dirname, 'preload.js');
+    if (!fs.existsSync(preloadPath)) {
+      console.error(`❌ Preload script not found at: ${preloadPath}`);
+    } else {
+      console.log(`✅ Preload script found at: ${preloadPath}`);
+    }
+    
+    mainWindow.loadURL(url);
   }
 
   // Maximize window on startup and show
@@ -162,16 +275,30 @@ async function createWindow(): Promise<void> {
  */
 app.whenReady().then(async () => {
   try {
-    console.log('🚀 Bright Audio Desktop starting...');
+    console.log('🚀 Bright Ops Desktop starting...');
     
-    // Initialize database
+    // Start standalone server in production FIRST
+    if (!isDev) {
+      console.log('📦 Production mode: Starting standalone server...');
+      await startStandaloneServer();
+      
+      // Wait for server to be ready before continuing
+      const url = `http://localhost:${localServerPort}`;
+      console.log('⏳ Waiting for server to respond...');
+      await waitForServer(url);
+    }
+    
+    // Initialize database BEFORE IPC (handlers need it)
     await initializeDatabase();
     
     // Run migrations
     await runMigrations();
     
-    // Initialize license schema
+    // Initialize license schema (needs DB)
     initializeLicenseSchema();
+
+    // Setup IPC handlers (needs DB to be ready)
+    setupIPC();
 
     // Initialize license gate (load from cache or default to active)
     // TODO: Load from SQLite license_state table when available
@@ -184,10 +311,7 @@ app.whenReady().then(async () => {
       },
     });
     
-    // Setup IPC handlers (now with update gate enforced)
-    setupIPC();
-    
-    // Create window
+    // Create window (after server is confirmed ready)
     await createWindow();
     
     console.log('✅ App ready');
